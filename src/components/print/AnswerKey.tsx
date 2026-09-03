@@ -1,4 +1,5 @@
 import type { AnswerKeyModel } from "@/lib/print/model";
+import { renderRich } from "@/lib/print/math";
 
 /**
  * One answer key per set, numbered in that set's display order. Where option
@@ -30,7 +31,10 @@ export function AnswerKey({ model }: { model: AnswerKeyModel }) {
                 {e.displayNumber}
                 {e.partLabel ?? ""}
               </td>
-              <td className={e.script === "devanagari" ? "pf-deva" : ""}>{e.answer}</td>
+              <td
+                className={e.script === "devanagari" ? "pf-deva" : ""}
+                dangerouslySetInnerHTML={{ __html: renderRich(e.answer) }}
+              />
               <td>{e.marks}</td>
             </tr>
           ))}

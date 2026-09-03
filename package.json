@@ -18,6 +18,8 @@
   "dependencies": {
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.45.4",
+    "@types/katex": "^0.16.8",
+    "katex": "^0.16.47",
     "next": "15.5.4",
     "pg": "^8.23.0",
     "react": "19.1.1",

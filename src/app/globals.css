@@ -44,6 +44,18 @@ body {
   line-height: 1.4;
 }
 
+/* Every artefact is a separate physical document: each set's paper, each
+   answer key and the mapping sheet start on a fresh page. A teacher must never
+   have to cut a sheet in half to hand out Set A and Set B. */
+.pf-paper {
+  break-after: page;
+  page-break-after: always;
+}
+.pf-paper:last-child {
+  break-after: auto;
+  page-break-after: auto;
+}
+
 .pf-paper-header {
   display: flex;
   align-items: flex-start;
@@ -115,11 +127,27 @@ body {
   white-space: nowrap;
   color: #333;
 }
+.pf-q-body {
+  flex: 1;
+}
 .pf-options {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 2px 16px;
-  margin: 2px 0 0 36px;
+  gap: 4px 16px;
+  margin: 4px 0 0 36px;
+}
+
+/* KaTeX in print: keep display math with its question and never let a long
+   expression push the page sideways. */
+.katex {
+  font-size: 1.03em;
+}
+.katex-display {
+  margin: 6px 0;
+  break-inside: avoid;
+  page-break-inside: avoid;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .pf-footer {

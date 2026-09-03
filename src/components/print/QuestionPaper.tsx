@@ -1,11 +1,17 @@
 import type { PaperPrintModel, PrintBlock } from "@/lib/print/model";
+import { renderRich } from "@/lib/print/math";
+
+function Rich({ text, className }: { text: string; className?: string }) {
+  // Math is rendered on the server, so print never waits on a font or a script.
+  return <span className={className} dangerouslySetInnerHTML={{ __html: renderRich(text) }} />;
+}
 
 function Block({ block }: { block: PrintBlock }) {
   return (
     <div className="pf-block">
       {block.stimulus && (
         <div className={`pf-stimulus ${block.stimulus.script === "devanagari" ? "pf-deva" : ""}`}>
-          {block.stimulus.body}
+          <Rich text={block.stimulus.body} />
           {block.stimulus.imageUrl && (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={block.stimulus.imageUrl} alt="" style={{ maxWidth: "100%", marginTop: 6 }} />
@@ -18,13 +24,13 @@ function Block({ block }: { block: PrintBlock }) {
             {i === 0 || q.displayNumber !== block.questions[i - 1]!.displayNumber ? q.displayNumber : ""}
             {q.partLabel ?? ""}
           </span>
-          <span>
-            {q.body}
+          <span className="pf-q-body">
+            <Rich text={q.body} />
             {q.options && (
               <span className="pf-options">
                 {q.options.map((o) => (
                   <span key={o.letter}>
-                    ({o.letter}) {o.text}
+                    ({o.letter}) <Rich text={o.text} />
                   </span>
                 ))}
               </span>
@@ -70,7 +76,9 @@ export function QuestionPaper({ model }: { model: PaperPrintModel }) {
         <section key={section.label} className="pf-section">
           <div className="pf-section-head">
             <span>Section {section.label}</span>
-            {section.instructions && <span style={{ fontWeight: 400, fontSize: "9.5pt" }}>{section.instructions}</span>}
+            {section.instructions && (
+              <span style={{ fontWeight: 400, fontSize: "9.5pt" }}>{section.instructions}</span>
+            )}
           </div>
           {section.blocks.map((block, i) => (
             <Block key={i} block={block} />
