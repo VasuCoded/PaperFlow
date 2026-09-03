@@ -240,15 +240,18 @@ export function composeMapping(canon: CanonPaper, sets: BuiltSet[]): MappingShee
     const positionInSet: Record<string, number> = {};
     for (const { label, map } of numberInSet) positionInSet[label] = map.get(block.key) ?? 0;
 
+    // The mapping sheet reports the answer TEXT, never an option letter: the
+    // letter differs per set, so a letter here would be ambiguous at best.
+    // Only a multi-part block defers to the key, because it has several answers.
+    // (Do NOT shorten on TeX *source* length — "$\ce{Fe + CuSO4 -> FeSO4 + Cu}$"
+    // is 31 characters of source but renders compactly. Let the column wrap.)
     const single = block.questions.length === 1 ? block.questions[0] : undefined;
     let answer = "see key";
     if (single) {
       if (single.correctOption) {
-        // report the canonical answer text; per-set letters live on each key
         answer = single.options?.find((o) => o.key === single.correctOption)?.text ?? "see key";
-        if (answer.length > 28) answer = "see key";
       } else if (single.answer) {
-        answer = single.answer.length > 28 ? "see key" : single.answer;
+        answer = single.answer;
       }
     }
 

@@ -1,4 +1,5 @@
 import type { MappingSheetModel } from "@/lib/print/model";
+import { renderRich } from "@/lib/print/math";
 
 /**
  * One master mapping sheet: canonical question number, its position in each set,
@@ -40,7 +41,10 @@ export function MappingSheet({ model }: { model: MappingSheetModel }) {
               {model.setLabels.map((l) => (
                 <td key={l}>{r.positionInSet[l] ?? "—"}</td>
               ))}
-              <td>{r.answer}</td>
+              <td
+                className="pf-map-answer"
+                dangerouslySetInnerHTML={{ __html: renderRich(r.answer) }}
+              />
               <td>{r.marks}</td>
             </tr>
           ))}

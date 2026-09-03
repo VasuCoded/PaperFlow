@@ -172,6 +172,17 @@ body {
   border: 1px solid #000;
   padding: 3px 6px;
   text-align: left;
+  vertical-align: top;
+}
+/* Answers can be long once rendered; let the column wrap instead of pushing
+   the table off the page. Position columns stay narrow and digit-aligned. */
+.pf-map-answer {
+  overflow-wrap: anywhere;
+}
+.pf-map-table td:not(.pf-map-answer),
+.pf-key-table td:last-child {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 @media screen {
