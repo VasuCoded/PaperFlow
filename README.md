@@ -30,7 +30,8 @@ Auth + RLS + Storage) · Vercel · Vitest + fast-check.
 | C8 | Teacher screens | ⛔ needs live DB + generated types |
 | C9 | Student screens (PWA) | ⛔ needs live DB + generated types |
 
-See `docs/SETUP.md` for what **you** need to do to bring it online.
+See `docs/SETUP.md` to bring it online, and `docs/HANDOFF.md` for the session
+handoff (bugs fixed, repo map, and the prompt for the next session).
 
 ## Local development
 
