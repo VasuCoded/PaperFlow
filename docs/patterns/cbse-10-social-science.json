@@ -1,0 +1,16 @@
+{
+  "name": "CBSE Class 10 Social Science (Board)",
+  "class": "10",
+  "subject": "Social Science",
+  "total_marks": 80,
+  "duration_min": 180,
+  "origin": "board",
+  "is_default": true,
+  "sections": [
+    { "label": "A", "instructions": "Multiple choice questions (1 mark each).", "question_count": 20, "marks_each": 1, "question_types": ["mcq"], "practice_eligible": true },
+    { "label": "B", "instructions": "Very short answer (3 marks each).", "question_count": 4, "marks_each": 3, "question_types": ["vsa"], "practice_eligible": true },
+    { "label": "C", "instructions": "Long answer (5 marks each).", "question_count": 5, "marks_each": 5, "question_types": ["la"], "allow_choice": true, "practice_eligible": true },
+    { "label": "D", "instructions": "Case-based / source-based (4 marks each).", "question_count": 3, "marks_each": 4, "question_types": ["source_based"], "requires_stimulus": true, "practice_eligible": true },
+    { "label": "E", "instructions": "Map skill (identification and location). Do not shuffle.", "question_count": 1, "marks_each": 5, "question_types": ["map"], "requires_stimulus": true, "practice_eligible": false }
+  ]
+}

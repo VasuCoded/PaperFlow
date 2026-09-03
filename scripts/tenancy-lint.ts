@@ -6,10 +6,12 @@
  *    docs/global-tables.txt. A new table with no tenant key and no allowlist
  *    entry is a tenancy bug waiting to happen — red CI.
  *
- * 2. The string `is_platform_owner()` must never appear inside a
- *    `create policy` block in supabase/migrations. Platform access to tenant
- *    data goes through the audited functions in BUILD-PLAN section 5.8, never
- *    a blanket policy branch.
+ * 2. The escape-hatch pattern `or is_platform_owner()` must never appear
+ *    inside a `create policy` block in supabase/migrations (BUILD-PLAN 6.5).
+ *    Platform access to *tenant* data goes through the audited functions in
+ *    section 5.8, never a blanket OR branch on a tenant-scoped table.
+ *    (is_platform_owner() used as the *sole* clause of a write policy on the
+ *    global/bank tables is legitimate and intended — see 5.0.)
  *
  * Check 1 needs a live database, reached via SUPABASE_DB_URL. When that env
  * var is absent (e.g. no local Postgres yet) it is skipped with a warning and
@@ -44,19 +46,18 @@ function checkNoPlatformOwnerInPolicies(): string[] {
   const errors: string[] = [];
   if (!existsSync(migDir)) return errors;
 
+  const escapeHatch = /\bor\s+is_platform_owner\s*\(\s*\)/;
   const files = readdirSync(migDir).filter((f) => f.endsWith(".sql"));
   for (const file of files) {
     const sql = readFileSync(join(migDir, file), "utf8").toLowerCase();
     // Split into statements on semicolons, find create policy blocks.
     const statements = sql.split(";");
     for (const stmt of statements) {
-      if (
-        stmt.includes("create policy") &&
-        stmt.includes("is_platform_owner()")
-      ) {
+      if (stmt.includes("create policy") && escapeHatch.test(stmt)) {
         errors.push(
-          `${file}: "is_platform_owner()" appears inside a create policy block. ` +
-            `Use an audited inspect function (BUILD-PLAN 5.8) instead.`,
+          `${file}: "or is_platform_owner()" escape hatch inside a create ` +
+            `policy block. Platform access to tenant data goes through the ` +
+            `audited inspect functions (BUILD-PLAN 5.8), not a blanket branch.`,
         );
       }
     }

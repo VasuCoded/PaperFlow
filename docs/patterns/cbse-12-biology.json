@@ -1,0 +1,15 @@
+{
+  "name": "CBSE Class 12 Biology (Board)",
+  "class": "12",
+  "subject": "Biology",
+  "total_marks": 70,
+  "duration_min": 180,
+  "origin": "board",
+  "is_default": true,
+  "sections": [
+    { "label": "A", "instructions": "Multiple choice questions (1 mark each).", "question_count": 18, "marks_each": 1, "question_types": ["mcq", "assertion_reason"], "practice_eligible": true },
+    { "label": "B", "instructions": "Very short answer (2 marks each).", "question_count": 7, "marks_each": 2, "question_types": ["vsa"], "practice_eligible": true },
+    { "label": "C", "instructions": "Short answer (3 marks each).", "question_count": 6, "marks_each": 3, "question_types": ["sa"], "practice_eligible": true },
+    { "label": "D", "instructions": "Long answer (5 marks each). Internal choice.", "question_count": 4, "marks_each": 5, "question_types": ["la"], "allow_choice": true, "practice_eligible": true }
+  ]
+}

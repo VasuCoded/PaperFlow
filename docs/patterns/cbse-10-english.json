@@ -1,0 +1,16 @@
+{
+  "name": "CBSE Class 10 English Language & Literature (Board)",
+  "class": "10",
+  "subject": "English",
+  "total_marks": 80,
+  "duration_min": 180,
+  "origin": "board",
+  "is_default": true,
+  "sections": [
+    { "label": "A", "instructions": "Reading — unseen passages (comprehension).", "question_count": 20, "marks_each": 1, "question_types": ["comprehension"], "requires_stimulus": true, "practice_eligible": true },
+    { "label": "B", "instructions": "Writing — letter / analytical paragraph. No auto-practice.", "question_count": 2, "marks_each": 5, "question_types": ["writing"], "practice_eligible": false },
+    { "label": "C", "instructions": "Grammar — sets sharing an instruction line.", "question_count": 10, "marks_each": 1, "question_types": ["grammar"], "practice_eligible": true },
+    { "label": "D", "instructions": "Literature — short answer.", "question_count": 8, "marks_each": 3, "question_types": ["sa"], "practice_eligible": true },
+    { "label": "E", "instructions": "Literature — long answer. Internal choice.", "question_count": 4, "marks_each": 4, "question_types": ["la"], "allow_choice": true, "practice_eligible": true }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "name": "Generic Unit Test (25 marks)",
+  "class": "10",
+  "subject": "Science",
+  "total_marks": 25,
+  "duration_min": 60,
+  "origin": "institute",
+  "is_default": false,
+  "sections": [
+    { "label": "A", "instructions": "Objective (1 mark each).", "question_count": 10, "marks_each": 1, "question_types": ["mcq", "vsa"], "practice_eligible": true },
+    { "label": "B", "instructions": "Short answer (2 marks each).", "question_count": 5, "marks_each": 2, "question_types": ["sa"], "practice_eligible": true },
+    { "label": "C", "instructions": "Long answer (5 marks each).", "question_count": 1, "marks_each": 5, "question_types": ["la"], "practice_eligible": true }
+  ]
+}
