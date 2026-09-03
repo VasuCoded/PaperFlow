@@ -17,8 +17,27 @@ describe("renderRich", () => {
   it("renders chemistry via mhchem", () => {
     const html = renderRich("$\\ce{Fe + CuSO4 -> FeSO4 + Cu}$");
     expect(html).toContain("katex");
-    // mhchem expands to real markup, not the literal source
-    expect(html).not.toContain("\\ce{");
+    // KaTeX renders an UNKNOWN command as red error markup rather than throwing,
+    // so the real assertion is "no error styling" — checking merely that the
+    // literal "\ce{" is absent passes even when nothing rendered, because the
+    // brace is consumed separately. That false positive shipped a broken paper.
+    expect(html).not.toContain("katex-error");
+    expect(html).not.toContain("#cc0000");
+    // a real \ce expansion is substantial markup, not a stub
+    expect(html.length).toBeGreaterThan(1000);
+  });
+
+  it("renders an mhchem equation with state symbols and arrows", () => {
+    const html = renderRich("$\\ce{3Fe + 4H2O -> Fe3O4 + 4H2}$");
+    expect(html).not.toContain("katex-error");
+    expect(html).not.toContain("#cc0000");
+    expect(html.length).toBeGreaterThan(1000);
+  });
+
+  it("flags a genuinely unknown command as error markup", () => {
+    // guards the guard: proves the assertions above can actually fail
+    const html = renderRich("$\\notarealmacro{x}$");
+    expect(html).toContain("#cc0000");
   });
 
   it("escapes plain text so question bodies cannot inject markup", () => {

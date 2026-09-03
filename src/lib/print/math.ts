@@ -12,7 +12,11 @@
  * Everything outside the delimiters is plain text and is HTML-escaped.
  */
 import katex from "katex";
-import "katex/dist/contrib/mhchem";
+// Must be the exports-map specifier "katex/contrib/mhchem", NOT the deep path
+// "katex/dist/contrib/mhchem": the deep path bypasses the package exports map,
+// loads the UMD build, and registers \ce on a DIFFERENT katex instance than the
+// one rendering — so \ce silently renders as an unknown command in red.
+import "katex/contrib/mhchem";
 
 const ESCAPES: Record<string, string> = {
   "&": "&amp;",
