@@ -1,0 +1,75 @@
+name: Nightly backup
+
+# BUILD-PLAN C12 item 1. pg_dump against production, uploaded to Cloudflare R2,
+# 30-day retention. MUST fail loudly — a silently broken backup is the worst
+# outcome, and it is now other people's data.
+
+on:
+  schedule:
+    - cron: "30 20 * * *" # 02:00 IST daily
+  workflow_dispatch: {}
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install postgres client + awscli
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client awscli
+
+      - name: Dump production
+        env:
+          SUPABASE_PROD_DB_URL: ${{ secrets.SUPABASE_PROD_DB_URL }}
+        run: |
+          set -euo pipefail
+          ts=$(date +%Y%m%d-%H%M%S)
+          file="qbank-prod-${ts}.dump"
+          echo "FILE=$file" >> "$GITHUB_ENV"
+          pg_dump "$SUPABASE_PROD_DB_URL" -Fc -f "$file"
+          ls -lh "$file"
+
+      - name: Upload to R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          set -euo pipefail
+          aws s3 cp "$FILE" "s3://${R2_BUCKET}/backups/${FILE}" \
+            --endpoint-url "$R2_ENDPOINT"
+
+      - name: Prune backups older than 30 days
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          set -euo pipefail
+          cutoff=$(date -d '30 days ago' +%s)
+          aws s3 ls "s3://${R2_BUCKET}/backups/" --endpoint-url "$R2_ENDPOINT" | while read -r line; do
+            f=$(echo "$line" | awk '{print $4}')
+            [ -z "$f" ] && continue
+            d=$(echo "$f" | sed -E 's/qbank-prod-([0-9]{8})-.*/\1/')
+            fd=$(date -d "$d" +%s 2>/dev/null || echo 0)
+            if [ "$fd" -ne 0 ] && [ "$fd" -lt "$cutoff" ]; then
+              echo "pruning $f"
+              aws s3 rm "s3://${R2_BUCKET}/backups/${f}" --endpoint-url "$R2_ENDPOINT"
+            fi
+          done
+
+      - name: Notify on failure
+        if: failure()
+        env:
+          ALERT_WEBHOOK: ${{ secrets.ALERT_WEBHOOK }}
+        run: |
+          # Fail loudly. Wire ALERT_WEBHOOK to email/Slack. GitHub also emails
+          # the repo admins on a failed scheduled run by default.
+          if [ -n "${ALERT_WEBHOOK:-}" ]; then
+            curl -fsS -X POST "$ALERT_WEBHOOK" \
+              -H 'content-type: application/json' \
+              -d '{"text":"PaperFlow NIGHTLY BACKUP FAILED — investigate now."}' || true
+          fi
+          echo "::error::Nightly backup failed"
