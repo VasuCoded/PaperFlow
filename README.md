@@ -38,7 +38,7 @@ handoff (bugs fixed, repo map, and the prompt for the next session).
 ```bash
 npm install
 npm run typecheck
-npm test          # generator, shuffle, practice — 77 tests
+npm test          # generator, shuffle, practice, print — 108 tests
 npm run lint
 npm run build
 ```
