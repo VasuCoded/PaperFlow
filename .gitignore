@@ -40,3 +40,6 @@ yarn-error.log*
 
 # testing
 /coverage
+
+# isolated build dir used by npm run build:check
+/.next-build/
