@@ -1,0 +1,12 @@
+# Global reference tables — the ONLY tables allowed to have no institute_id /
+# owner_institute_id column. Everything else must be tenant-scoped.
+# The tenancy lint (scripts/tenancy-lint.ts) fails the build on any base table
+# in the public schema that is neither here nor carrying a tenant key.
+classes
+subjects
+class_subjects
+strands
+chapters
+topics
+institutes
+profiles

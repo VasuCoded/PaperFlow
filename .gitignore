@@ -1,0 +1,42 @@
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# next.js
+/.next/
+/out/
+next-env.d.ts
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# local env files — NEVER commit
+.env
+.env.local
+.env*.local
+
+# database backups — NEVER commit
+/backups/
+
+# supabase local
+/supabase/.branches
+/supabase/.temp
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+
+# testing
+/coverage

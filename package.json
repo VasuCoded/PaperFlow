@@ -1,0 +1,44 @@
+{
+  "name": "paperflow",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Multi-tenant question bank + mistake-practice platform (classes 9-12, PCMB + Social Science + English + Hindi).",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "tenancy-lint": "tsx scripts/tenancy-lint.ts",
+    "db:types": "supabase gen types typescript --local > src/lib/database.types.ts",
+    "prepare": "husky"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.5.2",
+    "@supabase/supabase-js": "^2.45.4",
+    "next": "15.5.4",
+    "pg": "^8.23.0",
+    "react": "19.1.1",
+    "react-dom": "19.1.1"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.1.0",
+    "@types/node": "^22.7.4",
+    "@types/pg": "^8.23.1",
+    "@types/react": "^19.1.9",
+    "@types/react-dom": "^19.1.7",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^9.12.0",
+    "eslint-config-next": "15.5.4",
+    "fast-check": "^3.22.0",
+    "husky": "^9.1.6",
+    "postcss": "^8.4.47",
+    "supabase": "^1.200.3",
+    "tailwindcss": "^3.4.13",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.2",
+    "vitest": "^2.1.2"
+  }
+}
