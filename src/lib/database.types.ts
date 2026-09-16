@@ -48,7 +48,36 @@ export type Database = {
           decided_at?: string | null
           decided_by?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "activation_requests_class_subject_id_fkey"
+            columns: ["class_subject_id"]
+            isOneToOne: false
+            referencedRelation: "class_subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activation_requests_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activation_requests_institute_id_fkey"
+            columns: ["institute_id"]
+            isOneToOne: false
+            referencedRelation: "institutes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activation_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       attempt_items: {
         Row: {
@@ -75,7 +104,22 @@ export type Database = {
           is_correct?: boolean
           display_position?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "attempt_items_attempt_id_institute_id_fkey"
+            columns: ["attempt_id", "institute_id"]
+            isOneToOne: false
+            referencedRelation: "attempts"
+            referencedColumns: ["id", "institute_id"]
+          },
+          {
+            foreignKeyName: "attempt_items_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       attempts: {
         Row: {
@@ -105,7 +149,29 @@ export type Database = {
           logged_at?: string
           source?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "attempts_paper_id_institute_id_fkey"
+            columns: ["paper_id", "institute_id"]
+            isOneToOne: false
+            referencedRelation: "papers"
+            referencedColumns: ["id", "institute_id"]
+          },
+          {
+            foreignKeyName: "attempts_paper_set_id_institute_id_fkey"
+            columns: ["paper_set_id", "institute_id"]
+            isOneToOne: false
+            referencedRelation: "paper_sets"
+            referencedColumns: ["id", "institute_id"]
+          },
+          {
+            foreignKeyName: "attempts_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       batches: {
         Row: {
@@ -138,7 +204,29 @@ export type Database = {
           active?: boolean
           created_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "batches_class_subject_id_fkey"
+            columns: ["class_subject_id"]
+            isOneToOne: false
+            referencedRelation: "class_subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batches_institute_id_fkey"
+            columns: ["institute_id"]
+            isOneToOne: false
+            referencedRelation: "institutes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batches_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       chapters: {
         Row: {
@@ -165,7 +253,22 @@ export type Database = {
           ncert_number?: string | null
           sort_order?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "chapters_class_subject_id_fkey"
+            columns: ["class_subject_id"]
+            isOneToOne: false
+            referencedRelation: "class_subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chapters_strand_id_fkey"
+            columns: ["strand_id"]
+            isOneToOne: false
+            referencedRelation: "strands"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       class_subjects: {
         Row: {
@@ -189,7 +292,22 @@ export type Database = {
           bank_status?: string
           created_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "class_subjects_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_subjects_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       classes: {
         Row: {
@@ -240,7 +358,29 @@ export type Database = {
           detected_at?: string
           note?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "coverage_gaps_class_subject_id_fkey"
+            columns: ["class_subject_id"]
+            isOneToOne: false
+            referencedRelation: "class_subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coverage_gaps_institute_id_fkey"
+            columns: ["institute_id"]
+            isOneToOne: false
+            referencedRelation: "institutes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coverage_gaps_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       enrolments: {
         Row: {
@@ -264,7 +404,36 @@ export type Database = {
           class_subject_id?: string
           joined_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "enrolments_batch_id_institute_id_fkey"
+            columns: ["batch_id", "institute_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id", "institute_id"]
+          },
+          {
+            foreignKeyName: "enrolments_class_subject_id_fkey"
+            columns: ["class_subject_id"]
+            isOneToOne: false
+            referencedRelation: "class_subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrolments_institute_id_fkey"
+            columns: ["institute_id"]
+            isOneToOne: false
+            referencedRelation: "institutes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrolments_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       institute_class_subjects: {
         Row: {
@@ -288,7 +457,29 @@ export type Database = {
           activated_at?: string | null
           activated_by?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "institute_class_subjects_activated_by_fkey"
+            columns: ["activated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "institute_class_subjects_class_subject_id_fkey"
+            columns: ["class_subject_id"]
+            isOneToOne: false
+            referencedRelation: "class_subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "institute_class_subjects_institute_id_fkey"
+            columns: ["institute_id"]
+            isOneToOne: false
+            referencedRelation: "institutes"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       institute_invites: {
         Row: {
@@ -318,7 +509,22 @@ export type Database = {
           created_at?: string
           accepted_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "institute_invites_institute_id_fkey"
+            columns: ["institute_id"]
+            isOneToOne: false
+            referencedRelation: "institutes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "institute_invites_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       institute_members: {
         Row: {
@@ -339,7 +545,22 @@ export type Database = {
           role?: string
           created_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "institute_members_institute_id_fkey"
+            columns: ["institute_id"]
+            isOneToOne: false
+            referencedRelation: "institutes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "institute_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       institutes: {
         Row: {
@@ -372,7 +593,15 @@ export type Database = {
           created_at?: string
           created_by?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "institutes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       paper_blocks: {
         Row: {
@@ -402,7 +631,29 @@ export type Database = {
           stimulus_id?: string | null
           locked?: boolean
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "paper_blocks_paper_id_institute_id_fkey"
+            columns: ["paper_id", "institute_id"]
+            isOneToOne: false
+            referencedRelation: "papers"
+            referencedColumns: ["id", "institute_id"]
+          },
+          {
+            foreignKeyName: "paper_blocks_section_id_institute_id_fkey"
+            columns: ["section_id", "institute_id"]
+            isOneToOne: false
+            referencedRelation: "paper_sections"
+            referencedColumns: ["id", "institute_id"]
+          },
+          {
+            foreignKeyName: "paper_blocks_stimulus_id_fkey"
+            columns: ["stimulus_id"]
+            isOneToOne: false
+            referencedRelation: "stimuli"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       paper_patterns: {
         Row: {
@@ -438,7 +689,22 @@ export type Database = {
           is_default?: boolean
           created_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "paper_patterns_class_subject_id_fkey"
+            columns: ["class_subject_id"]
+            isOneToOne: false
+            referencedRelation: "class_subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "paper_patterns_owner_institute_id_fkey"
+            columns: ["owner_institute_id"]
+            isOneToOne: false
+            referencedRelation: "institutes"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       paper_questions: {
         Row: {
@@ -471,7 +737,29 @@ export type Database = {
           marks?: number
           is_choice_alternative?: boolean
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "paper_questions_block_id_institute_id_fkey"
+            columns: ["block_id", "institute_id"]
+            isOneToOne: false
+            referencedRelation: "paper_blocks"
+            referencedColumns: ["id", "institute_id"]
+          },
+          {
+            foreignKeyName: "paper_questions_paper_id_institute_id_fkey"
+            columns: ["paper_id", "institute_id"]
+            isOneToOne: false
+            referencedRelation: "papers"
+            referencedColumns: ["id", "institute_id"]
+          },
+          {
+            foreignKeyName: "paper_questions_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       paper_sections: {
         Row: {
@@ -498,7 +786,22 @@ export type Database = {
           label?: string
           sort_order?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "paper_sections_paper_id_institute_id_fkey"
+            columns: ["paper_id", "institute_id"]
+            isOneToOne: false
+            referencedRelation: "papers"
+            referencedColumns: ["id", "institute_id"]
+          },
+          {
+            foreignKeyName: "paper_sections_pattern_section_id_fkey"
+            columns: ["pattern_section_id"]
+            isOneToOne: false
+            referencedRelation: "pattern_sections"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       paper_set_items: {
         Row: {
@@ -522,7 +825,22 @@ export type Database = {
           paper_block_id?: string
           display_position?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "paper_set_items_paper_block_id_institute_id_fkey"
+            columns: ["paper_block_id", "institute_id"]
+            isOneToOne: false
+            referencedRelation: "paper_blocks"
+            referencedColumns: ["id", "institute_id"]
+          },
+          {
+            foreignKeyName: "paper_set_items_paper_set_id_institute_id_fkey"
+            columns: ["paper_set_id", "institute_id"]
+            isOneToOne: false
+            referencedRelation: "paper_sets"
+            referencedColumns: ["id", "institute_id"]
+          }
+        ]
       }
       paper_set_options: {
         Row: {
@@ -546,7 +864,22 @@ export type Database = {
           paper_question_id?: string
           option_order?: string[]
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "paper_set_options_paper_question_id_institute_id_fkey"
+            columns: ["paper_question_id", "institute_id"]
+            isOneToOne: false
+            referencedRelation: "paper_questions"
+            referencedColumns: ["id", "institute_id"]
+          },
+          {
+            foreignKeyName: "paper_set_options_paper_set_id_institute_id_fkey"
+            columns: ["paper_set_id", "institute_id"]
+            isOneToOne: false
+            referencedRelation: "paper_sets"
+            referencedColumns: ["id", "institute_id"]
+          }
+        ]
       }
       paper_sets: {
         Row: {
@@ -573,7 +906,15 @@ export type Database = {
           copies_to_print?: number
           created_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "paper_sets_paper_id_institute_id_fkey"
+            columns: ["paper_id", "institute_id"]
+            isOneToOne: false
+            referencedRelation: "papers"
+            referencedColumns: ["id", "institute_id"]
+          }
+        ]
       }
       papers: {
         Row: {
@@ -621,7 +962,43 @@ export type Database = {
           generated_at?: string | null
           created_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "papers_batch_fk"
+            columns: ["batch_id", "institute_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id", "institute_id"]
+          },
+          {
+            foreignKeyName: "papers_class_subject_id_fkey"
+            columns: ["class_subject_id"]
+            isOneToOne: false
+            referencedRelation: "class_subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "papers_institute_id_fkey"
+            columns: ["institute_id"]
+            isOneToOne: false
+            referencedRelation: "institutes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "papers_pattern_id_fkey"
+            columns: ["pattern_id"]
+            isOneToOne: false
+            referencedRelation: "paper_patterns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "papers_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       pattern_sections: {
         Row: {
@@ -666,7 +1043,15 @@ export type Database = {
           practice_eligible?: boolean
           requires_stimulus?: boolean
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "pattern_sections_pattern_id_owner_institute_id_fkey"
+            columns: ["pattern_id", "owner_institute_id"]
+            isOneToOne: false
+            referencedRelation: "paper_patterns"
+            referencedColumns: ["id", "owner_institute_id"]
+          }
+        ]
       }
       platform_access_log: {
         Row: {
@@ -696,7 +1081,22 @@ export type Database = {
           target_id?: string | null
           at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "platform_access_log_actor_fkey"
+            columns: ["actor"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_access_log_institute_id_fkey"
+            columns: ["institute_id"]
+            isOneToOne: false
+            referencedRelation: "institutes"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       practice_set_items: {
         Row: {
@@ -726,7 +1126,22 @@ export type Database = {
           is_done?: boolean
           self_marked_correct?: boolean | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "practice_set_items_practice_set_id_institute_id_fkey"
+            columns: ["practice_set_id", "institute_id"]
+            isOneToOne: false
+            referencedRelation: "practice_sets"
+            referencedColumns: ["id", "institute_id"]
+          },
+          {
+            foreignKeyName: "practice_set_items_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       practice_sets: {
         Row: {
@@ -756,7 +1171,29 @@ export type Database = {
           built_at?: string
           status?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "practice_sets_attempt_id_institute_id_fkey"
+            columns: ["attempt_id", "institute_id"]
+            isOneToOne: false
+            referencedRelation: "attempts"
+            referencedColumns: ["id", "institute_id"]
+          },
+          {
+            foreignKeyName: "practice_sets_class_subject_id_fkey"
+            columns: ["class_subject_id"]
+            isOneToOne: false
+            referencedRelation: "class_subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "practice_sets_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       profiles: {
         Row: {
@@ -777,7 +1214,15 @@ export type Database = {
           full_name?: string | null
           created_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       question_assets: {
         Row: {
@@ -807,7 +1252,15 @@ export type Database = {
           width?: number | null
           height?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "question_assets_question_id_owner_institute_id_fkey"
+            columns: ["question_id", "owner_institute_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id", "owner_institute_id"]
+          }
+        ]
       }
       question_exposure: {
         Row: {
@@ -831,7 +1284,29 @@ export type Database = {
           first_seen_at?: string
           context?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "question_exposure_institute_id_fkey"
+            columns: ["institute_id"]
+            isOneToOne: false
+            referencedRelation: "institutes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "question_exposure_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "question_exposure_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       question_flags: {
         Row: {
@@ -864,7 +1339,29 @@ export type Database = {
           resolved_at?: string | null
           created_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "question_flags_institute_id_fkey"
+            columns: ["institute_id"]
+            isOneToOne: false
+            referencedRelation: "institutes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "question_flags_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "question_flags_raised_by_fkey"
+            columns: ["raised_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       questions: {
         Row: {
@@ -975,7 +1472,64 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "questions_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "questions_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "questions_class_subject_id_fkey"
+            columns: ["class_subject_id"]
+            isOneToOne: false
+            referencedRelation: "class_subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "questions_owner_institute_id_fkey"
+            columns: ["owner_institute_id"]
+            isOneToOne: false
+            referencedRelation: "institutes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "questions_parent_question_id_fkey"
+            columns: ["parent_question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "questions_stimulus_id_fkey"
+            columns: ["stimulus_id"]
+            isOneToOne: false
+            referencedRelation: "stimuli"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "questions_strand_id_fkey"
+            columns: ["strand_id"]
+            isOneToOne: false
+            referencedRelation: "strands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "questions_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       role_audit: {
         Row: {
@@ -1005,7 +1559,29 @@ export type Database = {
           new_role?: string | null
           at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "role_audit_actor_fkey"
+            columns: ["actor"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "role_audit_institute_id_fkey"
+            columns: ["institute_id"]
+            isOneToOne: false
+            referencedRelation: "institutes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "role_audit_target_fkey"
+            columns: ["target"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       stimuli: {
         Row: {
@@ -1044,7 +1620,22 @@ export type Database = {
           status?: string
           created_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "stimuli_class_subject_id_fkey"
+            columns: ["class_subject_id"]
+            isOneToOne: false
+            referencedRelation: "class_subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stimuli_owner_institute_id_fkey"
+            columns: ["owner_institute_id"]
+            isOneToOne: false
+            referencedRelation: "institutes"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       strands: {
         Row: {
@@ -1065,7 +1656,15 @@ export type Database = {
           name?: string
           sort_order?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "strands_class_subject_id_fkey"
+            columns: ["class_subject_id"]
+            isOneToOne: false
+            referencedRelation: "class_subjects"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       subjects: {
         Row: {
@@ -1107,7 +1706,29 @@ export type Database = {
           class_subject_id?: string
           created_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "teacher_subjects_class_subject_id_fkey"
+            columns: ["class_subject_id"]
+            isOneToOne: false
+            referencedRelation: "class_subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teacher_subjects_institute_id_fkey"
+            columns: ["institute_id"]
+            isOneToOne: false
+            referencedRelation: "institutes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teacher_subjects_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       topics: {
         Row: {
@@ -1128,7 +1749,15 @@ export type Database = {
           name?: string
           slug?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "topics_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "chapters"
+            referencedColumns: ["id"]
+          }
+        ]
       }
     }
     Views: {

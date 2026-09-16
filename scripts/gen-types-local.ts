@@ -99,7 +99,75 @@ async function columns(db: PGlite, kind: "r" | "v") {
   return byTable;
 }
 
-function emitTable(name: string, cols: Col[]): string {
+interface Rel {
+  table_name: string;
+  fk_name: string;
+  columns: string[];
+  referenced_relation: string;
+  referenced_columns: string[];
+  is_one_to_one: boolean;
+}
+
+/**
+ * Foreign keys, as PostgREST's select-query-parser needs them. Without these
+ * the `Relationships` array is empty and every nested select (`a(b(*))`)
+ * degrades to `string`, which is what the real `supabase gen types` avoids by
+ * emitting them.
+ */
+async function relationships(db: PGlite): Promise<Map<string, Rel[]>> {
+  const { rows } = await db.query<Rel>(`
+    select
+      child.relname  as table_name,
+      con.conname    as fk_name,
+      array_agg(ca.attname order by u.ord)  as columns,
+      parent.relname as referenced_relation,
+      array_agg(pa.attname order by u.ord)  as referenced_columns,
+      -- one-to-one when the FK columns are themselves uniquely constrained
+      exists (
+        select 1 from pg_index i
+        where i.indrelid = con.conrelid and i.indisunique
+          and (select array_agg(x order by x) from unnest(i.indkey::int[]) x)
+            = (select array_agg(y order by y) from unnest(con.conkey::int[]) y)
+      ) as is_one_to_one
+    from pg_constraint con
+    join pg_class child  on child.oid  = con.conrelid
+    join pg_class parent on parent.oid = con.confrelid
+    join pg_namespace n  on n.oid = child.relnamespace
+    cross join lateral unnest(con.conkey) with ordinality as u(attnum, ord)
+    join pg_attribute ca on ca.attrelid = con.conrelid and ca.attnum = u.attnum
+    join pg_attribute pa on pa.attrelid = con.confrelid
+                        and pa.attnum = (con.confkey)[u.ord]
+    where con.contype = 'f' and n.nspname = 'public'
+    group by child.relname, con.conname, parent.relname, con.conrelid, con.conkey
+    order by child.relname, con.conname
+  `);
+
+  const byTable = new Map<string, Rel[]>();
+  for (const r of rows) {
+    const arr = byTable.get(r.table_name) ?? [];
+    arr.push(r);
+    byTable.set(r.table_name, arr);
+  }
+  return byTable;
+}
+
+function emitRelationships(rels: Rel[]): string {
+  if (rels.length === 0) return "[]";
+  const items = rels
+    .map(
+      (r) => `          {
+            foreignKeyName: "${r.fk_name}"
+            columns: [${r.columns.map((c) => `"${c}"`).join(", ")}]
+            isOneToOne: ${r.is_one_to_one}
+            referencedRelation: "${r.referenced_relation}"
+            referencedColumns: [${r.referenced_columns.map((c) => `"${c}"`).join(", ")}]
+          }`,
+    )
+    .join(",\n");
+  return `[\n${items}\n        ]`;
+}
+
+function emitTable(name: string, cols: Col[], rels: Rel[] = []): string {
   const row = cols
     .map((c) => {
       const t = tsType(c.udt_name);
@@ -133,7 +201,7 @@ ${insert}
         Update: {
 ${update}
         }
-        Relationships: []
+        Relationships: ${emitRelationships(rels)}
       }`;
 }
 
@@ -199,6 +267,7 @@ async function main() {
 
   const tables = await columns(db, "r");
   const views = await columns(db, "v");
+  const rels = await relationships(db);
 
   const funcs = await db.query<{ proname: string; args: string; result: string }>(`
     select p.proname,
@@ -219,7 +288,7 @@ async function main() {
 
   const tableBlocks = [...tables.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([name, cols]) => emitTable(name, cols))
+    .map(([name, cols]) => emitTable(name, cols, rels.get(name) ?? []))
     .join("\n");
 
   const viewBlocks = [...views.entries()]
