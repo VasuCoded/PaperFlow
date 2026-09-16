@@ -12,6 +12,7 @@ import type {
 } from "@/server/generator/types";
 import { buildSets, type BuildSetsResult } from "@/server/sets";
 import { getPatterns, type PatternWithSections } from "@/server/data/teacher";
+import { parseOptions } from "@/lib/options";
 
 /**
  * Paper generation, in two steps:
@@ -245,6 +246,19 @@ async function buildDraft(req: PaperRequest): Promise<Draft> {
     else unappliedSwaps++;
   }
 
+  // Real option keys for the questions actually placed. Shuffling "A-D" when a
+  // question really has three options, or keys named otherwise, would write an
+  // option order the answer key cannot resolve — and a wrong key marks correct
+  // answers wrong (C7 item 2). `options` is readable; correct_option is not.
+  const placedIds = paper.sections.flatMap((s) => s.blocks.flatMap((pb) => pb.block.questions.map((q) => q.id)));
+  const { data: optionRows } = await supabase
+    .from("questions")
+    .select("id, options")
+    .in("id", placedIds.length > 0 ? placedIds : ["00000000-0000-0000-0000-000000000000"]);
+  const optionKeysById = new Map(
+    (optionRows ?? []).map((r) => [r.id, parseOptions(r.options).map((o) => o.key)]),
+  );
+
   const setCount = Math.max(1, Math.min(4, req.setCount));
   const batchSize = await batchSize_(req.batchId, instituteId);
   const sets = buildSets(
@@ -255,11 +269,14 @@ async function buildDraft(req: PaperRequest): Promise<Draft> {
           key: pb.block.key,
           marks: pb.positionMarks,
           positionLocked: pb.block.positionLocked,
-          questions: pb.block.questions.map((q) => ({
-            key: q.id,
-            optionsShufflable: q.optionsShufflable,
-            optionKeys: q.optionsShufflable ? ["A", "B", "C", "D"] : null,
-          })),
+          questions: pb.block.questions.map((q) => {
+            const keys = optionKeysById.get(q.id) ?? [];
+            return {
+              key: q.id,
+              optionsShufflable: q.optionsShufflable && keys.length > 1,
+              optionKeys: keys.length > 1 ? keys : null,
+            };
+          }),
         })),
       })),
     },
@@ -389,6 +406,8 @@ export async function savePaper(req: PaperRequest): Promise<SaveResponse> {
   const paperId = saved.id;
 
   const blockIds = new Map<string, string>();
+  /** question_id -> paper_questions.id, for the option-order rows */
+  const paperQuestionIds = new Map<string, string>();
   let canonical = 0;
 
   for (const [index, section] of paper.sections.entries()) {
@@ -436,8 +455,14 @@ export async function savePaper(req: PaperRequest): Promise<SaveResponse> {
           is_choice_alternative: true,
         })),
       ];
-      const { error: pqErr } = await supabase.from("paper_questions").insert(rows);
+      const { data: pqRows, error: pqErr } = await supabase
+        .from("paper_questions")
+        .insert(rows)
+        .select("id, question_id, is_choice_alternative");
       if (pqErr) return { ok: false, reason: pqErr.message };
+      for (const r of pqRows ?? []) {
+        if (!r.is_choice_alternative) paperQuestionIds.set(r.question_id, r.id);
+      }
     }
   }
 
@@ -463,6 +488,19 @@ export async function savePaper(req: PaperRequest): Promise<SaveResponse> {
     // marks-per-position is re-checked by a database trigger on every insert
     const { error: itErr } = await supabase.from("paper_set_items").insert(items);
     if (itErr) return { ok: false, reason: itErr.message };
+
+    // Stored as rows, never re-derived from the seed: reprinting Set B months
+    // later must be byte-identical even if a library changes (BUILD-PLAN 3.1).
+    const optionRows = set.options.flatMap((o) => {
+      const pqId = paperQuestionIds.get(o.questionKey);
+      return pqId
+        ? [{ institute_id: instituteId, paper_set_id: ps.id, paper_question_id: pqId, option_order: o.optionOrder }]
+        : [];
+    });
+    if (optionRows.length > 0) {
+      const { error: optErr } = await supabase.from("paper_set_options").insert(optionRows);
+      if (optErr) return { ok: false, reason: optErr.message };
+    }
   }
 
   revalidatePath("/teacher/papers");
