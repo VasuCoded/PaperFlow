@@ -1816,6 +1816,12 @@ export type Database = {
           approved: number
         }[]
       }
+      class_subject_label: {
+        Args: {
+          p_class_subject_id: string
+        }
+        Returns: string
+      }
       correct_attempt_set: {
         Args: {
           p_attempt_id: string
@@ -1906,6 +1912,12 @@ export type Database = {
         }
         Returns: string
       }
+      log_institute_export: {
+        Args: {
+          p_institute_id: string
+        }
+        Returns: undefined
+      }
       my_institutes: {
         Args: Record<string, never>
         Returns: string[]
@@ -1951,6 +1963,58 @@ export type Database = {
           already_enrolled_batch: string
         }[]
       }
+      platform_activation_requests: {
+        Args: Record<string, never>
+        Returns: {
+          id: string
+          institute_id: string
+          institute_name: string
+          class_subject_id: string
+          class_subject_label: string
+          requested_by_email: string
+          status: string
+          reason: string
+          created_at: string
+          decided_at: string
+        }[]
+      }
+      platform_audit: {
+        Args: {
+          p_institute_id?: string
+          p_limit?: number
+        }
+        Returns: {
+          kind: string
+          at: string
+          actor_email: string
+          institute_id: string
+          institute_name: string
+          action: string
+          target: string
+        }[]
+      }
+      platform_bank_coverage: {
+        Args: Record<string, never>
+        Returns: {
+          class_subject_id: string
+          label: string
+          bank_status: string
+          approved: number
+          staging: number
+          chapters: number
+          thinnest_chapter: string
+          thinnest_chapter_count: number
+          thinnest_topic_count: number
+        }[]
+      }
+      platform_guard: {
+        Args: Record<string, never>
+        Returns: undefined
+      }
+      platform_health: {
+        Args: Record<string, never>
+        Returns: Json
+      }
       platform_inspect_institute: {
         Args: {
           p_institute_id: string
@@ -1966,6 +2030,69 @@ export type Database = {
       platform_institute_id: {
         Args: Record<string, never>
         Returns: string
+      }
+      platform_list_institutes: {
+        Args: Record<string, never>
+        Returns: {
+          id: string
+          name: string
+          slug: string
+          status: string
+          contact_email: string
+          created_at: string
+          admins: number
+          teachers: number
+          students: number
+          active_subjects: number
+          papers: number
+          last_activity: string
+        }[]
+      }
+      platform_review_question: {
+        Args: {
+          p_question_id: string
+          p_decision: string
+          p_promote_to_shared?: boolean
+        }
+        Returns: undefined
+      }
+      platform_review_queue: {
+        Args: {
+          p_limit?: number
+        }
+        Returns: {
+          id: string
+          owner_institute_id: string
+          owner_name: string
+          is_private: boolean
+          class_subject_id: string
+          class_subject_label: string
+          chapter_name: string
+          body: string
+          options: Json
+          answer: string
+          correct_option: string
+          marks: number
+          difficulty: string
+          source: string
+          note: string
+          created_at: string
+        }[]
+      }
+      platform_set_activation: {
+        Args: {
+          p_institute_id: string
+          p_class_subject_id: string
+          p_active: boolean
+        }
+        Returns: undefined
+      }
+      platform_set_institute_status: {
+        Args: {
+          p_institute_id: string
+          p_status: string
+        }
+        Returns: undefined
       }
       questions_normalise: {
         Args: Record<string, never>
