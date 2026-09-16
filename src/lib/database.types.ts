@@ -1175,6 +1175,18 @@ export type Database = {
         }
         Returns: boolean
       }
+      chapter_pool_counts: {
+        Args: {
+          p_institute_id: string
+          p_class_subject_id: string
+        }
+        Returns: {
+          chapter_id: string
+          chapter_name: string
+          sort_order: number
+          approved: number
+        }[]
+      }
       create_institute: {
         Args: {
           p_name: string
@@ -1191,6 +1203,33 @@ export type Database = {
           p_reason?: string
         }
         Returns: undefined
+      }
+      eligible_questions: {
+        Args: {
+          p_institute_id: string
+          p_class_subject_id: string
+          p_chapter_ids?: unknown
+          p_teacher_id?: string
+          p_exclude_recent_papers?: number
+        }
+        Returns: {
+          id: string
+          owner_institute_id: string
+          class_subject_id: string
+          chapter_id: string
+          topic_id: string
+          strand_id: string
+          stimulus_id: string
+          parent_question_id: string
+          part_label: string
+          body: string
+          question_type: string
+          marks: number
+          difficulty: string
+          source: string
+          options_shufflable: boolean
+          position_locked: boolean
+        }[]
       }
       generate_join_code: {
         Args: Record<string, never>
