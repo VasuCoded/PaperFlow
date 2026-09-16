@@ -37,8 +37,14 @@ export default async function WelcomePage({
   const supabase = await createServerSupabaseClient();
   // A user with no membership cannot SELECT invites under RLS, so this reads
   // them through the SECURITY DEFINER function, matched on their verified email.
-  const { data: invites } = await supabase.rpc("my_pending_invites");
+  const [{ data: invites }, { data: suspendedRows }] = await Promise.all([
+    supabase.rpc("my_pending_invites"),
+    // Members of a suspended institute resolve to no membership at all, so
+    // without this they would land here with no idea why.
+    supabase.rpc("my_suspended_institutes"),
+  ]);
   const pending = invites ?? [];
+  const suspended = suspendedRows ?? [];
   const member = session.memberships.length > 0;
 
   return (
@@ -61,6 +67,16 @@ export default async function WelcomePage({
         </div>
         <SignOutButton className="btn" />
       </header>
+
+      {suspended.length > 0 && (
+        <div className="notice warn">
+          <b>Access paused.</b>{" "}
+          {suspended.map((s) => s.institute_name).join(", ")}{" "}
+          {suspended.length === 1 ? "is" : "are"} currently suspended on PaperFlow, so your account cannot
+          open {suspended.length === 1 ? "its" : "their"} papers or batches. Nothing has been deleted — everything
+          comes back when the institute is reactivated. Ask the institute about it.
+        </div>
+      )}
 
       <div className="cards c2">
         <div className="card">

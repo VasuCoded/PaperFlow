@@ -1938,6 +1938,14 @@ export type Database = {
         }
         Returns: string
       }
+      my_suspended_institutes: {
+        Args: Record<string, never>
+        Returns: {
+          institute_id: string
+          institute_name: string
+          role: string
+        }[]
+      }
       paper_of_set: {
         Args: {
           p_paper_set_id: string
