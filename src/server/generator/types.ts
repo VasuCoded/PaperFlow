@@ -71,6 +71,13 @@ export interface GenerateInput {
   /** optional strandId -> weight fraction (Social Science) */
   strandWeights?: Record<string, number>;
   seed: number;
+  /**
+   * Blocks the teacher locked. They are placed first in their section and
+   * survive a regenerate with a different seed (BUILD-PLAN C8: "Locked blocks
+   * survive a regenerate"). A pinned key that no longer fits any section, or is
+   * no longer in the pool, is ignored rather than failing the paper.
+   */
+  pinnedBlockKeys?: string[];
 }
 
 export interface PlacedBlock {

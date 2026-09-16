@@ -333,6 +333,64 @@ describe("generatePaper — difficulty tolerance granularity", () => {
   });
 });
 
+describe("generatePaper — locked blocks", () => {
+  const blocks = buildBlocks(richBank([PLATFORM, INST_A], [1, 2, 3, 5], 40));
+
+  it("keeps locked blocks when regenerating with a different seed", () => {
+    const first = generatePaper({ ...BASE_INPUT, seed: 11 }, blocks, PATTERN);
+    expect(first.ok).toBe(true);
+    if (!first.ok) return;
+
+    // lock one block from section A and one from section D
+    const lockA = first.sections[0]!.blocks[2]!.block.key;
+    const lockD = first.sections[3]!.blocks[0]!.block.key;
+
+    for (const seed of [12, 99, 12345]) {
+      const again = generatePaper(
+        { ...BASE_INPUT, seed, pinnedBlockKeys: [lockA, lockD] },
+        blocks,
+        PATTERN,
+      );
+      expect(again.ok).toBe(true);
+      if (!again.ok) return;
+      const keysA = again.sections[0]!.blocks.map((pb) => pb.block.key);
+      const keysD = again.sections[3]!.blocks.map((pb) => pb.block.key);
+      expect(keysA).toContain(lockA);
+      expect(keysD).toContain(lockD);
+      // still a valid paper around the locks
+      expect(again.totalMarks).toBe(78);
+    }
+  });
+
+  it("never places a locked block in a section whose marks it does not fit", () => {
+    const first = generatePaper({ ...BASE_INPUT, seed: 21 }, blocks, PATTERN);
+    expect(first.ok).toBe(true);
+    if (!first.ok) return;
+    const oneMark = first.sections[0]!.blocks[0]!.block.key; // a 1-mark block
+
+    const again = generatePaper(
+      { ...BASE_INPUT, seed: 22, pinnedBlockKeys: [oneMark] },
+      blocks,
+      PATTERN,
+    );
+    expect(again.ok).toBe(true);
+    if (!again.ok) return;
+    for (const [i, sec] of again.sections.entries()) {
+      const has = sec.blocks.some((pb) => pb.block.key === oneMark);
+      expect(has).toBe(i === 0); // only ever in the 1-mark section
+    }
+  });
+
+  it("ignores a locked key that is no longer in the pool", () => {
+    const res = generatePaper(
+      { ...BASE_INPUT, seed: 5, pinnedBlockKeys: ["q:does-not-exist"] },
+      blocks,
+      PATTERN,
+    );
+    expect(res.ok).toBe(true);
+  });
+});
+
 describe("generatePaper — determinism", () => {
   it("same seed produces identical selection twice", () => {
     const blocks = buildBlocks(richBank([PLATFORM, INST_A], [1, 2, 3, 5], 40));

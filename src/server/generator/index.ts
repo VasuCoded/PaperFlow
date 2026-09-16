@@ -122,7 +122,21 @@ function fill(
     );
     const placed: PlacedBlock[] = [];
 
-    for (let i = 0; i < section.questionCount; i++) {
+    // Locked blocks first, in the order the teacher locked them. They count
+    // toward difficulty, topic spread and strand balance like any other pick.
+    for (const key of input.pinnedBlockKeys ?? []) {
+      if (placed.length >= section.questionCount) break;
+      const b = base.find((x) => x.key === key && !used.has(x.key));
+      if (!b) continue;
+      used.add(b.key);
+      selected[b.difficulty]++;
+      filled++;
+      if (b.topicId) usedTopics.add(b.topicId);
+      if (b.strandId) strandCount.set(b.strandId, (strandCount.get(b.strandId) ?? 0) + 1);
+      placed.push({ block: b, positionMarks: section.marksEach });
+    }
+
+    for (let i = placed.length; i < section.questionCount; i++) {
       const pool = base.filter((b) => !used.has(b.key));
       if (pool.length === 0) {
         shortfall.push({
