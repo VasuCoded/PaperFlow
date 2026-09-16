@@ -19,7 +19,7 @@
     "db:types:local": "tsx scripts/gen-types-local.ts"
   },
   "dependencies": {
-    "@supabase/ssr": "^0.5.2",
+    "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.45.4",
     "@types/katex": "^0.16.8",
     "katex": "^0.16.47",

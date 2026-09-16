@@ -42,7 +42,7 @@ export default function DemoLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <div
-      className={`demo-root ${newsreader.variable} ${inter.variable} ${jetbrains.variable}`}
+      className={`pf-ui ${newsreader.variable} ${inter.variable} ${jetbrains.variable}`}
     >
       <DemoSessionProvider>
         <DemoBar />
