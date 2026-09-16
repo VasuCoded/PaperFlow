@@ -284,6 +284,55 @@ describe("generatePaper — thin pool fails with a shortfall", () => {
   });
 });
 
+describe("generatePaper — difficulty tolerance granularity", () => {
+  // On a short paper one question is worth more than 5pp, so a flat 5pp rule
+  // would reject papers that are as close as arithmetic allows. The tolerance
+  // must widen to one question, and no further.
+  const smallPattern: Pattern = {
+    id: "pat-small",
+    name: "Small",
+    totalMarks: 16,
+    sections: [
+      { label: "A", questionCount: 6, marksEach: 1, questionTypes: [], allowChoice: false, practiceEligible: true, requiresStimulus: false },
+      { label: "B", questionCount: 6, marksEach: 2, questionTypes: [], allowChoice: false, practiceEligible: true, requiresStimulus: false },
+      { label: "C", questionCount: 4, marksEach: 3, questionTypes: [], allowChoice: false, practiceEligible: true, requiresStimulus: false },
+    ],
+  };
+  const blocks = buildBlocks(richBank([PLATFORM], [1, 2, 3], 12));
+
+  it("succeeds on a 16-position paper where one question exceeds 5pp", () => {
+    for (let seed = 1; seed <= 15; seed++) {
+      const res = generatePaper({ ...BASE_INPUT, seed }, blocks, smallPattern);
+      expect(res.ok, `seed ${seed}: ${res.ok ? "" : res.reason}`).toBe(true);
+      if (!res.ok) return;
+      // still within one question of target
+      const dev = Math.max(
+        Math.abs(res.difficultyActual.easy - 0.4),
+        Math.abs(res.difficultyActual.medium - 0.4),
+        Math.abs(res.difficultyActual.hard - 0.2),
+      );
+      expect(dev).toBeLessThanOrEqual(1 / 16 + 1e-9);
+    }
+  });
+
+  it("does not loosen the tolerance on a large paper", () => {
+    const bigPattern: Pattern = {
+      id: "pat-big",
+      name: "Big",
+      totalMarks: 70,
+      sections: [
+        { label: "A", questionCount: 40, marksEach: 1, questionTypes: [], allowChoice: false, practiceEligible: true, requiresStimulus: false },
+        { label: "B", questionCount: 15, marksEach: 2, questionTypes: [], allowChoice: false, practiceEligible: true, requiresStimulus: false },
+      ],
+    };
+    const res = generatePaper({ ...BASE_INPUT, seed: 4 }, buildBlocks(richBank([PLATFORM], [1, 2], 40)), bigPattern);
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    // 55 positions => 1/55 < 6%, so the 6% bound is what applied
+    expect(Math.abs(res.difficultyActual.hard - 0.2)).toBeLessThanOrEqual(0.06);
+  });
+});
+
 describe("generatePaper — determinism", () => {
   it("same seed produces identical selection twice", () => {
     const blocks = buildBlocks(richBank([PLATFORM, INST_A], [1, 2, 3, 5], 40));
