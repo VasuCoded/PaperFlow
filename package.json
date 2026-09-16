@@ -14,7 +14,9 @@
     "tenancy-lint": "tsx scripts/tenancy-lint.ts",
     "db:types": "supabase gen types typescript --local > src/lib/database.types.ts",
     "prepare": "husky",
-    "build:check": "cross-env NEXT_DIST_DIR=.next-build next build"
+    "build:check": "cross-env NEXT_DIST_DIR=.next-build next build",
+    "db:verify": "tsx scripts/verify-schema.ts",
+    "db:types:local": "tsx scripts/gen-types-local.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",
@@ -27,6 +29,7 @@
     "react-dom": "19.1.1"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@eslint/eslintrc": "^3.1.0",
     "@types/node": "^22.7.4",
     "@types/pg": "^8.23.1",
