@@ -8,6 +8,7 @@ import {
   type PaperRequest,
   type PreviewResponse,
 } from "@/server/actions/paper";
+import { flagQuestion } from "@/server/actions/teacher";
 import type { BatchOption, ChapterCount } from "@/server/data/teacher";
 
 export interface SubjectBundle {
@@ -61,6 +62,11 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [loading, startPreview] = useTransition();
   const [saving, startSave] = useTransition();
+  const [flagging, setFlagging] = useState<string | null>(null);
+  const [flagReason, setFlagReason] = useState("");
+  const [flagError, setFlagError] = useState<string | null>(null);
+  const [poolVersion, setPoolVersion] = useState(0);
+  const [flagPending, startFlag] = useTransition();
 
   const pattern = bundle.patterns.find((p) => p.id === patternId) ?? bundle.patterns[0];
 
@@ -92,7 +98,7 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
   useEffect(() => {
     run();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bundle.classSubjectId, patternId, chapterIds, splitIdx, setCount, batchId, repeatGuard, seed, locked, swaps]);
+  }, [bundle.classSubjectId, patternId, chapterIds, splitIdx, setCount, batchId, repeatGuard, seed, locked, swaps, poolVersion]);
 
   function changeSubject(id: string) {
     const next = subjects.find((s) => s.classSubjectId === id);
@@ -368,7 +374,7 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
                     const n = counter;
                     const isLocked = lockedSet.has(b.key);
                     return (
-                      <div className={`q${isLocked ? " locked" : ""}`} key={b.key}>
+                      <div className={`q${isLocked ? " locked" : ""}`} key={b.key} style={{ flexWrap: "wrap" }}>
                         <span className="no">{n}.</span>
                         <div className="body">
                           {b.questions.map((q, i) => (
@@ -417,7 +423,62 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
                           >
                             ⟳
                           </button>
+                          <button
+                            type="button"
+                            className="iconbtn"
+                            title="Flag as wrong or badly worded"
+                            disabled={loading}
+                            onClick={() => {
+                              setFlagging(flagging === b.key ? null : b.key);
+                              setFlagReason("");
+                              setFlagError(null);
+                            }}
+                          >
+                            ⚑
+                          </button>
                         </div>
+                        {flagging === b.key && (
+                          <div style={{ flexBasis: "100%", marginTop: 8, paddingLeft: 34 }}>
+                            <div style={{ display: "flex", gap: 6 }}>
+                              <input
+                                className="inp"
+                                style={{ fontSize: 12, padding: "6px 8px" }}
+                                placeholder="What is wrong with it?"
+                                value={flagReason}
+                                maxLength={500}
+                                autoFocus
+                                onChange={(e) => setFlagReason(e.target.value)}
+                              />
+                              <button
+                                type="button"
+                                className="btn sm solid"
+                                disabled={flagPending || flagReason.trim().length < 3}
+                                onClick={() =>
+                                  startFlag(async () => {
+                                    const qid = b.questions[0]?.id;
+                                    if (!qid) return;
+                                    const res = await flagQuestion(qid, flagReason);
+                                    if (!res.ok) {
+                                      setFlagError(res.message ?? "Could not flag it.");
+                                      return;
+                                    }
+                                    setFlagging(null);
+                                    // the flagged question has left this institute's pool
+                                    setLocked((cur) => cur.filter((k) => k !== b.key));
+                                    setSwaps([]);
+                                    setPoolVersion((v) => v + 1);
+                                  })
+                                }
+                              >
+                                {flagPending ? "Flagging…" : "Flag"}
+                              </button>
+                            </div>
+                            <p style={{ fontSize: 11, color: "var(--graphite)", margin: "4px 0 0" }}>
+                              It leaves your institute&rsquo;s papers now; the shared bank keeps it until the platform reviews it.
+                            </p>
+                            {flagError && <p style={{ fontSize: 11.5, color: "var(--pen)", margin: "4px 0 0" }}>{flagError}</p>}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
