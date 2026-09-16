@@ -50,6 +50,12 @@ type MembershipRow = Pick<Tables<"institute_members">, "institute_id" | "role"> 
  * Never throws for an unauthenticated request — callers decide what to do.
  */
 export async function getSession(): Promise<Session | null> {
+  // Before Supabase is configured there is no one to be signed in as. Degrade
+  // to "not signed in" rather than throwing, so /login can explain itself.
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return null;
+  }
+
   const supabase = await createServerSupabaseClient();
 
   // getUser() revalidates the JWT with the auth server; never trust a decoded
