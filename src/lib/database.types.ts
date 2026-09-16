@@ -1894,6 +1894,23 @@ export type Database = {
         Args: Record<string, never>
         Returns: unknown
       }
+      institute_subject_overview: {
+        Args: {
+          p_institute_id: string
+        }
+        Returns: {
+          class_subject_id: string
+          class_name: string
+          subject_name: string
+          bank_status: string
+          approved_shared: number
+          approved_private: number
+          status: string
+          pending_request: boolean
+          last_decline_reason: string
+          last_declined_at: string
+        }[]
+      }
       is_platform_owner: {
         Args: Record<string, never>
         Returns: boolean

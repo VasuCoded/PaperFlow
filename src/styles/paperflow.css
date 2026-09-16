@@ -513,6 +513,8 @@ table.lt td b { font-weight: 600; }
   padding: 4px 8px; border-radius: 100px;
 }
 .chip.dim { border-color: var(--hair); color: var(--graphite); }
+a.chip { text-decoration: none; cursor: pointer; }
+a.chip:hover { border-color: var(--pen); color: var(--pen); }
 
 .tabbar {
   position: absolute; bottom: 0; left: 0; right: 0; background: var(--white);

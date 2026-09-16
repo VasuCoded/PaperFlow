@@ -121,6 +121,15 @@ export const AREA_ROLES: Record<string, Role[]> = {
   app: ["student", "teacher", "institute_admin", "owner"],
 };
 
+/** Where a signed-in person lands: the most capable area they hold. */
+export function homePath(session: Session): string {
+  if (session.memberships.length === 0) return "/welcome";
+  if (session.isPlatformOwner) return "/platform";
+  if (session.role === "institute_admin") return "/institute";
+  if (session.role === "teacher") return "/teacher/generate";
+  return "/app";
+}
+
 export function canAccess(area: keyof typeof AREA_ROLES, session: Session | null): boolean {
   if (!session) return false;
   if (area === "platform") return session.isPlatformOwner;

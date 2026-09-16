@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/db/server";
-import { getSession } from "@/server/session";
+import { getSession, homePath } from "@/server/session";
 import { SignOutButton } from "../_components/SignOutButton";
 import { AcceptInvite } from "./AcceptInvite";
 import { JoinForm } from "./JoinForm";
@@ -27,12 +27,7 @@ export default async function WelcomePage({
 
   // Someone who already belongs somewhere does not need this screen — unless
   // they came here on purpose to join another batch (?join=1).
-  if (session.memberships.length > 0 && join !== "1") {
-    if (session.isPlatformOwner) redirect("/platform");
-    if (session.role === "institute_admin") redirect("/institute");
-    if (session.role === "teacher") redirect("/teacher/generate");
-    redirect("/app");
-  }
+  if (session.memberships.length > 0 && join !== "1") redirect(homePath(session));
 
   const supabase = await createServerSupabaseClient();
   // A user with no membership cannot SELECT invites under RLS, so this reads
