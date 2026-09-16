@@ -413,7 +413,14 @@ export async function savePaper(req: PaperRequest): Promise<SaveResponse> {
   for (const [index, section] of paper.sections.entries()) {
     const { data: sec, error: secErr } = await supabase
       .from("paper_sections")
-      .insert({ institute_id: instituteId, paper_id: paperId, label: section.label, sort_order: index })
+      .insert({
+        institute_id: instituteId,
+        paper_id: paperId,
+        // which pattern section this came from: practice eligibility lives there
+        pattern_section_id: pattern.sectionIds[index] ?? null,
+        label: section.label,
+        sort_order: index,
+      })
       .select("id")
       .single();
     if (secErr || !sec) return { ok: false, reason: secErr?.message ?? "Could not save a section." };

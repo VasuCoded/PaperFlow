@@ -33,8 +33,9 @@ alter function public.batches_set_join_code() security definer;
 -- ----------------------------------------------------------------------------
 create or replace function public.log_attempt(
   p_paper_id uuid,
-  p_paper_set_id uuid,
-  p_wrong_positions int[]
+  -- null is correct for a single-set paper; required when there are several
+  p_paper_set_id uuid default null,
+  p_wrong_positions int[] default '{}'::int[]
 )
 returns uuid
 language plpgsql security definer set search_path = public

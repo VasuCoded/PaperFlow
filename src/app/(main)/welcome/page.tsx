@@ -16,12 +16,18 @@ export const metadata: Metadata = { title: "Welcome · PaperFlow" };
  * — and deliberately offers no third. No signup form, no institute creation, no
  * role selection anywhere.
  */
-export default async function WelcomePage() {
+export default async function WelcomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ join?: string }>;
+}) {
+  const { join } = await searchParams;
   const session = await getSession();
   if (!session) redirect("/login");
 
-  // Someone who already belongs somewhere does not need this screen.
-  if (session.memberships.length > 0) {
+  // Someone who already belongs somewhere does not need this screen — unless
+  // they came here on purpose to join another batch (?join=1).
+  if (session.memberships.length > 0 && join !== "1") {
     if (session.isPlatformOwner) redirect("/platform");
     if (session.role === "institute_admin") redirect("/institute");
     if (session.role === "teacher") redirect("/teacher/generate");
@@ -33,14 +39,19 @@ export default async function WelcomePage() {
   // them through the SECURITY DEFINER function, matched on their verified email.
   const { data: invites } = await supabase.rpc("my_pending_invites");
   const pending = invites ?? [];
+  const member = session.memberships.length > 0;
 
   return (
     <div className="wrap narrow">
       <header className="masthead">
         <div>
-          <p className="eyebrow">Signed in · no institute yet</p>
+          <p className="eyebrow">{member ? "Join another batch" : "Signed in · no institute yet"}</p>
           <h1>
-            You&rsquo;re signed in. <em>Now you need an invite or a code.</em>
+            {member ? (
+              <>Enter the code for <em>your next batch.</em></>
+            ) : (
+              <>You&rsquo;re signed in. <em>Now you need an invite or a code.</em></>
+            )}
           </h1>
           <p>
             Signing in with Google proves who you are. It does not grant a role and does not put you

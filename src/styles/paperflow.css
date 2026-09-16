@@ -585,3 +585,53 @@ table.lt td b { font-weight: 600; }
 @media (prefers-reduced-motion: reduce) {
   .pf-ui *, .pf-ui *::before, .pf-ui *::after { transition: none !important; animation: none !important; }
 }
+
+/* ==========================================================================
+   Real student app (mobile-first website, not the demo's phone mockup).
+   Reuses the phone's components; the page itself is the phone.
+   ========================================================================== */
+.m-app {
+  max-width: 520px;
+  margin: 0 auto;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--white);
+  position: relative;
+  padding-bottom: calc(76px + env(safe-area-inset-bottom));
+}
+@media (min-width: 560px) {
+  .m-app { border-left: 1px solid var(--hair); border-right: 1px solid var(--hair); }
+}
+.m-app .appbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--white);
+  padding-top: calc(12px + env(safe-area-inset-top));
+}
+.m-app .screen { height: auto; overflow: visible; padding: 18px 18px 24px; }
+.m-app .tabbar {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 520px;
+  z-index: 6;
+  padding-bottom: calc(13px + env(safe-area-inset-bottom));
+}
+/* thumbs, not mice: 44px minimum tap targets on the logging screen */
+.m-app .qbox { width: 40px; height: 40px; font-size: 13px; }
+.m-app .qrow { padding: 11px 0; }
+.m-app .scrawl { width: 52px; height: 50px; left: -6px; top: 5px; }
+.m-app .setbtn { padding: 26px 0; }
+.m-banner {
+  font-size: 12.5px;
+  padding: 10px 12px;
+  border-radius: 4px;
+  margin: 0 0 12px;
+  border: 1px solid var(--hair);
+  background: #fbfaf9;
+}
+.m-banner.offline { border-color: var(--pen); background: var(--pen-soft); color: var(--ink); }

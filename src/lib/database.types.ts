@@ -1901,8 +1901,8 @@ export type Database = {
       log_attempt: {
         Args: {
           p_paper_id: string
-          p_paper_set_id: string
-          p_wrong_positions: unknown
+          p_paper_set_id?: string
+          p_wrong_positions?: unknown
         }
         Returns: string
       }

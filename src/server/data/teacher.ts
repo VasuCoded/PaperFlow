@@ -81,6 +81,8 @@ export async function getChapterCounts(
 }
 
 export interface PatternWithSections extends Pattern {
+  /** pattern_sections.id, parallel to sections — stored on paper_sections */
+  sectionIds: string[];
   origin: string;
   durationMin: number | null;
   isDefault: boolean;
@@ -107,8 +109,8 @@ export async function getPatterns(
     .order("total_marks", { ascending: true });
 
   return (data ?? []).map((p) => {
-    const sections: PatternSection[] = [...(p.pattern_sections ?? [])]
-      .sort((a, b) => a.sort_order - b.sort_order)
+    const ordered = [...(p.pattern_sections ?? [])].sort((a, b) => a.sort_order - b.sort_order);
+    const sections: PatternSection[] = ordered
       .map((s) => ({
         label: s.label,
         questionCount: s.question_count,
@@ -123,6 +125,7 @@ export async function getPatterns(
       name: p.name,
       totalMarks: p.total_marks,
       sections,
+      sectionIds: ordered.map((s) => s.id),
       origin: p.origin,
       durationMin: p.duration_min,
       isDefault: p.is_default,
