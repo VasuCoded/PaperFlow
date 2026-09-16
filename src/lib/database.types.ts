@@ -1816,6 +1816,13 @@ export type Database = {
           approved: number
         }[]
       }
+      correct_attempt_set: {
+        Args: {
+          p_attempt_id: string
+          p_correct_set_id: string
+        }
+        Returns: undefined
+      }
       create_institute: {
         Args: {
           p_name: string
@@ -1891,6 +1898,14 @@ export type Database = {
         }
         Returns: string
       }
+      log_attempt: {
+        Args: {
+          p_paper_id: string
+          p_paper_set_id: string
+          p_wrong_positions: unknown
+        }
+        Returns: string
+      }
       my_institutes: {
         Args: Record<string, never>
         Returns: string[]
@@ -1960,6 +1975,27 @@ export type Database = {
         Args: Record<string, never>
         Returns: unknown
       }
+      remove_member: {
+        Args: {
+          p_institute_id: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
+      rotate_join_code: {
+        Args: {
+          p_batch_id: string
+        }
+        Returns: string
+      }
+      save_practice_set: {
+        Args: {
+          p_attempt_id: string
+          p_items: Json
+          p_gaps?: Json
+        }
+        Returns: string
+      }
       set_member_role: {
         Args: {
           p_institute_id: string
@@ -1980,6 +2016,12 @@ export type Database = {
           p_class_subject_id: string
         }
         Returns: boolean
+      }
+      withdraw_flag: {
+        Args: {
+          p_flag_id: string
+        }
+        Returns: undefined
       }
     }
     Enums: Record<string, never>

@@ -176,3 +176,70 @@ describe("composeMapping", () => {
     });
   });
 });
+
+describe("internal choice alternatives", () => {
+  const canon: import("./compose").CanonPaper = {
+    instituteName: "Test Institute",
+    className: "10",
+    subjectName: "Science",
+    title: "Choice test",
+    totalMarks: 6,
+    sections: [
+      {
+        label: "D",
+        blocks: [
+          {
+            key: "blk1",
+            questions: [
+              {
+                body: "Pick the metal.",
+                marks: 5,
+                correctOption: "B",
+                optionsShufflable: true,
+                options: [
+                  { key: "A", text: "Sulphur" },
+                  { key: "B", text: "Copper" },
+                  { key: "C", text: "Carbon" },
+                ],
+              },
+              { body: "Describe the extraction of zinc.", marks: 5, answer: "roasting then reduction", isChoiceAlternative: true },
+            ],
+          },
+          { key: "blk2", questions: [{ body: "One mark.", marks: 1, answer: "x" }] },
+        ],
+      },
+    ],
+  };
+
+  it("does not count an alternative toward the block's marks", () => {
+    expect(blockMarks(canon.sections[0]!.blocks[0]!)).toBe(5);
+  });
+
+  it("excludes alternatives from the shuffle input", () => {
+    const sp = toShufflePaper(canon);
+    expect(sp.sections[0]!.blocks[0]!.questions).toHaveLength(1);
+    expect(sp.sections[0]!.blocks[0]!.marks).toBe(5);
+  });
+
+  it("prints the alternative under OR and keys the real question's shuffled letter", () => {
+    const set = {
+      setLabel: "A",
+      copiesToPrint: 10,
+      items: [
+        { blockKey: "blk1", displayPosition: 0 },
+        { blockKey: "blk2", displayPosition: 1 },
+      ],
+      // the real question's options were stored shuffled: C, B, A
+      options: [{ questionKey: "blk1#0", optionOrder: ["C", "B", "A"] }],
+    };
+    const paper = composeSetPaper(canon, set, 2);
+    const block = paper.sections[0]!.blocks.find((b) => b.questions.length === 2)!;
+    expect(block.questions[1]!.partLabel).toBe("OR");
+
+    const key = composeSetKey(canon, set);
+    // Copper was key B; in order C,B,A it is printed as (B) — position 2
+    expect(key.entries[0]!.answer).toBe("(B) Copper");
+    expect(key.entries[1]!.partLabel).toBe("OR");
+    expect(key.entries[1]!.answer).toBe("roasting then reduction");
+  });
+});

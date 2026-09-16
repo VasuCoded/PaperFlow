@@ -44,6 +44,14 @@ export interface CanonQuestion {
   optionsShufflable?: boolean;
   /** answer for non-MCQ questions */
   answer?: string;
+  /**
+   * Internal choice ("attempt any one"): an alternative to the question(s)
+   * before it in the same block. Printed after them under "OR", never counted
+   * toward the block's marks, never shuffled. Alternatives must come LAST in a
+   * block so the indices of the real questions — which key their stored option
+   * orders — do not move.
+   */
+  isChoiceAlternative?: boolean;
 }
 export interface CanonBlock {
   key: string;
@@ -68,7 +76,7 @@ export interface CanonPaper {
 }
 
 export function blockMarks(b: CanonBlock): number {
-  return b.questions.reduce((s, q) => s + q.marks, 0);
+  return b.questions.reduce((s, q) => s + (q.isChoiceAlternative ? 0 : q.marks), 0);
 }
 
 /** Project the canonical paper into the shuffle engine's input shape. */
@@ -80,11 +88,13 @@ export function toShufflePaper(canon: CanonPaper): ShufflePaper {
         key: b.key,
         marks: blockMarks(b),
         positionLocked: b.positionLocked ?? false,
-        questions: b.questions.map((q, i) => ({
-          key: questionKey(b.key, i),
-          optionsShufflable: q.optionsShufflable ?? false,
-          optionKeys: q.options ? q.options.map((o) => o.key) : null,
-        })),
+        questions: b.questions
+          .filter((q) => !q.isChoiceAlternative)
+          .map((q, i) => ({
+            key: questionKey(b.key, i),
+            optionsShufflable: q.optionsShufflable ?? false,
+            optionKeys: q.options ? q.options.map((o) => o.key) : null,
+          })),
       })),
     })),
   };
@@ -172,7 +182,7 @@ export function composeSetPaper(
         const { options } = shuffledOptions(q, questionKey(block.key, i), opts);
         return {
           displayNumber: String(number),
-          partLabel: q.partLabel,
+          partLabel: q.isChoiceAlternative ? `OR${q.partLabel ? " " + q.partLabel : ""}` : q.partLabel,
           body: q.body,
           marks: q.marks,
           options,
@@ -209,7 +219,7 @@ export function composeSetKey(canon: CanonPaper, set: BuiltSet): AnswerKeyModel 
             : (q.answer ?? "");
         entries.push({
           displayNumber: String(number),
-          partLabel: q.partLabel,
+          partLabel: q.isChoiceAlternative ? `OR${q.partLabel ? " " + q.partLabel : ""}` : q.partLabel,
           answer,
           marks: q.marks,
           script: q.script,
