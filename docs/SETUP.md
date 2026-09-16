@@ -35,12 +35,29 @@ Ordered by dependency.
 
 ## B. Cloud infrastructure (all under the platform account)
 
-1. **Supabase**: create an org and two projects — `qbank-dev` and `qbank-prod`.
-   Put a personal access token in your shell profile. Copy the project refs.
+> ### ⚠ Pick the region before you click create
+>
+> **Choose the Mumbai / `ap-south-1` region for both Supabase projects.** A
+> Supabase project's region is fixed at creation — changing it later means
+> creating a new project and restoring a dump into it, with a real cutover.
+> Every page in this app talks to the database on the server, so if the database
+> sits in the US and your users are in India, each request pays a
+> India→US→India round trip and the app will feel sluggish no matter how well
+> the code is written. This is the single cheapest decision to get right and one
+> of the more annoying to reverse. Verify the region in the dashboard before
+> creating the project.
+
+1. **Supabase**: create an org and two projects — `qbank-dev` and `qbank-prod`,
+   **both in Mumbai (`ap-south-1`)**. Put a personal access token in your shell
+   profile. Copy the project refs.
 2. **GitHub**: create a private repo, push this code, connect it to **Vercel**.
    Turn on branch protection for `main` (migrations reach prod through a PR you
    read).
 3. **Vercel**: import the repo. Add env vars (below). It will build on push.
+   `vercel.json` already pins serverless functions to `bom1` (Mumbai) so they
+   sit next to the database. Check this actually applied after your first
+   deploy — region selection can be limited depending on your plan; if Vercel
+   ignores it, the Supabase region is still the one that matters most.
 4. **Domain**: register it, point DNS at Vercel.
 5. **Cloudflare R2**: create a bucket for backups; make an access key pair.
 6. **Anthropic**: an API key for ingestion (dev only).

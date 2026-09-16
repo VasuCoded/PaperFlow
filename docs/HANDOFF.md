@@ -214,6 +214,16 @@ DECISIONS ALREADY MADE - do not undo these
   - Every printed artefact (each set's paper, each key, the mapping sheet)
     starts on its own page. Sets must differ in ORDER, never only by the
     letter in the header.
+  - Delivery is WEB FIRST: a website on Vercel, every role and login included.
+    A Capacitor native shell is a possible later step around the same web app,
+    not a rewrite, and it does not change anything now. Keep rendering on the
+    server - the institute is resolved server-side on every request, which a
+    static export could not do. See docs/DELIVERY.md, which also records that
+    Google OAuth does not work in a plain webview (that is the one real cost
+    of the Capacitor step, and it is costed there).
+  - Both Supabase projects are in Mumbai (ap-south-1) and vercel.json pins
+    functions to bom1. Region is fixed at Supabase project creation; do not
+    create a project in another region.
 
 ENVIRONMENT GOTCHAS (Windows)
   - npm runs scripts through cmd.exe, so a VAR=value prefix fails. Use

@@ -30,6 +30,10 @@ Auth + RLS + Storage) · Vercel · Vitest + fast-check.
 | C8 | Teacher screens | ⛔ needs live DB + generated types |
 | C9 | Student screens (PWA) | ⛔ needs live DB + generated types |
 
+Delivery is **web first** — a website on Vercel, every role and login included;
+a Capacitor native shell is a possible later step around the same app. See
+`docs/DELIVERY.md`.
+
 See `docs/SETUP.md` to bring it online, and `docs/HANDOFF.md` for the session
 handoff (bugs fixed, repo map, and the prompt for the next session).
 
