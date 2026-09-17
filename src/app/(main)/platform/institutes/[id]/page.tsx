@@ -4,6 +4,9 @@ import { notFound } from "next/navigation";
 import { AppShell } from "../../../_components/AppShell";
 import { createServerSupabaseClient } from "@/lib/db/server";
 import { getSession } from "@/server/session";
+import { setInstituteStatusAction } from "@/server/actions/platform";
+import { ActionButton } from "../../../_components/ActionButton";
+import { RoleControl } from "./RoleControl";
 
 export const metadata: Metadata = { title: "Inspect institute · PaperFlow" };
 
@@ -55,7 +58,7 @@ export default async function InspectInstitutePage({ params }: { params: Promise
       eyebrow="Platform · inspect"
       title={
         <>
-          {inst?.name ?? "Institute"} <em>— read-only</em>
+          {inst?.name ?? "Institute"} <em>— inspected</em>
         </>
       }
     >
@@ -80,6 +83,21 @@ export default async function InspectInstitutePage({ params }: { params: Promise
             <br />
             Contact {inst?.contact_email ?? "—"} · created {inst ? dateFmt.format(new Date(inst.created_at)) : ""}
           </p>
+          {inst && (
+            <div className="btnrow" style={{ marginTop: 10 }}>
+              {inst.status === "active" ? (
+                <ActionButton
+                  action={setInstituteStatusAction.bind(null, inst.id, "suspended")}
+                  label="Suspend"
+                  confirm={`Suspend ${inst.name}? Its teachers and students lose access until you reactivate. Nothing is deleted.`}
+                  confirmLabel="Suspend"
+                />
+              ) : (
+                <ActionButton action={setInstituteStatusAction.bind(null, inst.id, "active")} label="Reactivate" className="btn sm solid" />
+              )}
+              <Link className="btn sm ghost" href="/platform/support">Invitations &amp; support</Link>
+            </div>
+          )}
         </div>
         <div className="card">
           <h4>Active subjects</h4>
@@ -97,7 +115,7 @@ export default async function InspectInstitutePage({ params }: { params: Promise
         <div className="tablewrap">
           <table className="lt">
             <thead>
-              <tr><th>Person</th><th>Role</th><th>Member since</th></tr>
+              <tr><th>Person</th><th>Role</th><th>Member since</th><th /></tr>
             </thead>
             <tbody>
               {members.map((m) => (
@@ -108,6 +126,11 @@ export default async function InspectInstitutePage({ params }: { params: Promise
                   </td>
                   <td><span className={`pill ${ROLE_PILL[m.role] ?? "student"}`}>{m.role.replace("_", " ")}</span></td>
                   <td>{dateFmt.format(new Date(m.created_at))}</td>
+                  <td>
+                    {inst && (
+                      <RoleControl instituteId={inst.id} instituteName={inst.name} email={m.email} name={m.full_name ?? m.email} role={m.role} />
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

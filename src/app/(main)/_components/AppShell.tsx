@@ -21,6 +21,7 @@ const NAV: Record<Area, { href: string; label: string }[]> = {
     { href: "/platform/bank", label: "Review queue" },
     { href: "/platform/activation", label: "Activation" },
     { href: "/platform/requests", label: "Requests" },
+    { href: "/platform/support", label: "Support" },
     { href: "/platform/health", label: "Health" },
     { href: "/platform/audit", label: "Audit log" },
   ],

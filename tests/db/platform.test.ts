@@ -115,6 +115,27 @@ describe("institutes", () => {
   });
 });
 
+describe("institutes are created only through create_institute", () => {
+  it("no role can insert into institutes directly — not even the platform owner", async () => {
+    for (const uid of [OWNER, ADMIN, TEACHER, STUDENT]) {
+      await actAs(db, uid);
+      await expect(
+        db.query(`insert into institutes (name, slug, kind, status) values ('Direct', 'direct-${uid.slice(0, 4)}', 'institute', 'active')`),
+      ).rejects.toThrow(/row-level security/);
+    }
+    await actAsOwner(db);
+    expect(await count(`select count(*)::int as n from institutes where name = 'Direct'`)).toBe(0);
+  });
+
+  it("create_institute makes the institute and its first admin invite together", async () => {
+    await actAs(db, OWNER);
+    const id = (await db.query<{ id: string }>(`select create_institute('Riverside', 'riverside', 'office@river.test', 'Head@River.test') as id`)).rows[0]!.id;
+    await actAsOwner(db);
+    expect(await count(`select count(*)::int as n from institutes where id = '${id}' and kind = 'institute' and status = 'active'`)).toBe(1);
+    expect(await count(`select count(*)::int as n from institute_invites where institute_id = '${id}' and email = 'head@river.test' and role = 'institute_admin'`)).toBe(1);
+  });
+});
+
 describe("review queue", () => {
   it("shows private staging questions with their answers and owner, and logs the read", async () => {
     await actAs(db, OWNER);

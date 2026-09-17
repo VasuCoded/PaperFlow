@@ -110,3 +110,155 @@ export async function decideRequestAction(requestId: string, approve: boolean, r
   revalidatePath("/platform/requests");
   return { ok: true };
 }
+
+// ---------------------------------------------------------------------------
+// Support (C2b item 6). Every function below is audited in the database and
+// requires a reason there; the checks here only give a clearer message.
+// ---------------------------------------------------------------------------
+
+export interface SupportLookup {
+  user: { id: string; email: string; full_name: string | null } | null;
+  memberships: { institute_id: string; institute_name: string; institute_status: string; role: string; since: string }[];
+  enrolments: {
+    institute_id: string;
+    institute_name: string;
+    batch_id: string;
+    batch_name: string;
+    class_subject_id: string;
+    label: string;
+    other_batches: { id: string; name: string }[];
+  }[];
+  attempts: {
+    id: string;
+    institute_id: string;
+    institute_name: string;
+    paper_id: string;
+    paper_title: string;
+    set_id: string | null;
+    set_label: string | null;
+    logged_at: string;
+    wrong: number;
+    sets: { id: string; label: string }[];
+  }[];
+  invites: { id: string; institute_id: string; institute_name: string; role: string; created_at: string }[];
+}
+
+const REASON_MIN = 5;
+const needsReason = (reason: string): ActionResult | null =>
+  reason.trim().length < REASON_MIN ? { ok: false, message: "Give a reason (at least five characters). It is stored in the audit log." } : null;
+
+export async function supportLookupAction(email: string): Promise<ActionResult & { result?: SupportLookup }> {
+  const supabase = await ownerClient();
+  if (!supabase) return DENIED;
+  const clean = email.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean)) return { ok: false, message: "Enter a full email address." };
+  const { data, error } = await supabase.rpc("platform_support_lookup", { p_email: clean });
+  if (error) return { ok: false, message: error.message };
+  return { ok: true, result: data as unknown as SupportLookup };
+}
+
+export async function correctAttemptSetAction(attemptId: string, correctSetId: string, reason: string): Promise<ActionResult> {
+  const supabase = await ownerClient();
+  if (!supabase) return DENIED;
+  const missing = needsReason(reason);
+  if (missing) return missing;
+  const { error } = await supabase.rpc("platform_correct_attempt_set", {
+    p_attempt_id: attemptId,
+    p_correct_set_id: correctSetId,
+    p_reason: reason.trim(),
+  });
+  if (error) return { ok: false, message: error.message };
+  return { ok: true };
+}
+
+export async function moveStudentAction(instituteId: string, studentId: string, toBatchId: string, reason: string): Promise<ActionResult> {
+  const supabase = await ownerClient();
+  if (!supabase) return DENIED;
+  const missing = needsReason(reason);
+  if (missing) return missing;
+  const { error } = await supabase.rpc("platform_move_student", {
+    p_institute_id: instituteId,
+    p_student_id: studentId,
+    p_to_batch_id: toBatchId,
+    p_reason: reason.trim(),
+  });
+  if (error) return { ok: false, message: error.message };
+  return { ok: true };
+}
+
+export async function retireQuestionAction(questionId: string, reason: string): Promise<ActionResult> {
+  const supabase = await ownerClient();
+  if (!supabase) return DENIED;
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(questionId.trim())) {
+    return { ok: false, message: "Paste the question's id (a UUID)." };
+  }
+  const missing = needsReason(reason);
+  if (missing) return missing;
+  const { error } = await supabase.rpc("platform_retire_question", { p_question_id: questionId.trim(), p_reason: reason.trim() });
+  if (error) return { ok: false, message: error.message };
+  revalidatePath("/platform/support");
+  return { ok: true };
+}
+
+export async function resolveFlagAction(flagId: string, status: "resolved" | "dismissed", note: string): Promise<ActionResult> {
+  const supabase = await ownerClient();
+  if (!supabase) return DENIED;
+  const missing = needsReason(note);
+  if (missing) return missing;
+  const { error } = await supabase.rpc("platform_resolve_flag", { p_flag_id: flagId, p_status: status, p_note: note.trim() });
+  if (error) return { ok: false, message: error.message };
+  revalidatePath("/platform/support");
+  return { ok: true };
+}
+
+export async function listInvitesAction(
+  instituteId: string,
+): Promise<ActionResult & { invites?: { id: string; email: string; role: string; created_at: string }[] }> {
+  const supabase = await ownerClient();
+  if (!supabase) return DENIED;
+  const { data, error } = await supabase.rpc("platform_list_invites", { p_institute_id: instituteId });
+  if (error) return { ok: false, message: error.message };
+  return { ok: true, invites: data ?? [] };
+}
+
+export async function platformInviteAction(
+  instituteId: string,
+  email: string,
+  role: "institute_admin" | "teacher" | "student",
+): Promise<ActionResult> {
+  const supabase = await ownerClient();
+  if (!supabase) return DENIED;
+  const { error } = await supabase.rpc("platform_invite", { p_institute_id: instituteId, p_email: email, p_role: role });
+  if (error) return { ok: false, message: error.message };
+  return { ok: true };
+}
+
+export async function platformRevokeInviteAction(inviteId: string): Promise<ActionResult> {
+  const supabase = await ownerClient();
+  if (!supabase) return DENIED;
+  const { error } = await supabase.rpc("platform_revoke_invite", { p_invite_id: inviteId });
+  if (error) return { ok: false, message: error.message };
+  return { ok: true };
+}
+
+/** Role change by the platform owner (the only way to make an institute admin of an existing member). */
+export async function platformSetRoleAction(
+  instituteId: string,
+  email: string,
+  typedConfirmation: string,
+  role: "institute_admin" | "teacher" | "student",
+): Promise<ActionResult> {
+  const supabase = await ownerClient();
+  if (!supabase) return DENIED;
+  if (typedConfirmation.trim().toLowerCase() !== email.trim().toLowerCase()) {
+    return { ok: false, message: "Type the person's email exactly to confirm." };
+  }
+  const { error } = await supabase.rpc("set_member_role", {
+    p_institute_id: instituteId,
+    p_target_email: email.trim().toLowerCase(),
+    p_new_role: role,
+  });
+  if (error) return { ok: false, message: error.message };
+  revalidatePath(`/platform/institutes/${instituteId}`);
+  return { ok: true };
+}

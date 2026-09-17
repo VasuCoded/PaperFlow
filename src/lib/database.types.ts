@@ -1062,6 +1062,7 @@ export type Database = {
           target_table: string | null
           target_id: string | null
           at: string
+          detail: string | null
         }
         Insert: {
           id?: string
@@ -1071,6 +1072,7 @@ export type Database = {
           target_table?: string | null
           target_id?: string | null
           at?: string
+          detail?: string | null
         }
         Update: {
           id?: string
@@ -1080,6 +1082,7 @@ export type Database = {
           target_table?: string | null
           target_id?: string | null
           at?: string
+          detail?: string | null
         }
         Relationships: [
           {
@@ -2032,6 +2035,14 @@ export type Database = {
           thinnest_topic_count: number
         }[]
       }
+      platform_correct_attempt_set: {
+        Args: {
+          p_attempt_id: string
+          p_correct_set_id: string
+          p_reason: string
+        }
+        Returns: undefined
+      }
       platform_guard: {
         Args: Record<string, never>
         Returns: undefined
@@ -2056,6 +2067,14 @@ export type Database = {
         Args: Record<string, never>
         Returns: string
       }
+      platform_invite: {
+        Args: {
+          p_institute_id: string
+          p_email: string
+          p_role: string
+        }
+        Returns: string
+      }
       platform_list_institutes: {
         Args: Record<string, never>
         Returns: {
@@ -2072,6 +2091,67 @@ export type Database = {
           papers: number
           last_activity: string
         }[]
+      }
+      platform_list_invites: {
+        Args: {
+          p_institute_id: string
+        }
+        Returns: {
+          id: string
+          email: string
+          role: string
+          created_at: string
+        }[]
+      }
+      platform_move_student: {
+        Args: {
+          p_institute_id: string
+          p_student_id: string
+          p_to_batch_id: string
+          p_reason: string
+        }
+        Returns: undefined
+      }
+      platform_open_flags: {
+        Args: {
+          p_limit?: number
+        }
+        Returns: {
+          id: string
+          institute_id: string
+          institute_name: string
+          question_id: string
+          question_owner_name: string
+          is_private: boolean
+          class_subject_label: string
+          body: string
+          question_status: string
+          reason: string
+          raised_by_email: string
+          created_at: string
+          open_on_question: number
+        }[]
+      }
+      platform_require_reason: {
+        Args: {
+          p_reason: string
+        }
+        Returns: string
+      }
+      platform_resolve_flag: {
+        Args: {
+          p_flag_id: string
+          p_status: string
+          p_note: string
+        }
+        Returns: undefined
+      }
+      platform_retire_question: {
+        Args: {
+          p_question_id: string
+          p_reason: string
+        }
+        Returns: undefined
       }
       platform_review_question: {
         Args: {
@@ -2104,6 +2184,12 @@ export type Database = {
           created_at: string
         }[]
       }
+      platform_revoke_invite: {
+        Args: {
+          p_invite_id: string
+        }
+        Returns: undefined
+      }
       platform_set_activation: {
         Args: {
           p_institute_id: string
@@ -2119,6 +2205,12 @@ export type Database = {
         }
         Returns: undefined
       }
+      platform_support_lookup: {
+        Args: {
+          p_email: string
+        }
+        Returns: Json
+      }
       questions_normalise: {
         Args: Record<string, never>
         Returns: unknown
@@ -2126,6 +2218,13 @@ export type Database = {
       questions_status_guard: {
         Args: Record<string, never>
         Returns: unknown
+      }
+      remap_attempt_set_internal: {
+        Args: {
+          p_attempt_id: string
+          p_correct_set_id: string
+        }
+        Returns: boolean
       }
       remove_member: {
         Args: {
