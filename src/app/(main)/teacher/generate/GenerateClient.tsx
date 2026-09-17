@@ -95,8 +95,11 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
   }, [request]);
 
   // Re-preview whenever an input that changes the paper changes. Title does not.
+  // Debounced: ticking five chapters in a row is one preview, not five — each
+  // preview counts against the generation rate limit.
   useEffect(() => {
-    run();
+    const t = setTimeout(run, 350);
+    return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bundle.classSubjectId, patternId, chapterIds, splitIdx, setCount, batchId, repeatGuard, seed, locked, swaps, poolVersion]);
 

@@ -92,6 +92,7 @@ function seedSql(t: ReturnType<typeof tenant>) {
     insert into practice_set_items (institute_id, practice_set_id, question_id) values ('${t.inst}', '${t.practiceSet}', '${SHARED_Q}');
     insert into question_exposure (institute_id, student_id, question_id) values ('${t.inst}', '${t.student}', '${SHARED_Q}');
     insert into coverage_gaps (institute_id, class_subject_id, topic_id, severity) values ('${t.inst}', '${CS}', '${TOPIC}', 'severe');
+    insert into generation_events (institute_id, user_id, kind) values ('${t.inst}', '${t.teacher}', 'preview');
   `;
 }
 

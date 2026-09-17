@@ -435,6 +435,45 @@ export type Database = {
           }
         ]
       }
+      generation_events: {
+        Row: {
+          id: number
+          institute_id: string
+          user_id: string
+          kind: string
+          at: string
+        }
+        Insert: {
+          id?: number
+          institute_id: string
+          user_id: string
+          kind: string
+          at?: string
+        }
+        Update: {
+          id?: number
+          institute_id?: string
+          user_id?: string
+          kind?: string
+          at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generation_events_institute_id_fkey"
+            columns: ["institute_id"]
+            isOneToOne: false
+            referencedRelation: "institutes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "generation_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       institute_class_subjects: {
         Row: {
           institute_id: string
@@ -1965,6 +2004,13 @@ export type Database = {
           institute_name: string
           role: string
         }[]
+      }
+      note_generation: {
+        Args: {
+          p_institute_id: string
+          p_kind: string
+        }
+        Returns: undefined
       }
       paper_of_set: {
         Args: {

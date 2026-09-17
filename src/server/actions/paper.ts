@@ -137,7 +137,7 @@ function fail(reason: string): Draft {
   return { ok: false, response: { ok: false, reason, shortfall: [], suggestions: [] } };
 }
 
-async function buildDraft(req: PaperRequest): Promise<Draft> {
+async function buildDraft(req: PaperRequest, kind: "preview" | "save"): Promise<Draft> {
   const session = await getSession();
   if (!session?.instituteId) return fail("You are not signed in.");
   const instituteId = session.instituteId;
@@ -156,6 +156,19 @@ async function buildDraft(req: PaperRequest): Promise<Draft> {
     if (!count) return fail("You are not assigned to that class and subject.");
   } else if (session.role !== "institute_admin") {
     return fail("Only a teacher or an institute admin can set a paper.");
+  }
+
+  // Rate limit before any expensive work (C12 item 6). Counted in the database,
+  // per person and per institute, because serverless instances share no memory.
+  const { error: limitError } = await supabase.rpc("note_generation", { p_institute_id: instituteId, p_kind: kind });
+  if (limitError) {
+    return fail(
+      /rate limit: your institute/.test(limitError.message)
+        ? "Your institute has generated a great many papers in the last ten minutes. Try again in a few minutes."
+        : /rate limit/.test(limitError.message)
+          ? "You have generated a great many papers in the last ten minutes. Wait a few minutes and try again."
+          : limitError.message,
+    );
   }
 
   const patterns = await getPatterns(instituteId, req.classSubjectId);
@@ -320,7 +333,7 @@ async function batchSize_(batchId: string | null, instituteId: string): Promise<
 // ---------------------------------------------------------------------------
 
 export async function previewPaper(req: PaperRequest): Promise<PreviewResponse> {
-  const draft = await buildDraft(req);
+  const draft = await buildDraft(req, "preview");
   if (!draft.ok) return draft.response;
 
   const q = (id: string): PreviewQuestion => {
@@ -364,7 +377,7 @@ export async function previewPaper(req: PaperRequest): Promise<PreviewResponse> 
 }
 
 export async function savePaper(req: PaperRequest): Promise<SaveResponse> {
-  const draft = await buildDraft(req);
+  const draft = await buildDraft(req, "save");
   if (!draft.ok) return { ok: false, reason: draft.response.reason };
 
   const title = req.title.trim().slice(0, 120) || draft.pattern.name;
