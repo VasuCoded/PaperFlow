@@ -158,11 +158,12 @@ describe("fixture", () => {
   });
 });
 
-/**
- * Run a statement as `uid` inside a savepoint. Refused outright (no privilege)
- * is as good as filtered to zero rows; any other error is a real failure.
- */
-async function tryAs(uid: string, sql: string): Promise<void> {
+type Outcome = { ok: true } | { ok: false; code: string; message: string };
+
+const OWNER_SQL = "reset role; select set_config('request.jwt.claims', '', true)";
+
+/** Run `sql` as `uid` inside a savepoint, always returning to the owner role. */
+async function attemptAs(uid: string, sql: string): Promise<Outcome> {
   await db.exec("savepoint probe");
   try {
     await db.exec(`
@@ -170,41 +171,85 @@ async function tryAs(uid: string, sql: string): Promise<void> {
       select set_config('request.jwt.claims', '{"sub":"${uid}","role":"authenticated"}', true);
       ${sql};
     `);
+    await db.exec(OWNER_SQL);
     await db.exec("release savepoint probe");
+    return { ok: true };
   } catch (e) {
     await db.exec("rollback to savepoint probe");
-    if ((e as { code?: string }).code !== "42501") throw e;
-  } finally {
-    await db.exec("reset role; select set_config('request.jwt.claims', '', true)");
+    await db.exec(OWNER_SQL);
+    const err = e as { code?: string; message?: string };
+    return { ok: false, code: err.code ?? "", message: err.message ?? String(e) };
   }
 }
 
+/** "permission denied" — a privilege refusal at plan time, reached no rows. */
+const noPrivilege = (o: Outcome) => !o.ok && o.code === "42501" && /permission denied/i.test(o.message);
+/** A WITH CHECK refusal on the NEW row — only raised once a row was reached. */
+const rlsCheckFailed = (o: Outcome) => !o.ok && o.code === "42501" && /row-level security/i.test(o.message);
+
 /**
- * The write probes deliberately have NO where clause. With
- * `where institute_id = B`, Postgres applies the table's SELECT policy to the
- * filter, so a leaky UPDATE or DELETE policy hides behind a correct SELECT
- * policy — a bare `delete from t` would still reach B's rows. So: inside a
- * transaction that is always rolled back, update and delete everything the
- * user can, then check as the table owner whether any B row was touched
- * (xmin is the current transaction) or removed.
+ * Why neither probe has a where clause, and why the update sets a constant:
+ * Postgres applies a table's SELECT policy to UPDATE and DELETE only when the
+ * statement READS columns (a where clause, RETURNING, or `set x = x`). A
+ * correct SELECT policy would therefore mask a leaky UPDATE or DELETE policy
+ * from a probe that reads — while `update t set note = 'x'` or `delete from t`
+ * issued by an attacker would still reach institute B's rows.
+ *
+ * Everything runs in a transaction that is always rolled back.
  */
-async function writeProbe(uid: string, table: string, column: string): Promise<string[]> {
-  const hits: string[] = [];
-  const bRows = `select count(*)::int as n from public.${table} where ${column} = '${B.inst}'`;
-  await actAsOwner(db);
+async function updateProbe(uid: string, table: string, column: string): Promise<string[]> {
   await db.exec("begin");
   try {
-    const before = await count(bRows);
-    await tryAs(uid, `update public.${table} set ${column} = ${column}`);
-    const touched = await count(`${bRows} and xmin::text = pg_current_xact_id()::text`);
-    if (touched !== 0) hits.push(`${table}: UPDATE reached ${touched}`);
-    await tryAs(uid, `delete from public.${table}`);
-    const after = await count(bRows);
-    if (after !== before) hits.push(`${table}: DELETE removed ${before - after}`);
+    // Leave ONLY institute B's rows in the table, so any row the user's
+    // update reaches is B's. Triggers off for this cleanup and for the probe
+    // (RLS is not a trigger and still applies), so cascades and guard
+    // triggers cannot stand in for policies.
+    await db.exec(`set local session_replication_role = replica;
+      delete from public.${table} where ${column} is distinct from '${B.inst}'`);
+    // An updated row is a new tuple version with a new xmin. (Not "xmin = this
+    // transaction": the probe runs in a savepoint, whose rows carry the
+    // subtransaction's xid.)
+    const versions = async () =>
+      new Set((await db.query<{ v: string }>(`select xmin::text as v from public.${table} where ${column} = '${B.inst}'`)).rows.map((r) => r.v));
+    const before = await versions();
+    const outcome = await attemptAs(uid, `update public.${table} set ${column} = '${B.inst}'::uuid`);
+    if (outcome.ok) {
+      const touched = [...(await versions())].filter((v) => !before.has(v)).length;
+      return touched ? [`${table}: UPDATE reached B rows`] : [];
+    }
+    if (rlsCheckFailed(outcome)) return [`${table}: UPDATE reached B rows (stopped only by WITH CHECK)`];
+    if (noPrivilege(outcome)) return [];
+    throw new Error(`${table} update probe: ${outcome.message}`);
   } finally {
     await db.exec("rollback");
   }
-  return hits;
+}
+
+async function deleteProbe(uid: string, table: string, column: string): Promise<string[]> {
+  const bRows = `select count(*)::int as n from public.${table} where ${column} = '${B.inst}'`;
+  await db.exec("begin");
+  try {
+    const before = await count(bRows);
+    // First with triggers ON: a real delete by this user, cascades included.
+    // Errors here other than a refusal are real bugs (this is how the
+    // composite ON DELETE SET NULL bug in migration 0015 was found: 23502).
+    let outcome = await attemptAs(uid, `delete from public.${table}`);
+    if (!outcome.ok && outcome.code === "23503") {
+      // A foreign key refused the statement, possibly only because of the
+      // user's OWN dependent rows (a paper_set with logged attempts cannot be
+      // deleted — intended). That must not mask B rows also being in reach:
+      // retry with FK triggers off so whatever the policy lets through is
+      // actually removed and counted.
+      await db.exec("set local session_replication_role = replica");
+      outcome = await attemptAs(uid, `delete from public.${table}`);
+      await db.exec("set local session_replication_role = origin");
+    }
+    if (!outcome.ok && !noPrivilege(outcome)) throw new Error(`${table} delete probe: ${outcome.message}`);
+    const after = await count(bRows);
+    return after !== before ? [`${table}: DELETE removed ${before - after}`] : [];
+  } finally {
+    await db.exec("rollback");
+  }
 }
 
 describe.each([
@@ -225,7 +270,8 @@ describe.each([
   it("updates and deletes zero rows of institute B in every tenant table", async () => {
     const hits: string[] = [];
     for (const { table_name, column_name } of tables) {
-      hits.push(...(await writeProbe(uid, table_name, column_name)));
+      hits.push(...(await updateProbe(uid, table_name, column_name)));
+      hits.push(...(await deleteProbe(uid, table_name, column_name)));
     }
     expect(hits, `${role} can modify institute B rows`).toEqual([]);
   });
