@@ -43,6 +43,8 @@ export interface PaperRequest {
   swaps: { blockKey: string; sectionLabel: string }[];
   /** rules the teacher chose to relax after a shortfall; never applied unasked */
   relax?: ("difficulty" | "topic_spread" | "strand_balance")[];
+  /** strandId -> share of question positions (0..1, summing to 1); Social Science */
+  strandWeights?: Record<string, number>;
 }
 
 export interface PreviewQuestion {
@@ -178,6 +180,20 @@ async function buildDraft(req: PaperRequest, kind: "preview" | "save"): Promise<
     );
   }
 
+  // Strand weights, if given, must name this class-subject's strands and add
+  // up to the whole paper; anything else is refused rather than guessed at.
+  let strandWeights: Record<string, number> | undefined;
+  if (req.strandWeights && Object.keys(req.strandWeights).length > 0) {
+    const { data: strands } = await supabase.from("strands").select("id").eq("class_subject_id", req.classSubjectId);
+    const valid = new Set((strands ?? []).map((s) => s.id));
+    const entries = Object.entries(req.strandWeights);
+    const sum = entries.reduce((n, [, w]) => n + w, 0);
+    if (entries.some(([id, w]) => !valid.has(id) || !Number.isFinite(w) || w < 0 || w > 1) || Math.abs(sum - 1) > 0.011) {
+      return fail("Strand shares must name this subject's strands and add up to 100%.");
+    }
+    strandWeights = Object.fromEntries(entries);
+  }
+
   const patterns = await getPatterns(instituteId, req.classSubjectId);
   const pattern = patterns.find((p) => p.id === req.patternId);
   if (!pattern) return fail("That paper pattern is not available for this subject.");
@@ -230,6 +246,7 @@ async function buildDraft(req: PaperRequest, kind: "preview" | "save"): Promise<
     difficultySplit: req.difficulty,
     seed: req.seed,
     pinnedBlockKeys: req.lockedBlockKeys,
+    strandWeights,
     relax: {
       difficulty: req.relax?.includes("difficulty") ?? false,
       topic_spread: req.relax?.includes("topic_spread") ?? false,

@@ -6,6 +6,7 @@ import {
   getBatches,
   getChapterCounts,
   getPatterns,
+  getStrands,
   getTeachingSubjects,
 } from "@/server/data/teacher";
 import { GenerateClient, type SubjectBundle } from "./GenerateClient";
@@ -22,10 +23,11 @@ export default async function GeneratePage() {
   // switching subject in the form costs no round trip.
   const bundles: SubjectBundle[] = await Promise.all(
     subjects.map(async (s) => {
-      const [chapters, patterns, batches] = await Promise.all([
+      const [chapters, patterns, batches, strands] = await Promise.all([
         getChapterCounts(instituteId, s.classSubjectId),
         getPatterns(instituteId, s.classSubjectId),
         getBatches(instituteId, s.classSubjectId),
+        getStrands(s.classSubjectId),
       ]);
       return {
         classSubjectId: s.classSubjectId,
@@ -40,6 +42,7 @@ export default async function GeneratePage() {
           sectionCount: p.sections.length,
         })),
         batches,
+        strands,
       };
     }),
   );

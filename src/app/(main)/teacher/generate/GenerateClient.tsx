@@ -24,6 +24,8 @@ export interface SubjectBundle {
     sectionCount: number;
   }[];
   batches: BatchOption[];
+  /** strands of this class-subject; the balance control shows when there are two or more */
+  strands: { id: string; name: string }[];
 }
 
 const SPLITS = [
@@ -54,6 +56,14 @@ const RELAX_COPY: Record<Relax, { action: string; active: string; effect: string
   },
 };
 
+/** Whole percentages, as even as possible, summing to exactly 100. */
+function evenSplit(strands: { id: string }[]): Record<string, number> {
+  const n = strands.length;
+  if (n === 0) return {};
+  const base = Math.floor(100 / n);
+  return Object.fromEntries(strands.map((st, i) => [st.id, base + (i < 100 - base * n ? 1 : 0)]));
+}
+
 function newSeed(): number {
   return Math.floor(Math.random() * 2_000_000_000);
 }
@@ -75,6 +85,18 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
   const [title, setTitle] = useState("Unit test");
   // Relaxations are only ever added by the teacher clicking one (C8: never auto-relax).
   const [relaxed, setRelaxed] = useState<Relax[]>([]);
+  const [strandOn, setStrandOn] = useState(false);
+  const [strandPct, setStrandPct] = useState<Record<string, number>>(() => evenSplit(bundle.strands));
+  const strandSum = bundle.strands.reduce((n, st) => n + (strandPct[st.id] ?? 0), 0);
+  // Sent only when switched on AND adding up to 100% — a half-edited split is never applied.
+  const strandWeights = useMemo(
+    () =>
+      strandOn && strandSum === 100
+        ? Object.fromEntries(bundle.strands.map((st) => [st.id, (strandPct[st.id] ?? 0) / 100]))
+        : undefined,
+    [strandOn, strandSum, strandPct, bundle.strands],
+  );
+  const strandKey = JSON.stringify(strandWeights ?? null);
 
   const [seed, setSeed] = useState(newSeed);
   const [locked, setLocked] = useState<string[]>([]);
@@ -107,8 +129,9 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
       lockedBlockKeys: locked,
       swaps,
       relax: relaxed,
+      strandWeights,
     };
-  }, [bundle.classSubjectId, pattern, chapterIds, splitIdx, setCount, batchId, repeatGuard, title, seed, locked, swaps, relaxed]);
+  }, [bundle.classSubjectId, pattern, chapterIds, splitIdx, setCount, batchId, repeatGuard, title, seed, locked, swaps, relaxed, strandWeights]);
 
   const run = useCallback(() => {
     if (!request) return;
@@ -124,7 +147,7 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
     const t = setTimeout(run, 350);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bundle.classSubjectId, patternId, chapterIds, splitIdx, setCount, batchId, repeatGuard, seed, locked, swaps, poolVersion, relaxed]);
+  }, [bundle.classSubjectId, patternId, chapterIds, splitIdx, setCount, batchId, repeatGuard, seed, locked, swaps, poolVersion, relaxed, strandKey]);
 
   function changeSubject(id: string) {
     const next = subjects.find((s) => s.classSubjectId === id);
@@ -136,6 +159,8 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
     setLocked([]);
     setSwaps([]);
     setRelaxed([]);
+    setStrandOn(false);
+    setStrandPct(evenSplit(next.strands));
   }
 
   function toggleChapter(id: string) {
@@ -250,6 +275,47 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
             ))}
           </div>
         </div>
+
+        {bundle.strands.length >= 2 && (
+          <div className="field">
+            <label>Strand balance</label>
+            <label className="toggle">
+              <input type="checkbox" checked={strandOn} onChange={(e) => setStrandOn(e.target.checked)} />
+              Hold each strand to a share of the questions
+            </label>
+            {strandOn && (
+              <div style={{ marginTop: 4 }}>
+                {bundle.strands.map((st) => (
+                  <div key={st.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                    <label htmlFor={`strand-${st.id}`} style={{ flex: 1, fontSize: 12.5, fontWeight: 400, margin: 0 }}>{st.name}</label>
+                    <input
+                      id={`strand-${st.id}`}
+                      type="number"
+                      inputMode="numeric"
+                      min={0}
+                      max={100}
+                      step={5}
+                      className="inp"
+                      style={{ width: 72, padding: "5px 7px" }}
+                      value={strandPct[st.id] ?? 0}
+                      onChange={(e) => {
+                        const v = Math.max(0, Math.min(100, Math.round(Number(e.target.value) || 0)));
+                        setStrandPct((cur) => ({ ...cur, [st.id]: v }));
+                      }}
+                    />
+                    <span style={{ fontSize: 12, color: "var(--graphite)" }}>%</span>
+                  </div>
+                ))}
+                <p style={{ fontSize: 11.5, margin: "4px 0 6px", color: strandSum === 100 ? "var(--graphite)" : "var(--pen)" }}>
+                  {strandSum === 100 ? "Adds up to 100%." : `Adds up to ${strandSum}% — it must be 100% to apply.`}
+                </p>
+                <button type="button" className="btn sm ghost" onClick={() => setStrandPct(evenSplit(bundle.strands))}>
+                  Split evenly
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="field">
           <label htmlFor="batch">For batch</label>

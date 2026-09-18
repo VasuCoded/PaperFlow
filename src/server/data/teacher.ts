@@ -63,6 +63,26 @@ export interface ChapterCount {
   approved: number;
 }
 
+export interface StrandOption {
+  id: string;
+  name: string;
+}
+
+/**
+ * Strands of a class-subject (Social Science: History, Geography, Political
+ * Science, Economics). Global taxonomy, readable by everyone.
+ */
+export async function getStrands(classSubjectId: string): Promise<StrandOption[]> {
+  const supabase = await createServerSupabaseClient();
+  const { data } = await supabase
+    .from("strands")
+    .select("id, name, sort_order")
+    .eq("class_subject_id", classSubjectId)
+    .order("sort_order")
+    .order("name");
+  return (data ?? []).map((s) => ({ id: s.id, name: s.name }));
+}
+
 /** One aggregate for the whole class-subject (C8 performance rule). */
 export async function getChapterCounts(
   instituteId: string,
