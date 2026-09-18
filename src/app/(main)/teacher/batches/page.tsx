@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { AppShell } from "../../_components/AppShell";
 import { getSession } from "@/server/session";
 import { getTeachingSubjects } from "@/server/data/teacher";
@@ -96,7 +97,13 @@ export default async function BatchesPage() {
                     )}
                   </td>
                   <td className="num">{b.enrolments.length}</td>
-                  <td className="num">{b.papers[0]?.count ?? 0}</td>
+                  <td className="num">
+                    {(b.papers[0]?.count ?? 0) > 0 ? (
+                      <Link href={`/teacher/papers?batch=${b.id}`} title="This batch's paper history">{b.papers[0]!.count} →</Link>
+                    ) : (
+                      0
+                    )}
+                  </td>
                   <td>
                     <span style={{ fontFamily: "var(--mono)", fontSize: 14, letterSpacing: "0.18em", fontWeight: 500, opacity: b.active ? 1 : 0.45 }}>
                       {b.join_code}

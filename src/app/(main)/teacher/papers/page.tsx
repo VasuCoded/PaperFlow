@@ -11,14 +11,15 @@ const dateFmt = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short
 export default async function PapersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ subject?: string }>;
+  searchParams: Promise<{ subject?: string; batch?: string }>;
 }) {
-  const { subject } = await searchParams;
+  const { subject, batch } = await searchParams;
   const session = await getSession();
   const all = session ? await listPapers(session) : [];
 
   const subjects = Array.from(new Map(all.map((p) => [p.classSubjectId, p.classSubjectLabel])).entries());
-  const papers = subject ? all.filter((p) => p.classSubjectId === subject) : all;
+  const papers = all.filter((p) => (!subject || p.classSubjectId === subject) && (!batch || p.batchId === batch));
+  const batchName = batch ? all.find((p) => p.batchId === batch)?.batchName ?? null : null;
 
   return (
     <AppShell
@@ -46,6 +47,18 @@ export default async function PapersPage({
         </div>
       )}
 
+      {batch && (
+        <div className="notice plain" style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <span>
+            Paper history for <b>{batchName ?? "this batch"}</b> — {papers.length} paper{papers.length === 1 ? "" : "s"}.
+          </span>
+          <span className="btnrow">
+            <Link className="btn sm ghost" href="/teacher/batches">← Batches</Link>
+            <Link className="btn sm ghost" href="/teacher/papers">All papers</Link>
+          </span>
+        </div>
+      )}
+
       {papers.length === 0 ? (
         <div>
           <p className="lede">No papers yet.</p>
@@ -58,6 +71,7 @@ export default async function PapersPage({
               <tr>
                 <th>Paper</th>
                 <th>Batch</th>
+                <th>Chapters</th>
                 <th className="num">Date</th>
                 <th className="num">Marks</th>
                 <th className="num">Sets</th>
@@ -74,7 +88,14 @@ export default async function PapersPage({
                       <b>{p.title}</b>
                       <span className="sub">{p.classSubjectLabel}</span>
                     </td>
-                    <td>{p.batchName ?? "—"}</td>
+                    <td>
+                      {p.batchId ? <Link href={`/teacher/papers?batch=${p.batchId}`}>{p.batchName}</Link> : "—"}
+                    </td>
+                    <td style={{ maxWidth: 260, fontSize: 12 }} title={p.chapters.join(", ")}>
+                      {p.chapters.length === 0
+                        ? "—"
+                        : p.chapters.slice(0, 3).join(", ") + (p.chapters.length > 3 ? ` +${p.chapters.length - 3}` : "")}
+                    </td>
                     <td className="num">{dateFmt.format(new Date(p.createdAt))}</td>
                     <td className="num">{p.totalMarks}</td>
                     <td className="num">{p.setCount}</td>

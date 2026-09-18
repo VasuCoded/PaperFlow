@@ -12,12 +12,15 @@ export interface PaperListRow {
   title: string;
   classSubjectId: string;
   classSubjectLabel: string;
+  batchId: string | null;
   batchName: string | null;
   batchStudents: number;
   createdAt: string;
   totalMarks: number;
   setCount: number;
   loggedCount: number;
+  /** distinct chapters the paper draws from, in first-appearance order */
+  chapters: string[];
 }
 
 type ListRow = {
@@ -26,7 +29,9 @@ type ListRow = {
   total_marks: number | null;
   created_at: string;
   class_subject_id: string;
+  batch_id: string | null;
   teacher_id: string | null;
+  paper_questions: { questions: { chapters: { name: string } | null } | null }[];
   class_subjects: { classes: { name: string } | null; subjects: { name: string } | null } | null;
   batches: { name: string; enrolments: { count: number }[] } | null;
   paper_sets: { count: number }[];
@@ -44,7 +49,8 @@ export async function listPapers(session: Session): Promise<PaperListRow[]> {
   let q = supabase
     .from("papers")
     .select(
-      `id, title, total_marks, created_at, class_subject_id, teacher_id,
+      `id, title, total_marks, created_at, class_subject_id, batch_id, teacher_id,
+       paper_questions ( questions ( chapters ( name ) ) ),
        class_subjects ( classes ( name ), subjects ( name ) ),
        batches ( name, enrolments ( count ) ),
        paper_sets ( count ),
@@ -62,12 +68,14 @@ export async function listPapers(session: Session): Promise<PaperListRow[]> {
     title: p.title,
     classSubjectId: p.class_subject_id,
     classSubjectLabel: `Class ${p.class_subjects?.classes?.name ?? "?"} · ${p.class_subjects?.subjects?.name ?? "?"}`,
+    batchId: p.batch_id,
     batchName: p.batches?.name ?? null,
     batchStudents: p.batches?.enrolments[0]?.count ?? 0,
     createdAt: p.created_at,
     totalMarks: p.total_marks ?? 0,
     setCount: p.paper_sets[0]?.count ?? 0,
     loggedCount: p.attempts[0]?.count ?? 0,
+    chapters: [...new Set(p.paper_questions.map((pq) => pq.questions?.chapters?.name).filter((n): n is string => !!n))],
   }));
 }
 
