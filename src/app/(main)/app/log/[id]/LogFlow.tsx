@@ -22,7 +22,8 @@ export interface FlowPosition {
 export interface FlowSet {
   id: string;
   label: string;
-  firstQuestion: string;
+  /** first twelve words of question 1, math rendered (server-side, escaped) */
+  firstQuestionHtml: string;
   positions: FlowPosition[];
 }
 
@@ -91,7 +92,7 @@ export function LogFlow({
         <p>You said you wrote <b>Set {chosen.label}</b>.</p>
         <div className="confirmq">
           <span className="cap">QUESTION 1 · SET {chosen.label}</span>
-          <p className="qq">&ldquo;{chosen.firstQuestion}&rdquo;</p>
+          <p className="qq">&ldquo;<span dangerouslySetInnerHTML={{ __html: chosen.firstQuestionHtml }} />&rdquo;</p>
         </div>
         <button type="button" className="cta" style={{ marginTop: 18 }} onClick={() => setStep("log")}>
           Yes, that&rsquo;s my question 1

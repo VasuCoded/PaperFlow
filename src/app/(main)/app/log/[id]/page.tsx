@@ -4,18 +4,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getStudentContext, StudentShell } from "../../_components/StudentShell";
 import { getPaperForLogging } from "@/server/data/student";
-import { renderRich } from "@/lib/print/math";
+import { firstWordsTex, renderRich } from "@/lib/print/math";
 import { LogFlow, type FlowSet } from "./LogFlow";
 
 export const metadata: Metadata = { title: "Log a paper · PaperFlow" };
-
-/** First twelve words of plain text, with TeX delimiters removed. */
-function firstWords(text: string, n = 12): string {
-  const plain = text.replace(/\$\$?([^$]*)\$\$?/g, "$1").replace(/\\[a-zA-Z]+/g, "").replace(/[{}]/g, "");
-  const words = plain.split(/\s+/).filter(Boolean);
-  const head = words.slice(0, n).join(" ");
-  return words.length > n && !/[….]$/.test(head) ? `${head}…` : head;
-}
 
 export default async function LogPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -26,7 +18,9 @@ export default async function LogPage({ params }: { params: Promise<{ id: string
   const sets: FlowSet[] = paper.sets.map((s) => ({
     id: s.id,
     label: s.label,
-    firstQuestion: s.positions[0]?.questions[0] ? firstWords(s.positions[0].questions[0].body) : "",
+    // The first twelve words, rendered: "is this question 1 on your sheet?" has
+    // to look like the sheet, formulae included.
+    firstQuestionHtml: s.positions[0]?.questions[0] ? renderRich(firstWordsTex(s.positions[0].questions[0].body)) : "",
     positions: s.positions.map((p) => ({
       position: p.position,
       number: p.number,

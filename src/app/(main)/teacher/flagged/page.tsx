@@ -1,7 +1,9 @@
+import "katex/dist/katex.min.css";
 import type { Metadata } from "next";
 import { AppShell } from "../../_components/AppShell";
 import { getSession } from "@/server/session";
 import { createServerSupabaseClient } from "@/lib/db/server";
+import { renderRich } from "@/lib/print/math";
 import { WithdrawFlagButton } from "./WithdrawFlagButton";
 
 export const metadata: Metadata = { title: "Flagged questions · PaperFlow" };
@@ -77,7 +79,11 @@ export default async function FlaggedPage() {
                 return (
                   <tr key={f.id}>
                     <td>
-                      <b>{f.questions?.body ?? "Question no longer available"}</b>
+                      {f.questions?.body ? (
+                        <b dangerouslySetInnerHTML={{ __html: renderRich(f.questions.body) }} />
+                      ) : (
+                        <b>Question no longer available</b>
+                      )}
                       <span className="sub">
                         {cs ? `Class ${cs.classes?.name ?? "?"} · ${cs.subjects?.name ?? "?"} — ` : ""}
                         {f.reason}
