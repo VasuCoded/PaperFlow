@@ -186,3 +186,23 @@ Synthetic users cannot sign in (sign-in is Google). Testers get real invites
 through `STAGING_TESTERS` (institute is `sunrise`, `riverside` or `hilltop`).
 `STAGING_OWNER_EMAIL` becomes platform owner only if that account has already
 signed in once — sign in, then re-run the seed.
+
+## 12. Load test (staging only)
+
+After seeding staging (§11):
+
+```bash
+SUPABASE_URL="https://<staging-ref>.supabase.co" \
+SUPABASE_ANON_KEY="<staging anon key>" \
+SUPABASE_JWT_SECRET="<staging JWT secret: Project Settings → API>" \
+npm run load-test -- --i-know-this-is-staging --students 40 --rounds 3
+```
+
+Forty synthetic students across two staging institutes, all at once, each
+loading the test list and logging a paper, per round. It prints p50 / p95 /
+max per operation. Tokens are minted with the staging JWT secret because
+synthetic users cannot sign in with Google; requests then go through RLS
+exactly as the app's do. It writes attempts, so it refuses to run without
+the flag. It measures Supabase time only — measure page time separately by
+opening `/app` on a mid-range Android over 4G (budget: 2.5 s to interactive).
+Record the numbers here with the date and the Supabase plan.
