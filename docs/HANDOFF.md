@@ -5,7 +5,7 @@ project or real Google sign-in yet — that is the next step, and it needs you.
 The **"Prompt for the next session"** block at the bottom is meant to be pasted
 as the first message of the next Claude Code session.
 
-40 commits (all local, no remote) · 17 migrations · 275 tests green ·
+All commits local (no git remote) · 17 migrations · 275 tests green ·
 typecheck, lint, tenancy lint, schema verify and production build clean.
 
 ---
