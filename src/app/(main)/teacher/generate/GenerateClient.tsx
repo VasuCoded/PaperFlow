@@ -34,6 +34,26 @@ const SPLITS = [
 
 const THIN = 8;
 
+type Relax = "difficulty" | "topic_spread" | "strand_balance";
+
+const RELAX_COPY: Record<Relax, { action: string; active: string; effect: string }> = {
+  difficulty: {
+    action: "Relax the difficulty mix",
+    active: "Difficulty mix relaxed",
+    effect: "Takes whatever mix of easy, medium and hard the chapters allow.",
+  },
+  topic_spread: {
+    action: "Allow repeated topics",
+    active: "Topics may repeat",
+    effect: "Lets two questions come from the same topic.",
+  },
+  strand_balance: {
+    action: "Relax the strand balance",
+    active: "Strand balance relaxed",
+    effect: "Stops holding each strand to its share of the marks.",
+  },
+};
+
 function newSeed(): number {
   return Math.floor(Math.random() * 2_000_000_000);
 }
@@ -53,6 +73,8 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
   const [batchId, setBatchId] = useState<string | null>(bundle.batches[0]?.id ?? null);
   const [repeatGuard, setRepeatGuard] = useState(true);
   const [title, setTitle] = useState("Unit test");
+  // Relaxations are only ever added by the teacher clicking one (C8: never auto-relax).
+  const [relaxed, setRelaxed] = useState<Relax[]>([]);
 
   const [seed, setSeed] = useState(newSeed);
   const [locked, setLocked] = useState<string[]>([]);
@@ -84,8 +106,9 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
       seed,
       lockedBlockKeys: locked,
       swaps,
+      relax: relaxed,
     };
-  }, [bundle.classSubjectId, pattern, chapterIds, splitIdx, setCount, batchId, repeatGuard, title, seed, locked, swaps]);
+  }, [bundle.classSubjectId, pattern, chapterIds, splitIdx, setCount, batchId, repeatGuard, title, seed, locked, swaps, relaxed]);
 
   const run = useCallback(() => {
     if (!request) return;
@@ -101,7 +124,7 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
     const t = setTimeout(run, 350);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bundle.classSubjectId, patternId, chapterIds, splitIdx, setCount, batchId, repeatGuard, seed, locked, swaps, poolVersion]);
+  }, [bundle.classSubjectId, patternId, chapterIds, splitIdx, setCount, batchId, repeatGuard, seed, locked, swaps, poolVersion, relaxed]);
 
   function changeSubject(id: string) {
     const next = subjects.find((s) => s.classSubjectId === id);
@@ -112,6 +135,7 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
     setBatchId(next.batches[0]?.id ?? null);
     setLocked([]);
     setSwaps([]);
+    setRelaxed([]);
   }
 
   function toggleChapter(id: string) {
@@ -276,6 +300,20 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
             <input type="checkbox" checked={repeatGuard} onChange={(e) => setRepeatGuard(e.target.checked)} />
             Skip anything used in my last 3 papers
           </label>
+          {relaxed.length > 0 && (
+            <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+              {relaxed.map((r) => (
+                <div key={r} className="notice warn" style={{ margin: 0, padding: "7px 9px", display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
+                  <span style={{ fontSize: 12 }}>
+                    <b>{RELAX_COPY[r].active}.</b> You chose this.
+                  </span>
+                  <button type="button" className="btn sm ghost" onClick={() => setRelaxed((cur) => cur.filter((x) => x !== r))}>
+                    Undo
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <button type="button" className="gen" onClick={regenerate} disabled={loading || !pattern}>
@@ -338,22 +376,45 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
                 </table>
               </div>
             )}
-            {preview.suggestions.length > 0 && (
+            {(preview.suggestions.some((s) => s.relax !== "repeat_guard") || repeatGuard) && (
               <>
-                <h3 className="blk">What would help</h3>
+                <h3 className="blk">What would help — you choose</h3>
                 <div className="cards c3">
-                  {preview.suggestions.map((s) => (
-                    <div className="card tinted" key={s.relax}>
-                      <h4>Relax {s.relax.replace("_", " ")}</h4>
-                      <p>Would fill {s.would_yield} more question{s.would_yield === 1 ? "" : "s"}.</p>
+                  {preview.suggestions
+                    .filter((s): s is typeof s & { relax: Relax } => s.relax !== "repeat_guard")
+                    .map((s) => (
+                      <div className="card tinted" key={s.relax}>
+                        <h4>{RELAX_COPY[s.relax].action}</h4>
+                        <p>
+                          {RELAX_COPY[s.relax].effect}{" "}
+                          {s.would_yield > 0
+                            ? <>Fills <b>{s.would_yield}</b> more question{s.would_yield === 1 ? "" : "s"}.</>
+                            : <>Lets this paper through with the questions it already has.</>}
+                        </p>
+                        <div className="btnrow" style={{ marginTop: 10 }}>
+                          <button type="button" className="btn sm solid" onClick={() => setRelaxed((cur) => (cur.includes(s.relax) ? cur : [...cur, s.relax]))}>
+                            {RELAX_COPY[s.relax].action}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  {repeatGuard && (
+                    <div className="card tinted">
+                      <h4>Allow questions from recent papers</h4>
+                      <p>Turns off &ldquo;skip anything used in my last 3 papers&rdquo;, which brings those questions back into the pool.</p>
+                      <div className="btnrow" style={{ marginTop: 10 }}>
+                        <button type="button" className="btn sm solid" onClick={() => setRepeatGuard(false)}>
+                          Turn off the repeat rule
+                        </button>
+                      </div>
                     </div>
-                  ))}
+                  )}
                 </div>
               </>
             )}
             <p style={{ fontSize: 12, color: "var(--graphite)", marginTop: 12 }}>
-              Try ticking more chapters, turning off the repeat rule, or a different difficulty mix.
-              The generator never quietly relaxes a rule on your behalf.
+              Or tick more chapters. The generator never relaxes a rule on your behalf — each of these only
+              applies once you click it, and you can undo it under Rules.
             </p>
           </div>
         )}
@@ -380,6 +441,12 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
                       <div className={`q${isLocked ? " locked" : ""}`} key={b.key} style={{ flexWrap: "wrap" }}>
                         <span className="no">{n}.</span>
                         <div className="body">
+                          {b.stimulusHtml && (
+                            <div className="stimulus">
+                              <span className="kind">Read the following and answer the questions</span>
+                              <div dangerouslySetInnerHTML={{ __html: b.stimulusHtml }} />
+                            </div>
+                          )}
                           {b.questions.map((q, i) => (
                             <div key={q.id} style={{ marginBottom: i < b.questions.length - 1 ? 6 : 0 }}>
                               {b.questions.length > 1 && (
@@ -387,13 +454,15 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
                                   ({String.fromCharCode(97 + i)})
                                 </span>
                               )}
-                              {q.body}
+                              <span dangerouslySetInnerHTML={{ __html: q.html }} />
                             </div>
                           ))}
                           {b.choice && (
                             <div style={{ marginTop: 6, paddingTop: 6, borderTop: "1px dashed var(--hair)" }}>
                               <span style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--graphite)" }}>OR </span>
-                              {b.choice.map((q) => q.body).join(" ")}
+                              {b.choice.map((q) => (
+                                <span key={q.id} dangerouslySetInnerHTML={{ __html: q.html + " " }} />
+                              ))}
                             </div>
                           )}
                           <div className="tags">

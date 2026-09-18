@@ -60,3 +60,15 @@ export function renderRich(text: string): string {
 export function hasMath(text: string): boolean {
   return /\$[^$\n]+\$|\$\$[\s\S]+?\$\$/.test(text);
 }
+
+/**
+ * The first `n` words of a body, never cutting a $...$ or $$...$$ segment in
+ * half: a math segment (with any text glued to it, like "is $x$,") counts as
+ * one word. The result is still TeX — pass it to renderRich. Used where a
+ * student confirms "is this question 1 on your sheet?" (C9 item 3).
+ */
+export function firstWordsTex(text: string, n = 12): string {
+  const tokens = text.match(/(?:[^\s$]|\$\$[\s\S]+?\$\$|\$[^$\n]+?\$)+/g) ?? [];
+  const head = tokens.slice(0, n).join(" ");
+  return tokens.length > n && !/[….]$/.test(head) ? `${head}…` : head;
+}

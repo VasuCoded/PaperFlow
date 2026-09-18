@@ -238,11 +238,7 @@ export function generatePaper(
   blocks: readonly Block[],
   pattern: Pattern,
 ): GenerateResult {
-  const full = fill(pattern, blocks, input, makeRng(input.seed), {
-    useDifficulty: true,
-    useTopicSpread: true,
-    useStrand: input.strandWeights != null,
-  });
+  const full = fill(pattern, blocks, input, makeRng(input.seed), baseOpts(input));
 
   if (full.shortfall.length > 0) {
     const suggestions = buildSuggestions(pattern, blocks, input, full.filled);
@@ -271,7 +267,8 @@ export function generatePaper(
   // arithmetic allows. Large papers are unaffected (1/70 < 5pp), so the
   // section 3.1 guarantee still holds wherever it is actually achievable.
   const tolerance = Math.max(DIFF_TOLERANCE, 1 / total);
-  if (maxDev > tolerance) {
+  // A teacher who chose to relax difficulty has accepted whatever mix the pool allows.
+  if (maxDev > tolerance && !input.relax?.difficulty) {
     return {
       ok: false,
       reason: `difficulty target not met within ${Math.round(tolerance * 100)}pp (off by ${Math.round(maxDev * 100)}pp)`,
@@ -296,6 +293,15 @@ export function generatePaper(
   };
 }
 
+/** The rules in force for this request: all of them, minus what the teacher relaxed. */
+function baseOpts(input: GenerateInput): FillOpts {
+  return {
+    useDifficulty: !input.relax?.difficulty,
+    useTopicSpread: !input.relax?.topic_spread,
+    useStrand: input.strandWeights != null && !input.relax?.strand_balance,
+  };
+}
+
 function buildSuggestions(
   pattern: Pattern,
   blocks: readonly Block[],
@@ -303,12 +309,16 @@ function buildSuggestions(
   baselineFilled: number,
 ): Suggestion[] {
   const out: Suggestion[] = [];
-  const trials: { relax: Suggestion["relax"]; opts: FillOpts }[] = [
-    { relax: "difficulty", opts: { useDifficulty: false, useTopicSpread: true, useStrand: input.strandWeights != null } },
-    { relax: "topic_spread", opts: { useDifficulty: true, useTopicSpread: false, useStrand: input.strandWeights != null } },
-    { relax: "strand_balance", opts: { useDifficulty: true, useTopicSpread: true, useStrand: false } },
+  const base = baseOpts(input);
+  // Each trial relaxes ONE more rule on top of whatever the teacher already
+  // relaxed; a rule already relaxed (or not in force) is never re-suggested.
+  const trials: { relax: Suggestion["relax"]; opts: FillOpts; applies: boolean }[] = [
+    { relax: "difficulty", opts: { ...base, useDifficulty: false }, applies: base.useDifficulty },
+    { relax: "topic_spread", opts: { ...base, useTopicSpread: false }, applies: base.useTopicSpread },
+    { relax: "strand_balance", opts: { ...base, useStrand: false }, applies: base.useStrand },
   ];
   for (const t of trials) {
+    if (!t.applies) continue;
     const r = fill(pattern, blocks, input, makeRng(input.seed), t.opts);
     const yield_ = r.filled - baselineFilled;
     if (yield_ > 0) out.push({ relax: t.relax, would_yield: yield_ });

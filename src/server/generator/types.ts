@@ -78,6 +78,12 @@ export interface GenerateInput {
    * no longer in the pool, is ignored rather than failing the paper.
    */
   pinnedBlockKeys?: string[];
+  /**
+   * Rules the TEACHER chose to relax after a shortfall (C8: "each relaxation
+   * option with what it would yield. The teacher chooses. Never auto-relax.").
+   * Absent means every rule applies.
+   */
+  relax?: Partial<Record<Exclude<RelaxKind, "repeat_guard">, boolean>>;
 }
 
 export interface PlacedBlock {

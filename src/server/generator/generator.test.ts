@@ -284,6 +284,38 @@ describe("generatePaper — thin pool fails with a shortfall", () => {
   });
 });
 
+describe("generatePaper — relaxations are the teacher's choice", () => {
+  // Plenty of questions, but almost all easy: the 40/40/20 mix cannot be met.
+  const easyHeavy: GenQuestion[] = [];
+  for (const m of [1, 2, 3, 5]) {
+    for (let i = 0; i < 40; i++) easyHeavy.push(makeStandalone(PLATFORM, m, "easy", CHAPTERS[i % CHAPTERS.length]!));
+    easyHeavy.push(makeStandalone(PLATFORM, m, "medium", "ch1"));
+  }
+  const blocks = buildBlocks(easyHeavy);
+
+  it("fails with the rules in force and suggests relaxing difficulty — without relaxing it", () => {
+    const res = generatePaper(BASE_INPUT, blocks, PATTERN);
+    expect(res.ok).toBe(false);
+    if (res.ok) return;
+    expect(res.suggestions.map((s) => s.relax)).toContain("difficulty");
+  });
+
+  it("builds the paper once the teacher relaxes difficulty", () => {
+    const res = generatePaper({ ...BASE_INPUT, relax: { difficulty: true } }, blocks, PATTERN);
+    expect(res.ok).toBe(true);
+  });
+
+  it("never suggests a rule the teacher already relaxed", () => {
+    const thin: GenQuestion[] = [];
+    for (let i = 0; i < 5; i++) thin.push(makeStandalone(PLATFORM, 1, "easy", "ch1"));
+    const res = generatePaper({ ...BASE_INPUT, relax: { difficulty: true, topic_spread: true } }, buildBlocks(thin), PATTERN);
+    expect(res.ok).toBe(false);
+    if (res.ok) return;
+    expect(res.suggestions.map((s) => s.relax)).not.toContain("difficulty");
+    expect(res.suggestions.map((s) => s.relax)).not.toContain("topic_spread");
+  });
+});
+
 describe("generatePaper — difficulty tolerance granularity", () => {
   // On a short paper one question is worth more than 5pp, so a flat 5pp rule
   // would reject papers that are as close as arithmetic allows. The tolerance

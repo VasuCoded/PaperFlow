@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { renderRich, escapeHtml, hasMath } from "./math";
+import { renderRich, escapeHtml, hasMath, firstWordsTex } from "./math";
 
 describe("renderRich", () => {
   it("renders inline math", () => {
@@ -65,5 +65,22 @@ describe("escapeHtml / hasMath", () => {
     expect(hasMath("$x$")).toBe(true);
     expect(hasMath("$$x$$")).toBe(true);
     expect(hasMath("no math here")).toBe(false);
+  });
+});
+
+describe("firstWordsTex", () => {
+  it("keeps whole math segments and counts each as one word", () => {
+    expect(firstWordsTex("If $x = 2$, what is $x^2 + 3$ when y is large", 4)).toBe("If $x = 2$, what is…");
+    expect(firstWordsTex("Balance $\ce{H2 + O2 -> H2O}$ now", 2)).toBe("Balance $\ce{H2 + O2 -> H2O}$…");
+  });
+
+  it("returns short bodies unchanged", () => {
+    expect(firstWordsTex("Define refraction.", 12)).toBe("Define refraction.");
+  });
+
+  it("renders without a broken delimiter after truncation", () => {
+    const html = renderRich(firstWordsTex("Find $\frac{a}{b}$ where $a = 10$ and $b = 5$ exactly", 3));
+    expect(html).toContain("katex");
+    expect(html).not.toContain("$");
   });
 });

@@ -13,6 +13,7 @@ import type {
 import { buildSets, type BuildSetsResult } from "@/server/sets";
 import { getPatterns, type PatternWithSections } from "@/server/data/teacher";
 import { parseOptions } from "@/lib/options";
+import { renderRich } from "@/lib/print/math";
 
 /**
  * Paper generation, in two steps:
@@ -40,11 +41,15 @@ export interface PaperRequest {
   lockedBlockKeys: string[];
   /** replayed in order; each names the block key current at that moment */
   swaps: { blockKey: string; sectionLabel: string }[];
+  /** rules the teacher chose to relax after a shortfall; never applied unasked */
+  relax?: ("difficulty" | "topic_spread" | "strand_balance")[];
 }
 
 export interface PreviewQuestion {
   id: string;
   body: string;
+  /** body with its TeX rendered by KaTeX on the server (text is escaped) */
+  html: string;
   source: string | null;
   marks: number;
 }
@@ -53,6 +58,8 @@ export interface PreviewBlock {
   marks: number;
   difficulty: string;
   isStimulus: boolean;
+  /** the passage / case / source, rendered once above its questions */
+  stimulusHtml: string | null;
   isPrivate: boolean;
   chapterName: string;
   choice: PreviewQuestion[] | null;
@@ -223,6 +230,11 @@ async function buildDraft(req: PaperRequest, kind: "preview" | "save"): Promise<
     difficultySplit: req.difficulty,
     seed: req.seed,
     pinnedBlockKeys: req.lockedBlockKeys,
+    relax: {
+      difficulty: req.relax?.includes("difficulty") ?? false,
+      topic_spread: req.relax?.includes("topic_spread") ?? false,
+      strand_balance: req.relax?.includes("strand_balance") ?? false,
+    },
   };
   const genPattern: Pattern = {
     id: pattern.id,
@@ -336,11 +348,24 @@ export async function previewPaper(req: PaperRequest): Promise<PreviewResponse> 
   const draft = await buildDraft(req, "preview");
   if (!draft.ok) return draft.response;
 
+  // Passages for the stimulus blocks actually placed, read under RLS (shared
+  // bank plus this institute's own).
+  const stimulusIds = [
+    ...new Set(draft.paper.sections.flatMap((s) => s.blocks.map((pb) => pb.block.stimulusId).filter((x): x is string => !!x))),
+  ];
+  const stimulusHtml = new Map<string, string>();
+  if (stimulusIds.length > 0) {
+    const supabase = await createServerSupabaseClient();
+    const { data: stimuli } = await supabase.from("stimuli").select("id, body").in("id", stimulusIds);
+    for (const st of stimuli ?? []) if (st.body) stimulusHtml.set(st.id, renderRich(st.body));
+  }
+
   const q = (id: string): PreviewQuestion => {
     const row = draft.pool.get(id);
     return {
       id,
       body: row?.body ?? "",
+      html: renderRich(row?.body ?? ""),
       source: row?.source ?? null,
       marks: row?.marks ?? 0,
     };
@@ -363,6 +388,7 @@ export async function previewPaper(req: PaperRequest): Promise<PreviewResponse> 
         marks: pb.positionMarks,
         difficulty: pb.block.difficulty,
         isStimulus: pb.block.isStimulus,
+        stimulusHtml: pb.block.stimulusId ? (stimulusHtml.get(pb.block.stimulusId) ?? null) : null,
         isPrivate: pb.block.ownerInstituteId !== PLATFORM_INSTITUTE_ID,
         chapterName: draft.chapterNames.get(pb.block.chapterId) ?? "",
         choice: pb.choiceAlternative ? pb.choiceAlternative.questions.map((x) => q(x.id)) : null,
