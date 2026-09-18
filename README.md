@@ -10,71 +10,71 @@ right/wrong per question and turns mistakes into targeted practice.
 
 ## Stack
 
-Next.js 15 (App Router) · TypeScript strict · Tailwind · Supabase (Postgres +
-Auth + RLS + Storage) · Vercel · Vitest + fast-check.
+Next.js 15 (App Router) · TypeScript strict · Supabase (Postgres + Auth + RLS)
+· Vercel (Mumbai, `bom1`) · KaTeX + mhchem · Vitest + PGlite.
 
 ## Status by checkpoint
 
+Everything below is built and tested against the real migrations running in
+PGlite (Postgres 18 in WebAssembly). **None of it has run against a live
+Supabase project or real Google sign-in yet** — see `docs/SETUP.md`.
+
 | CP | Scope | State |
 |----|-------|-------|
-| C0 | Repo, tooling, DB-control guardrails | ✅ done, verified |
-| C1 | Full multi-tenant schema, RLS, taxonomy, seeds | ✅ migrations + tests written & grammar-validated (apply needs Docker) |
-| C5 | Paper generator | ✅ done, 60 tests green |
-| C6 | Multi-set shuffle engine | ✅ done, property tests green |
-| C7 | Print output | ✅ presentational layer + preview; build compiles |
-| C10 | Practice matcher + analytics | ✅ done, 10 tests green |
-| C3 | Ingestion standing brief | ✅ doc written |
-| C12 | Backup / keep-alive / restore / runbook | ✅ ops scaffolding |
-| C2 | Auth, membership, batches | ⛔ needs live Supabase + Google OAuth |
-| C2b | Platform console | ⛔ needs C2 |
-| C8 | Teacher screens | ⛔ needs live DB + generated types |
-| C9 | Student screens (PWA) | ⛔ needs live DB + generated types |
+| C0 | Repo, tooling, DB-control guardrails | Done |
+| C1 | Multi-tenant schema, RLS, taxonomy, seeds | Done — 17 migrations executed, types generated from them |
+| C2 | Sign-in, welcome, invites, batch join codes | Done |
+| C2b | Platform console: institutes, inspect, review queue, activation, requests, support, health, audit | Done |
+| C3 | Ingestion standing brief | Doc only (ingestion is a Claude Code session, not app code) |
+| C4 | Review flow | `/platform/bank` |
+| C5 | Paper generator | Done |
+| C6 | Multi-set shuffle engine | Done |
+| C7 | Print: per-set papers, answer keys, mapping sheet | Done |
+| C8 | Teacher: set a paper, papers, batches, flagged | Done |
+| C9 | Student app: tests, set picker, logging, practice, weak spots; installable PWA | Done |
+| C10 | Practice matcher + analytics | Done |
+| C11 | Activation gate | In the console; the human review hours are the real cost |
+| C12 | Hardening | Isolation suite, rate limits, export, staging seed, load-test script, backups, runbook. **Not done:** Sentry, email alerts, a measured load test |
 
-Delivery is **web first** — a website on Vercel, every role and login included;
-a Capacitor native shell is a possible later step around the same app. See
-`docs/DELIVERY.md`.
-
-See `docs/SETUP.md` to bring it online, and `docs/HANDOFF.md` for the session
-handoff (bugs fixed, repo map, and the prompt for the next session).
+`/demo` is a separate click-through prototype with fake data and no backend.
 
 ## Local development
+
+No Docker needed: the database tests run the real migrations in PGlite.
 
 ```bash
 npm install
 npm run typecheck
-npm test          # generator, shuffle, practice, print — 108 tests
+npm test               # 275 tests: engines, print, PWA, and the database suites
 npm run lint
-npm run build
+npm run db:verify      # every table tenant-keyed or allowlisted, RLS on everywhere
+npm run db:types:local # regenerate src/lib/database.types.ts from the migrations
+npm run build:check    # production build into .next-build (safe beside a dev server)
+npm run dev -- -p 3005
 ```
 
-To run the database (needs Docker Desktop):
-
-```bash
-npx supabase start
-npx supabase db reset                 # applies all migrations from empty
-npm run db:types                      # regenerate src/lib/database.types.ts
-psql "$SUPABASE_DB_URL" -f supabase/tests/tenancy.test.sql
-psql "$SUPABASE_DB_URL" -f supabase/tests/rls.test.sql
-psql "$SUPABASE_DB_URL" -f supabase/tests/isolation.test.sql
-SUPABASE_DB_URL=... npx tsx scripts/seed-taxonomy.ts
-SUPABASE_DB_URL=... npx tsx scripts/seed-patterns.ts
-```
+Without Supabase configured, every signed-in page redirects to `/login`, which
+explains what is missing. `/demo` and `/print/sample` work with no setup.
 
 ## Layout
 
 ```
-src/app            routes (+ /print/sample preview)
-src/components      print components
-src/lib/db          browser / server / service-role Supabase clients
-src/lib/print       print models
+src/app/(main)        the real app: login, welcome, platform, institute, teacher, app (student)
+src/app/print         print views (papers, keys, mapping sheet)
+src/app/demo          clickable prototype, fake data
+src/server/actions    server actions (all mutations)
+src/server/data       server-side reads
 src/server/generator  paper generator (pure)
 src/server/sets       multi-set shuffle engine (pure)
 src/server/practice   practice matcher + analytics (pure)
-supabase/migrations   0001–0008 schema
-supabase/tests        RLS / tenancy / isolation suites + fixtures
-scripts               db-guard, tenancy-lint, seeds, restore
-docs                  BUILD-PLAN, SETUP, RUNBOOK, ingest brief, taxonomy, patterns
+src/lib/pwa           service worker policy + generator
+src/lib/print         print model, KaTeX/mhchem, compose
+supabase/migrations   0001–0017
+tests/db              executable database suites (isolation, suspension, support, …)
+scripts               schema harness, type generation, seeds, staging seed, load test
+docs                  BUILD-PLAN, SETUP, RUNBOOK, HANDOFF, DELIVERY, ingest brief
 ```
 
 Read `CLAUDE.md` before changing anything — the tenancy and role rules there are
-load-bearing and CI-enforced.
+load-bearing. `docs/HANDOFF.md` has the current state, the open issues, and the
+prompt for the next session.

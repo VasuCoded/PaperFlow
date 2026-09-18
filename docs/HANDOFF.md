@@ -1,249 +1,220 @@
-# Session handoff — 3 Sep 2026
+# Session handoff — 18 Sep 2026
 
-Written at the end of the first build session. The **"Prompt for the next
-session"** block at the bottom is meant to be pasted verbatim as the first
-message of the following Claude Code session.
+The real app is built end to end. Nothing has run against a live Supabase
+project or real Google sign-in yet — that is the next step, and it needs you.
+The **"Prompt for the next session"** block at the bottom is meant to be pasted
+as the first message of the next Claude Code session.
 
-11 commits · 7 tags · 78 files · 108 tests green · 8 migrations
+40 commits (all local, no remote) · 17 migrations · 275 tests green ·
+typecheck, lint, tenancy lint, schema verify and production build clean.
 
 ---
 
-## 1. What got built
+## 1. State
 
 | CP | Scope | State |
 |---|---|---|
-| C0 | Repo, tooling, DB-control guardrails | Done |
-| C1 | Multi-tenant schema, RLS, taxonomy, seeds | Done (migrations written + grammar-validated; apply needs Docker) |
-| C5 | Paper generator (pure) | Done — 60 tests |
-| C6 | Multi-set shuffle engine (pure) | Done — property tests |
-| C7 | Print output (A4, KaTeX+mhchem, per-set papers/keys/mapping) | Done |
-| C10 | Practice matcher + analytics (pure) | Done — 10 tests |
-| C3 | Ingestion standing brief | Doc only |
-| C12 | Ops scaffolding (backup, keep-alive, restore, runbook) | Partial |
-| C2 | Auth, membership, batches | **Not built** — needs live DB + OAuth |
-| C2b | Platform console | **Not built** — needs C2 |
-| C8 | Teacher screens | **Not built** — needs live DB + types |
-| C9 | Student screens (PWA) | **Not built** — needs live DB + types |
+| C0 | Scaffold, tooling, DB guardrails | Done |
+| C1 | Schema, RLS, taxonomy, seeds | Done — 17 migrations executed in PGlite; types generated from them |
+| C2 | `/login`, `/welcome`, invites, batch join | Done |
+| C2b | `/platform`: institutes, inspect, bank, activation, requests, support, health, audit | Done |
+| C5–C7 | Generator, shuffle engine, print | Done |
+| C8 | `/teacher`: set a paper, papers, batches, flagged | Done |
+| C9 | `/app`: tests, set picker, logging, practice, weak spots, me; PWA | Done |
+| C10 | Practice matcher + analytics | Done |
+| C11 | Activation gate | In the console |
+| C12 | Hardening | Mostly done — see §4 for what is not |
 
-C2/C2b/C8/C9 were deliberately skipped: they need the live database, generated
-types and OAuth, and `CLAUDE.md` forbids untyped database access — writing them
-blind would break the project's own rules and could not be verified.
-
----
-
-## 2. Bugs found and fixed
-
-### Product bugs caught by printing the PDF
-
-Every one of these was found by printing, not by tests.
-
-1. **All three "sets" were identical** *(critical)* — same questions in the same
-   order, only the header letter differed. The C6 shuffle engine was built and
-   fully tested but the print route never called it. Fixed with
-   `src/lib/print/compose.ts`, which joins shuffle → print and renumbers each set.
-2. **Mapping sheet printed raw TeX** — `MappingSheet` rendered its answer as
-   plain text while the other two components used `renderRich`.
-3. **Mapping sheet discarded most answers** — the "shorten to see key" rule
-   measured *TeX source* length, not rendered length, so compact equations with
-   verbose source were thrown away. Now only genuinely multi-part blocks defer.
-4. **Chemistry rendered as an unknown command** — mhchem was imported as
-   `katex/dist/contrib/mhchem`, a deep path that bypasses the package exports
-   map, loads the UMD build and registers macros on a *different* katex
-   instance. Correct specifier: `katex/contrib/mhchem`.
-5. **No page breaks between artefacts** — all 7 documents flowed continuously; a
-   teacher would have had to cut sheets.
-6. **No math rendering at all** — C7 specifies server-rendered KaTeX; skipped in
-   the first pass.
-7. **Hindi treated as a translation layer** *(design error)* — a Devanagari
-   translation of an English question sat inside a Science paper. Hindi is a
-   *subject*; it now has its own paper at `/print/sample/hindi`.
-
-### Caught before shipping
-
-- **The mhchem test was a false positive** — it asserted the output lacked the
-  literal `\ce{`, but KaTeX consumes the brace separately, so it passed on
-  broken output. Replaced with error-styling assertions plus a "guard the guard"
-  case proving they can fail.
-- **Invalid hex in test-fixture UUIDs** — mnemonic ids used `t`/`s`/`p`/`u`.
-- **Tenancy lint was too strict** — it banned all uses of `is_platform_owner()`
-  in policies; the plan bans only the `or is_platform_owner()` escape hatch.
-
-### Tooling / environment
-
-- `create-next-app` rejects capitalised folder names → scaffolded manually.
-- husky's default pre-commit ran tests and blocked the first commit.
-- Missing `pg` types and an implicit-any cookie callback broke strict typecheck.
-- vitest "React is not defined" — tsconfig uses `jsx: "preserve"` for Next, so
-  esbuild stayed on the classic runtime; vitest now uses the automatic runtime.
-- Windows `cmd.exe` ignores `VAR=value` prefixes → `cross-env`.
-
-### Operational mistakes (mine)
-
-Twice I broke the running dev server by touching `.next` while it was live —
-once with `rm -rf .next`, once with `npm run build`. `next build` and `next dev`
-share that directory. Guard added: `next.config.ts` honours `NEXT_DIST_DIR` and
-`npm run build:check` builds into `.next-build`. Plain `npm run build` still
-uses `.next`, so Vercel is unaffected.
+How it was verified without a live database: `scripts/schema-harness.ts` boots
+PGlite (real Postgres 18 in WebAssembly) with a small Supabase shim (auth
+schema, `auth.uid()`, the anon/authenticated/service roles, default grants),
+applies every migration, and the tests under `tests/db` run as each role.
+`npm run db:types:local` generates `database.types.ts` from that schema, so the
+app's queries are type-checked against the real tables and functions.
 
 ---
 
-## 3. Repository structure
+## 2. What this phase built
+
+**Consoles.** Platform owner: create/suspend institutes, audited read-only
+inspector with role changes, review queue with KaTeX and a separate
+promote-to-shared confirmation naming the owner, activation matrix with the
+gate, requests with required decline reasons, support (find a person, correct
+a set, move a batch, retire a question, resolve flags, invites), health, audit
+log with CSV export. Institute admin: members (invite, revoke, role change and
+removal behind typed-email confirmation, role-change log), teacher subjects,
+subjects with an honest "not yet", export.
+
+**Teacher.** Generate with live chapter counts, patterns, difficulty mix,
+strand balance, printed sets with copy counts and short-section warnings,
+lock/swap/flag, rendered maths and passages, and shortfall suggestions the
+teacher clicks (never auto-applied). Papers with chapters and per-batch
+history; reprint exact; wrong-set correction.
+
+**Student.** Test list with a needs-logging strip across subjects, set picker
+with the "is this question 1?" check (maths rendered), one-tap logging,
+practice with gated solutions, weak spots, subject switcher. Installable PWA:
+offline test list and practice, cached per user and cleared on sign-out,
+install prompt from the second visit, logging says plainly when offline.
+
+**Hardening.** Executable cross-tenant isolation suite (`tests/db/isolation.test.ts`),
+generation rate limits per person and per institute, institute export,
+staging seed (`npm run seed:staging`), load-test script (`npm run load-test`),
+runbook updated to the console.
+
+---
+
+## 3. Bugs found and fixed this phase
+
+Found by building against the real schema, or by the tests:
+
+1. **Every query was untyped** — `@supabase/ssr` 0.5.2 passed three generics to a
+   five-generic client; upgraded to 0.12.7.
+2. **Nested selects typed as `string`** — generated types had no foreign keys.
+3. **Generator rejected short papers** — a 5-point difficulty tolerance is
+   unsatisfiable when one question is 6.25 points; tolerance is now at least
+   one question.
+4. **Preview and save could build different papers** — the pool RPC had no
+   ORDER BY; now sorted deterministically.
+5. **Answer keys assumed options A–D**, and shuffled option orders were never
+   stored — real keys now, and orders persisted per set.
+6. **Suspension did nothing in the database** — only the app hid it; members
+   could still read through the API (migration 0012). Found alongside it: a
+   NULL from `my_role()` made `IF NOT (… OR NULL)` skip a definer function's
+   `RAISE`.
+7. **An institute admin could pull any user in without an invite**, learn
+   whether an email had an account, and demote a fellow admin;
+   `remove_member` revealed membership to anyone (0013).
+8. **A subject could be declined only once per institute** — the second
+   decision violated a unique constraint (0014).
+9. **Deleting a batch with papers, or an attempt with a practice set, failed** —
+   composite `ON DELETE SET NULL` nulled `institute_id` too (0015).
+10. **The SQL isolation suite could not catch most leaks** — it skipped the five
+    `owner_institute_id` tables, left most tables empty for institute B, and
+    probed writes with a WHERE clause that let a correct SELECT policy mask a
+    leaky UPDATE/DELETE policy. The executable suite fixes all three and was
+    mutation-tested against four kinds of planted leak.
+11. **The teacher preview showed raw TeX**, and passages were missing.
+12. **Offline logging failed silently** instead of saying nothing was saved.
+
+---
+
+## 4. Open issues — read before shipping
+
+1. **Nothing has touched a live Supabase project.** The PGlite shim models what
+   the migrations depend on, not all of Supabase. Expect small differences on
+   first `supabase db push`, and Google sign-in (`/auth/callback`) is untested.
+2. **Privacy decision needed (yours):** any member of an institute — including
+   a student — can list every member of that institute, with emails, through
+   the API (`institute_members_select` + `profiles_select`). The UI never shows
+   a student that list. If students should not see classmates' emails, the
+   policies need narrowing; it is a product call, so it was not changed.
+3. *(Fixed this session.)* The pre-push guard used to check staged files —
+   empty at push time — and flag `drop table` inside migration DOWN comments.
+   It now checks the SQL in the commits being pushed and strips comments first;
+   `bash scripts/db-guard.sh --all` audits every migration.
+4. **Not built (need accounts):** Sentry with `institute_id` tags, email alerts
+   at 70% of any free-tier limit and at 40% single-tenant usage.
+5. **Load test not run** — it needs the seeded staging project. The C12 p95
+   number is still unknown.
+6. **Board patterns may not generate from staging data** — the staging seed
+   only has mcq/vsa/sa/la questions; CBSE patterns with case-based or
+   assertion-reason sections need those types in the bank.
+7. `next lint` is deprecated in Next 16; migrate to the ESLint CLI when upgrading.
+
+---
+
+## 5. Repository map
 
 ```
 PaperFlow/
-├─ CLAUDE.md              project rules — tenancy, roles, DB, code (CI-enforced)
-├─ README.md              orientation + checkpoint status
-├─ .mcp.json              hosted Supabase MCP (dev only, never prod write)
-├─ docs/
-│  ├─ BUILD-PLAN.md       THE SPEC (v3.0). §5 data model, §7 checkpoints, §11 ritual
-│  ├─ SETUP.md            bring-online checklist (Docker, cloud, env, OAuth)
-│  ├─ RUNBOOK.md          onboarding, activation gate, restore, rotation, SEV-1
-│  ├─ HANDOFF.md          this file
-│  ├─ ingest-instructions.md   C3 standing brief for ingestion sessions
-│  ├─ global-tables.txt   tenancy-lint allowlist
-│  ├─ taxonomy/*.csv      NCERT chapter lists
-│  └─ patterns/*.json     CBSE paper patterns + generic unit test
-├─ supabase/
-│  ├─ migrations/         0001 tenancy → 0008 rls_policies (dependency-ordered)
-│  └─ tests/              seed_fixtures + tenancy / rls / isolation suites
+├─ CLAUDE.md                 project rules (tenancy, roles, database, code)
+├─ docs/  BUILD-PLAN · SETUP · RUNBOOK · HANDOFF · DELIVERY · ingest brief · taxonomy · patterns
+├─ supabase/migrations/      0001–0008 schema + RLS; 0009 pool; 0010 activity;
+│                            0011 platform; 0012 suspension; 0013 roles;
+│                            0014 institute console; 0015 FK fix; 0016 support;
+│                            0017 rate limit
+├─ supabase/tests/*.sql      psql suites for a live database (CI)
+├─ tests/db/*.test.ts        the same guarantees, executable in npm test
+├─ tests/app/*.test.ts       area guards, insert paths, load-test helpers
 ├─ scripts/
-│  ├─ tenancy-lint.ts     every table has a tenant key or is allowlisted
-│  ├─ db-guard.sh         pre-push: blocks DROP/TRUNCATE/DELETE-without-WHERE
-│  ├─ seed-taxonomy.ts    docs/taxonomy/*.csv → classes/subjects/chapters
-│  ├─ seed-patterns.ts    docs/patterns/*.json → paper_patterns
-│  └─ restore.sh          pg_restore a dump into a target DB
+│  ├─ schema-harness.ts      PGlite + Supabase shim + migrations
+│  ├─ verify-schema.ts · gen-types-local.ts · tenancy-lint.ts
+│  ├─ seed-taxonomy.ts · seed-patterns.ts · seed-staging.ts · staging/
+│  ├─ load-test.ts · load/   restore.sh · db-guard.sh
 └─ src/
-   ├─ app/                routes: / , /print/sample , /print/sample/hindi
-   ├─ components/print/   QuestionPaper · AnswerKey · MappingSheet (+ render tests)
-   ├─ lib/db/             client (anon) · server (session) · admin (service role)
-   ├─ lib/print/          model · math (KaTeX/mhchem) · compose · sample-paper
-   └─ server/
-      ├─ generator/       C5 paper generator — pure, 60 tests
-      ├─ sets/            C6 shuffle engine — pure, property tests
-      └─ practice/        C10 matcher + analytics — pure, 10 tests
+   ├─ app/(main)/            login, welcome, platform, institute, teacher, app
+   ├─ app/print/             print views     app/demo/  prototype (fake data)
+   ├─ app/sw.js, manifest.ts, pwa/, offline/  PWA
+   ├─ server/actions · data  mutations and reads (session-scoped)
+   ├─ server/generator · sets · practice   pure engines
+   └─ lib/  db · print · pwa · gate · options · database.types.ts (generated)
 ```
 
 ---
 
-## 4. Verification commands
+## 6. Verification
 
 ```bash
 npm install
-npm run typecheck        # tsc --noEmit, strict, no any
-npm test                 # 108 tests
-npm run lint
-npm run build:check      # safe while a dev server is running
-npm run dev -- -p 3005   # then open /print/sample and /print/sample/hindi
-
-# once Docker + Supabase local are up
-npx supabase db reset
-npm run db:types
-psql "$SUPABASE_DB_URL" -f supabase/tests/tenancy.test.sql
-psql "$SUPABASE_DB_URL" -f supabase/tests/rls.test.sql
-psql "$SUPABASE_DB_URL" -f supabase/tests/isolation.test.sql
-npm run tenancy-lint
+npm run typecheck && npm test && npm run lint
+npm run tenancy-lint && npm run db:verify
+npm run build:check        # never `npm run build` while a dev server runs
+npm run dev -- -p 3005     # /demo and /print/sample work without Supabase
 ```
 
 ---
 
-## 5. Prompt for the next session
+## 7. Prompt for the next session
 
-Paste everything between the lines as the first message.
-
----
+Paste everything inside the block as the first message.
 
 ```text
-Read docs/BUILD-PLAN.md and CLAUDE.md before doing anything. They are the
-spec and the rules. The rules in CLAUDE.md are load-bearing and CI-enforced.
+Read CLAUDE.md, then docs/HANDOFF.md, then the parts of docs/BUILD-PLAN.md
+that HANDOFF points to. They are the rules, the state, and the spec.
 
 PROJECT
 PaperFlow - multi-tenant question bank + mistake-practice platform for
-classes 9-12 (PCMB, Social Science, English, Hindi). Tests are on paper; the
-app never does online test-taking and never scores. Built from
-docs/BUILD-PLAN.md v3.0.
+classes 9-12. Tests are on paper; the app never does online test-taking and
+never scores. Web first on Vercel (Mumbai); Capacitor maybe later.
 
-STATE - all committed and tagged, 108 tests green, typecheck/lint/build clean
-  C0   scaffold, tooling, DB guardrails             tag C0
-  C1   full multi-tenant schema, RLS, seeds         tag C1
-  C5   paper generator (pure)                       tag C5-C6
-  C6   multi-set shuffle engine (pure)              tag C5-C6
-  C7   print output, KaTeX, shuffle wiring          tags C7, C7-fixes, C6-C7-wired
-  C10  practice matcher + analytics (pure)          tag C10
-  C3   ingestion standing brief (doc only)
-  C12  ops scaffolding: backup, keep-alive, runbook
+STATE
+The whole app is built and committed locally (no git remote): platform and
+institute consoles, teacher screens, student PWA, print, 17 migrations.
+275 tests pass, including executable database suites that run the real
+migrations in PGlite. NOTHING has run against a live Supabase project or
+real Google sign-in yet. HANDOFF section 4 lists the open issues.
 
-NOT BUILT - these needed the live database and generated types:
-  C2   auth, membership, batches
-  C2b  platform console
-  C8   teacher screens
-  C9   student screens (PWA)
+WHAT I HAVE DONE SINCE (edit this list before pasting)
+  - [ ] Supabase dev + prod projects created in Mumbai (ap-south-1)
+  - [ ] Google OAuth configured in Supabase
+  - [ ] GitHub repo created and pushed; Vercel project connected
+  - [ ] .env.local filled from .env.local.example
+  - [ ] Decided the student-privacy question in HANDOFF section 4 item 2
 
-READ IN THIS ORDER
-  1. CLAUDE.md                      rules: tenancy, roles, database, code
-  2. docs/BUILD-PLAN.md             section 5 data model, 7 checkpoints, 11 ritual
-  3. docs/SETUP.md                  what infrastructure exists
-  4. supabase/migrations/*.sql      0001-0008, schema in dependency order
-  5. supabase/tests/*.sql           what the tenancy/rls/isolation suites assert
-  6. src/server/generator, sets, practice   the pure engines, all tested
-  7. src/lib/print/                 print model, math, compose layer
+TASK
+If the Supabase dev project exists: apply the migrations to it
+(supabase db push), seed taxonomy and patterns, bootstrap my platform owner
+membership (RUNBOOK section 1), then walk through sign-in -> create an
+institute -> invite -> generate a paper -> print -> student logs it, fixing
+whatever differs from PGlite. Report every difference you find.
 
-DECISIONS ALREADY MADE - do not undo these
-  - The platform institute UUID is the fixed constant
-    11111111-1111-1111-1111-111111111111, returned by platform_institute_id().
-    PLATFORM_INSTITUTE_ID env must equal it. SQL migrations cannot read env
-    vars, so it is hardcoded there deliberately.
-  - A pattern section places `questionCount` BLOCKS, each worth `marksEach`
-    (one block = one display position). A stimulus block's sub-questions sum
-    to marksEach. This is what makes the marks-per-position invariant natural.
-  - questions.answer/solution/rubric/correct_option/numeric_answer/tolerance
-    are REVOKEd from authenticated+anon at COLUMN level. Student reads go
-    through get_question_solution(), which checks can_read_solution().
-    Teacher answer keys are produced server-side. Do not add these columns
-    back into any client query.
-  - institute_admin may manage paper_patterns owned by their OWN institute
-    (patterns are structure, not answer keys). They may never write questions
-    or stimuli, for any owner.
-  - tenancy-lint bans the escape-hatch pattern "or is_platform_owner()" inside
-    a create policy - NOT all uses. Sole-clause platform write policies on the
-    global/bank tables are intended and correct.
-  - Math authoring format inside question bodies: $...$ inline, $$...$$
-    display, \ce{...} for chemistry. Import mhchem as "katex/contrib/mhchem".
-    The deep path "katex/dist/contrib/mhchem" bypasses the package exports
-    map and silently registers macros on a different katex instance, so \ce
-    renders as an unknown command in red.
-  - Every printed artefact (each set's paper, each key, the mapping sheet)
-    starts on its own page. Sets must differ in ORDER, never only by the
-    letter in the header.
-  - Delivery is WEB FIRST: a website on Vercel, every role and login included.
-    A Capacitor native shell is a possible later step around the same web app,
-    not a rewrite, and it does not change anything now. Keep rendering on the
-    server - the institute is resolved server-side on every request, which a
-    static export could not do. See docs/DELIVERY.md, which also records that
-    Google OAuth does not work in a plain webview (that is the one real cost
-    of the Capacitor step, and it is costed there).
-  - Both Supabase projects are in Mumbai (ap-south-1) and vercel.json pins
-    functions to bom1. Region is fixed at Supabase project creation; do not
-    create a project in another region.
+If it does not exist yet: stop and tell me; everything that remains needs
+the live project.
 
-ENVIRONMENT GOTCHAS (Windows)
-  - npm runs scripts through cmd.exe, so a VAR=value prefix fails. Use
-    cross-env (already a devDependency).
-  - `next build` and `next dev` share .next. Building or cleaning it while a
-    dev server runs corrupts the running app. Use `npm run build:check`,
-    which builds into .next-build.
-  - Run the dev server on a spare port: `npm run dev -- -p 3005`.
+Before changing code, give me your plan in five bullets and wait.
 
-WHAT I HAVE DONE SINCE THAT SESSION
-  - Docker Desktop installed; local Supabase running; migrations applied with
-    `supabase db reset`; the three SQL suites run.
-  - src/lib/database.types.ts regenerated with `npm run db:types`.
-  - Supabase projects, GitHub repo, Vercel and Google OAuth configured.
-  - Platform owner membership bootstrapped per RUNBOOK section 1.
-  (If any of these is not true, tell me and stop before writing code.)
-
-NEXT CHECKPOINT: C2 - auth, membership, batches. Follow the C2 prompt in
-docs/BUILD-PLAN.md section 7 exactly.
-
-Before writing any code, give me your plan in five bullets and stop.
-Do not modify anything outside the scope of C2.
+DECISIONS ALREADY MADE - do not undo
+  - Platform institute UUID is the constant 11111111-1111-1111-1111-111111111111.
+  - The institute is resolved server-side from the session on every request;
+    the pf_institute cookie is only a validated preference. Unauthorised areas
+    return 404, not 403.
+  - No blanket "or is_platform_owner()" in policies; platform reads of tenant
+    rows go through audited SECURITY DEFINER functions that log.
+  - Answer/solution/rubric columns are REVOKEd at column level; students read
+    them only through get_question_solution().
+  - Relaxing a generator rule is always the teacher's click, never automatic.
+  - Maths: $...$, $$...$$, \ce{...}; import mhchem as "katex/contrib/mhchem".
+  - Windows: use cross-env for env-prefixed scripts; never build into .next
+    while a dev server runs (npm run build:check uses .next-build).
 ```
