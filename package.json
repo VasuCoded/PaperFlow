@@ -16,7 +16,8 @@
     "prepare": "husky",
     "build:check": "cross-env NEXT_DIST_DIR=.next-build next build",
     "db:verify": "tsx scripts/verify-schema.ts",
-    "db:types:local": "tsx scripts/gen-types-local.ts"
+    "db:types:local": "tsx scripts/gen-types-local.ts",
+    "seed:staging": "tsx scripts/seed-staging.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

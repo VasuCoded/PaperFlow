@@ -53,12 +53,9 @@ else is done in the app / through the RPCs — never by hand-editing memberships
 ## 2. Onboard an institute (§4.4, target < 15 min)
 
 1. Agree scope (which class-subjects, which pilot batches).
-2. Create the institute (only path that inserts into `institutes`):
-   ```sql
-   select public.create_institute('Institute Name','institute-slug',
-     'contact@institute.test','first.admin@institute.test');
-   ```
-   (Or via `/platform/institutes/new` once C2b is built.)
+2. Create the institute at `/platform/institutes` → "Create an institute". It
+   calls `create_institute`, the only path that inserts into `institutes`, and
+   records the first admin's invite in the same transaction.
 3. The first admin signs in with Google, accepts the invite on `/welcome`.
 4. Admin invites teachers and assigns their class-subjects.
 5. Activate class-subjects whose `bank_status='ready'` **on request** (§4).
@@ -66,7 +63,11 @@ else is done in the app / through the RPCs — never by hand-editing memberships
 
 ## 3. Activate a class-subject for an institute (§C11 gate)
 
-Do **not** flip to `active` unless the gate passes:
+Do **not** flip to `active` unless the gate passes. `/platform/activation` and
+`/platform/requests` show the first two conditions per class-subject (thinnest
+chapter, thinnest topic) and ask for confirmation, naming the gap, before
+activating thin. The per-institute query, including that institute's private
+questions:
 
 ```sql
 select c.name as chapter,
@@ -83,19 +84,17 @@ group by c.name order by total;
 
 Gate: no chapter < 60 approved, no topic < 8, every pattern section type has ≥3×
 its required count, and the teacher confirms the sample papers are ones they
-would have set. Then, from an activation request:
-
-```sql
-select public.decide_activation_request(:request_id, true, null);
-```
+would have set. Then approve the institute's request at `/platform/requests`
+(or activate directly in the matrix at `/platform/activation`). Declining
+requires a reason, which the institute admin sees on `/institute/subjects`.
 
 ## 4. Pull a bad question from circulation
 
-Never DELETE. Retire it (platform owner):
-
-```sql
-update public.questions set status='retired' where id = :qid;  -- shared or private
-```
+Never DELETE. Retire it at `/platform/support` — from its open flag
+("Retire question…") or by id ("Retire a question by id"). A reason is
+required. Retiring takes it out of new papers and practice for every institute,
+closes its open flags, and writes the reason to the audit log
+(`platform_retire_question`). Papers already made keep it.
 
 A tenant flag (`question_flags`) suppresses a shared question **for that tenant
 only** and never changes its status. Platform review decides retirement.
@@ -103,11 +102,14 @@ only** and never changes its status. Platform review decides retirement.
 ## 5. Correct a student's wrong set (§3.4)
 
 A student who logged against the wrong set poisons their weak-spot map silently.
-The transactional remap (C10) is exposed at `/teacher/papers/[id]` and, for
-platform support, at `/platform/support`. It must, in ONE transaction: remap
-each `attempt_item` to the correct `question_id` via the correct set, delete the
-practice set built from the wrong mapping, rebuild it, and leave
-`question_exposure` consistent. Do not do this with ad-hoc UPDATEs.
+The transactional remap (C10) is exposed at `/teacher/papers/[id]` for the
+student's own teacher and, for platform support, at `/platform/support` → Find
+a person → "Correct to". Both run `remap_attempt_set_internal` in ONE
+transaction: each `attempt_item` is remapped by position to the correct set's
+question, the practice set built from the wrong mapping is deleted (the student
+app rebuilds it), and `question_exposure` is left consistent — asserted by
+`tests/db/support.test.ts`. The platform path requires a reason and logs it.
+Do not do this with ad-hoc UPDATEs.
 
 ## 6. Restore a backup
 
@@ -139,8 +141,12 @@ goes away).
 
 ## 9. Offboard an institute
 
-1. `/institute/export` (or the platform export) → hand over their JSON + PDFs.
-2. `update public.institutes set status='suspended' where id = :inst;`
+1. Their admin runs `/institute/export` (JSON of everything they own, plus
+   papers via the print links). Do this BEFORE suspending: a suspended
+   institute's admin can no longer sign in to export.
+2. Suspend at `/platform/institutes` (or the institute's inspector page). Since
+   migration 0012 this is enforced in the database: its members resolve to no
+   institute, its join codes stop working, nothing is deleted.
 3. Keep data for the agreed notice period, then remove on request.
 
 ## 10. Cross-tenant data report → SEV-1
@@ -148,10 +154,35 @@ goes away).
 If any tenant reports seeing another tenant's data:
 
 1. **Suspend** the suspected path immediately (feature flag / take the route down).
-2. **Verify** with the isolation suite (`supabase/tests/isolation.test.sql`) and
-   `platform_access_log`.
+2. **Verify** with the isolation suite — `npx vitest run tests/db/isolation.test.ts`
+   against the migrations, and `supabase/tests/isolation.test.sql` against the
+   live schema — and `/platform/audit` (platform_access_log).
 3. **Disclose** to affected institutes per your agreement. Do not wait to be sure
    it was exploited — the isolation suite existing is what lets you scope it fast.
 
 This is the top risk in the project (§10). The tenancy lint, the enumerated
 isolation suite, and three-institute dev/staging data exist to keep it at zero.
+
+## 11. Seed a staging project
+
+A separate Supabase project, never production. Migrations first
+(`supabase db push` against the staging project), then:
+
+```bash
+SUPABASE_DB_URL="<staging connection string>" \
+STAGING_OWNER_EMAIL="you@gmail.com" \
+STAGING_TESTERS='[{"email":"friend@gmail.com","role":"teacher","institute":"sunrise"}]' \
+npm run seed:staging -- --i-know-this-is-staging
+```
+
+It builds three institutes (`staging-sunrise`, `staging-riverside`,
+`staging-hilltop`), about 2,000 synthetic questions across Class 10 Science
+(passes the activation gate), Class 10 Mathematics (deliberately fails it) and
+Class 12 Biology, papers with two sets, logged attempts, flags, invites, an
+activation request each way, and a review queue. It refuses any database that
+has a non-staging institute, runs in one transaction, and is safe to re-run.
+
+Synthetic users cannot sign in (sign-in is Google). Testers get real invites
+through `STAGING_TESTERS` (institute is `sunrise`, `riverside` or `hilltop`).
+`STAGING_OWNER_EMAIL` becomes platform owner only if that account has already
+signed in once — sign in, then re-run the seed.
