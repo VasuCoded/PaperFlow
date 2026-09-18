@@ -70,8 +70,10 @@ export const config = {
   matcher: [
     /*
      * Everything except static assets, images and the print/demo routes.
-     * `/demo` is deliberately excluded — it has no auth at all.
+     * `/demo` is deliberately excluded — it has no auth at all. So are the
+     * PWA files (worker, manifest, icons, offline page): public and static,
+     * they need no session refresh.
      */
-    "/((?!_next/static|_next/image|favicon.ico|demo|print|.*\\.(?:svg|png|jpg|jpeg|gif|webp|woff2?|ico)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|demo|print|sw\\.js|manifest\\.webmanifest|offline|pwa/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|woff2?|ico)$).*)",
   ],
 };

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Source_Serif_4, Noto_Sans_Devanagari } from "next/font/google";
 import "./globals.css";
 
@@ -26,6 +26,14 @@ const deva = Noto_Sans_Devanagari({
 export const metadata: Metadata = {
   title: "PaperFlow",
   description: "Question bank and mistake-practice platform for classes 9-12.",
+  applicationName: "PaperFlow",
+  appleWebApp: { capable: true, title: "PaperFlow", statusBarStyle: "default" },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#15181b",
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({

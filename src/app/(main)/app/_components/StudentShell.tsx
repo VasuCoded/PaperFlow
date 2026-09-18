@@ -11,6 +11,8 @@ import {
 } from "@/server/data/student";
 import { SubjectSwitcher } from "./SubjectSwitcher";
 import { OfflineBanner } from "./OfflineBanner";
+import { InstallPrompt, PwaRegistrar } from "./Pwa";
+import { hashUserId } from "@/lib/pwa/policy";
 
 export interface StudentContext {
   session: Session;
@@ -18,6 +20,8 @@ export interface StudentContext {
   papers: StudentPaper[];
   subjectId: string | null;
   subject: StudentSubject | null;
+  /** hashed user id — names this user's offline page cache; never the raw id */
+  userHash: string;
 }
 
 /** Resolve everything a student screen needs, server-side, once per request. */
@@ -28,7 +32,9 @@ export async function getStudentContext(nextPath: string): Promise<StudentContex
 
   const [subjects, papers] = await Promise.all([getStudentSubjects(session), getStudentPapers(session)]);
   const subjectId = await resolveSubject(subjects, papers);
+  const userHash = await hashUserId(session.userId);
   return {
+    userHash,
     session,
     subjects,
     papers,
@@ -86,8 +92,10 @@ export function StudentShell({
         </div>
       </header>
 
+      <PwaRegistrar userHash={ctx.userHash} />
       <main className="screen">
         <OfflineBanner />
+        {tab === "tests" && <InstallPrompt />}
         {consoleHref && (
           <div className="m-banner">
             This is the student app. <Link href={consoleHref} style={{ color: "var(--pen)" }}>Go to your console →</Link>

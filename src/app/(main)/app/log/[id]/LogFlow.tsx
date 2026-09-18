@@ -203,7 +203,19 @@ export function LogFlow({
           disabled={pending}
           onClick={() =>
             start(async () => {
-              setResult(await logPaper(paperId, multi ? chosen.id : null, [...wrong]));
+              // Logging needs a connection; say so plainly instead of failing
+              // into a queue the student never hears about (C9 item 8).
+              const offlineMessage =
+                "You’re offline. Logging needs a connection — nothing was saved. Your marks are still here; save again when you’re back online.";
+              if (typeof navigator !== "undefined" && !navigator.onLine) {
+                setResult({ ok: false, message: offlineMessage });
+                return;
+              }
+              try {
+                setResult(await logPaper(paperId, multi ? chosen.id : null, [...wrong]));
+              } catch {
+                setResult({ ok: false, message: offlineMessage });
+              }
             })
           }
         >
