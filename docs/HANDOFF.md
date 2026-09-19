@@ -5,7 +5,7 @@ project or real Google sign-in yet — that is the next step, and it needs you.
 The **"Prompt for the next session"** block at the bottom is meant to be pasted
 as the first message of the next Claude Code session.
 
-All commits local (no git remote) · 17 migrations · 275 tests green ·
+All commits local (no git remote) · 18 migrations · 282 tests green ·
 typecheck, lint, tenancy lint, schema verify and production build clean.
 
 ---
@@ -15,7 +15,7 @@ typecheck, lint, tenancy lint, schema verify and production build clean.
 | CP | Scope | State |
 |---|---|---|
 | C0 | Scaffold, tooling, DB guardrails | Done |
-| C1 | Schema, RLS, taxonomy, seeds | Done — 17 migrations executed in PGlite; types generated from them |
+| C1 | Schema, RLS, taxonomy, seeds | Done — 18 migrations; executed in PGlite and applied to the live dev project |
 | C2 | `/login`, `/welcome`, invites, batch join | Done |
 | C2b | `/platform`: institutes, inspect, bank, activation, requests, support, health, audit | Done |
 | C5–C7 | Generator, shuffle engine, print | Done |
@@ -96,6 +96,11 @@ Found by building against the real schema, or by the tests:
     mutation-tested against four kinds of planted leak.
 11. **The teacher preview showed raw TeX**, and passages were missing.
 12. **Offline logging failed silently** instead of saying nothing was saved.
+13. **Every answer in the bank was readable by any signed-in user** — found on
+    the first live Supabase run. The column-level REVOKE in 0004 did nothing,
+    because Supabase grants SELECT on whole tables and a column revoke cannot
+    narrow a table grant. 0018 revokes the table grant and grants back only
+    the safe columns; `tests/db/columns.test.ts` now covers it.
 
 ---
 
@@ -133,7 +138,7 @@ PaperFlow/
 ├─ supabase/migrations/      0001–0008 schema + RLS; 0009 pool; 0010 activity;
 │                            0011 platform; 0012 suspension; 0013 roles;
 │                            0014 institute console; 0015 FK fix; 0016 support;
-│                            0017 rate limit
+│                            0017 rate limit; 0018 hide answer columns
 ├─ supabase/tests/*.sql      psql suites for a live database (CI)
 ├─ tests/db/*.test.ts        the same guarantees, executable in npm test
 ├─ tests/app/*.test.ts       area guards, insert paths, load-test helpers
@@ -180,7 +185,9 @@ never scores. Web first on Vercel (Mumbai); Capacitor maybe later.
 
 STATE
 The whole app is built and committed locally (no git remote): platform and
-institute consoles, teacher screens, student PWA, print, 17 migrations.
+institute consoles, teacher screens, student PWA, print, 18 migrations.
+The dev Supabase project (Sydney, ref hvctndzlaobbxrehuxgn) has all 18 applied
+and .env.local points at it.
 275 tests pass, including executable database suites that run the real
 migrations in PGlite. NOTHING has run against a live Supabase project or
 real Google sign-in yet. HANDOFF section 4 lists the open issues.

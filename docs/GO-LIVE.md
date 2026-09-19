@@ -94,7 +94,7 @@ npm install
 npm test
 ```
 
-Expect `Tests  276 passed` (or more) at the end.
+Expect `Tests  282 passed` (or more) at the end.
 
 ```powershell
 npm run build:check
@@ -245,14 +245,14 @@ production keys live only in Vercel (section 7).
 
 ### 2.5 Create the tables (apply the migrations)
 
-The 17 files in `supabase/migrations` build the whole database: tables,
+The files in `supabase/migrations` (18 at the time of writing) build the whole database: tables,
 security rules and functions.
 
 ```powershell
 npx supabase db push --db-url "<dev session pooler connection string>"
 ```
 
-- It lists 17 migrations and asks to confirm → type `Y` and press Enter.
+- It lists every migration not yet applied and asks to confirm → type `Y` and press Enter.
 - Success ends with `Finished supabase db push.`
 - **If it fails:** copy the **whole** output and stop here. Give it to Claude
   (section 12). This is the first time these migrations meet real Supabase,
@@ -780,7 +780,7 @@ Supabase's security advisors.
 ### Final checklist
 
 - [ ] Code on GitHub (private), CI **build** job green
-- [ ] Dev Supabase project in Mumbai, 17 migrations applied
+- [ ] Dev Supabase project in Mumbai, all migrations applied
 - [ ] Google sign-in working on `localhost:3005`
 - [ ] You are platform owner in dev
 - [ ] Staging data loaded; teacher and student walkthroughs done

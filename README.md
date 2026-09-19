@@ -22,7 +22,7 @@ Supabase project or real Google sign-in yet** — see `docs/SETUP.md`.
 | CP | Scope | State |
 |----|-------|-------|
 | C0 | Repo, tooling, DB-control guardrails | Done |
-| C1 | Multi-tenant schema, RLS, taxonomy, seeds | Done — 17 migrations executed, types generated from them |
+| C1 | Multi-tenant schema, RLS, taxonomy, seeds | Done — 18 migrations, executed locally and applied to the live dev project |
 | C2 | Sign-in, welcome, invites, batch join codes | Done |
 | C2b | Platform console: institutes, inspect, review queue, activation, requests, support, health, audit | Done |
 | C3 | Ingestion standing brief | Doc only (ingestion is a Claude Code session, not app code) |
