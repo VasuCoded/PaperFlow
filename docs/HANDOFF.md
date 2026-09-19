@@ -185,22 +185,29 @@ institute consoles, teacher screens, student PWA, print, 17 migrations.
 migrations in PGlite. NOTHING has run against a live Supabase project or
 real Google sign-in yet. HANDOFF section 4 lists the open issues.
 
-WHAT I HAVE DONE SINCE (edit this list before pasting)
-  - [ ] Supabase dev + prod projects created in Mumbai (ap-south-1)
-  - [ ] Google OAuth configured in Supabase
-  - [ ] GitHub repo created and pushed; Vercel project connected
-  - [ ] .env.local filled from .env.local.example
+WHAT I HAVE DONE SINCE - following docs/GO-LIVE.md (tick before pasting)
+  - [ ] 1  code pushed to a private GitHub repo
+  - [ ] 2  Supabase dev project (Mumbai); migrations applied with db push
+  - [ ] 3  Google sign-in configured
+  - [ ] 4  signed in on localhost:3005 and made myself platform owner
+  - [ ] 5  staging data loaded; teacher + student walkthroughs done
+  - [ ] 6  deployed on Vercel
+  - [ ] 7  production Supabase project set up
+  - [ ] 10 .env.local has the dev SUPABASE_DB_URL; Supabase MCP authorised
   - [ ] Decided the student-privacy question in HANDOFF section 4 item 2
+  Problems I hit (paste errors / URLs / screenshots):
 
 TASK
-If the Supabase dev project exists: apply the migrations to it
-(supabase db push), seed taxonomy and patterns, bootstrap my platform owner
-membership (RUNBOOK section 1), then walk through sign-in -> create an
-institute -> invite -> generate a paper -> print -> student logs it, fixing
-whatever differs from PGlite. Report every difference you find.
+First fix anything in "Problems I hit". Then, against the DEV database only
+(SUPABASE_DB_URL in .env.local, and the supabase-dev MCP if authorised):
+  - regenerate database.types.ts from the live schema and reconcile any
+    difference with the PGlite-generated one
+  - make the CI "db" job pass (the older supabase/tests/*.sql suites)
+  - walk the app as each role on the live site and fix what differs from
+    PGlite; report every difference you find
+Never touch production. For a prod migration, give me the exact command.
 
-If it does not exist yet: stop and tell me; everything that remains needs
-the live project.
+If I have not reached step 2 of GO-LIVE.md yet: stop and tell me.
 
 Before changing code, give me your plan in five bullets and wait.
 

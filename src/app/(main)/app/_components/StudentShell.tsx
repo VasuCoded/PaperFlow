@@ -11,6 +11,7 @@ import {
 } from "@/server/data/student";
 import { SubjectSwitcher } from "./SubjectSwitcher";
 import { OfflineBanner } from "./OfflineBanner";
+import { PendingInvitesNotice } from "../../_components/PendingInvites";
 import { InstallPrompt, PwaRegistrar } from "./Pwa";
 import { hashUserId } from "@/lib/pwa/policy";
 
@@ -95,6 +96,7 @@ export function StudentShell({
       <PwaRegistrar userHash={ctx.userHash} />
       <main className="screen">
         <OfflineBanner />
+        <PendingInvitesNotice variant="student" />
         {tab === "tests" && <InstallPrompt />}
         {consoleHref && (
           <div className="m-banner">

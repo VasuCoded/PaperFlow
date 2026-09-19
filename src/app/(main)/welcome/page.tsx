@@ -25,10 +25,6 @@ export default async function WelcomePage({
   const session = await getSession();
   if (!session) redirect("/login");
 
-  // Someone who already belongs somewhere does not need this screen — unless
-  // they came here on purpose to join another batch (?join=1).
-  if (session.memberships.length > 0 && join !== "1") redirect(homePath(session));
-
   const supabase = await createServerSupabaseClient();
   // A user with no membership cannot SELECT invites under RLS, so this reads
   // them through the SECURITY DEFINER function, matched on their verified email.
@@ -40,6 +36,11 @@ export default async function WelcomePage({
   ]);
   const pending = invites ?? [];
   const suspended = suspendedRows ?? [];
+
+  // Someone who already belongs somewhere does not need this screen — unless
+  // an invitation is waiting (e.g. the platform owner invited to an institute,
+  // or a teacher invited to a second one), or they came to join another batch.
+  if (session.memberships.length > 0 && pending.length === 0 && join !== "1") redirect(homePath(session));
   const member = session.memberships.length > 0;
 
   return (

@@ -75,6 +75,9 @@ scripts               schema harness, type generation, seeds, staging seed, load
 docs                  BUILD-PLAN, SETUP, RUNBOOK, HANDOFF, DELIVERY, ingest brief
 ```
 
+**To put it online, follow [docs/GO-LIVE.md](docs/GO-LIVE.md)** — GitHub, Supabase,
+Google sign-in, Vercel, production, and giving Claude access to the dev database.
+
 Read `CLAUDE.md` before changing anything — the tenancy and role rules there are
 load-bearing. `docs/HANDOFF.md` has the current state, the open issues, and the
 prompt for the next session.

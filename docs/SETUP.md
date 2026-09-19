@@ -1,5 +1,10 @@
 # SETUP — what you need to do to bring PaperFlow online
 
+> **Superseded by [GO-LIVE.md](GO-LIVE.md)**, the current step-by-step guide
+> (GitHub → Supabase → Google sign-in → Vercel → production → Claude access).
+> This file is kept for its notes on the platform account and the local
+> Docker path, which the app no longer needs for testing.
+
 The code is built. These are the **external / human** steps I cannot do from
 here (they need accounts, cards, secrets, Docker, and OAuth consent). Do them
 under the **platform account**, never an institute's email (BUILD-PLAN §4.1).

@@ -2,7 +2,8 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { canAccess, getSession, type Session } from "@/server/session";
-import { InstituteSwitcher } from "./InstituteSwitcher";
+import { InstituteLinks, InstituteSwitcher } from "./InstituteSwitcher";
+import { PendingInvitesNotice } from "./PendingInvites";
 import { SignOutButton } from "./SignOutButton";
 
 export type Area = "platform" | "institute" | "teacher";
@@ -85,6 +86,8 @@ export async function AppShell({
         </div>
       </header>
 
+      <PendingInvitesNotice />
+
       <div className="appshell">
         <nav className="rail">
           <div className="brand">
@@ -116,11 +119,19 @@ function RailFoot({ session, area }: { session: Session; area: Area }) {
       <br />
       <b>{session.fullName ?? session.email}</b>
       <br />
-      <span className="role">{(ROLE_LABEL[session.role ?? ""] ?? "").toUpperCase()}</span>
+      <span className="role">
+        {(area === "platform" ? ROLE_LABEL.owner! : (ROLE_LABEL[session.role ?? ""] ?? "")).toUpperCase()}
+      </span>
+      {area === "platform" && <InstituteLinks memberships={session.memberships} />}
+      {area !== "platform" && session.isPlatformOwner && (
+        <div style={{ marginTop: 8 }}>
+          <Link href="/platform" style={{ fontSize: 11 }}>Platform console →</Link>
+        </div>
+      )}
       {area !== "platform" && current && (
         <>
           <br />
-          {session.memberships.length > 1 ? (
+          {session.memberships.filter((m) => m.kind === "institute").length > 1 ? (
             <InstituteSwitcher memberships={session.memberships} current={current.instituteId} />
           ) : (
             <span style={{ fontSize: 11 }}>{current.instituteName}</span>
