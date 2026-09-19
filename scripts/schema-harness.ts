@@ -49,7 +49,13 @@ create table if not exists auth.users (
   created_at timestamptz default now(),
   updated_at timestamptz default now(),
   is_sso_user boolean default false,
-  is_anonymous boolean default false
+  is_anonymous boolean default false,
+  -- nullable in Supabase too, but its auth server cannot read a NULL here;
+  -- anything that inserts users directly must set them to ''
+  confirmation_token varchar(255),
+  recovery_token varchar(255),
+  email_change_token_new varchar(255),
+  email_change varchar(255)
 );
 
 -- auth.uid() as Supabase defines it: the sub claim of the request JWT

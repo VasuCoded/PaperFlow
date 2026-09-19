@@ -195,3 +195,13 @@ describe("staging seed", () => {
     expect(() => assertStagingTarget(2)).toThrow(/refusing to seed/);
   });
 });
+
+describe("staging users are readable by Supabase's auth server", () => {
+  it("never leaves an auth token column NULL", async () => {
+    await actAsOwner(db);
+    expect(
+      await n(`select count(*)::int as n from auth.users where email like '%@staging.paperflow.test'
+        and (confirmation_token is null or recovery_token is null or email_change_token_new is null or email_change is null)`),
+    ).toBe(0);
+  });
+});

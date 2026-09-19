@@ -278,8 +278,12 @@ function institutesSql(): string[] {
     out.push(`insert into public.institutes (id, name, slug, kind, status, contact_email)
       values ('${iid}', ${lit(inst.name)}, '${STAGING_SLUG_PREFIX}${inst.key}', 'institute', 'active', '${admin.email}')
       on conflict (id) do nothing`);
-    out.push(`insert into auth.users (id, instance_id, aud, role, email, email_confirmed_at, raw_user_meta_data)
-      values ${people.map((p) => `('${p.id}', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', '${p.email}', now(), jsonb_build_object('full_name', ${lit(p.name)}))`).join(",\n        ")}
+    // The token columns must be '' rather than NULL: Supabase's auth server
+    // fails to read a user row with a NULL token ("converting NULL to string
+    // is unsupported"), which breaks the dashboard's user list.
+    out.push(`insert into auth.users (id, instance_id, aud, role, email, email_confirmed_at, raw_user_meta_data, raw_app_meta_data,
+        confirmation_token, recovery_token, email_change_token_new, email_change)
+      values ${people.map((p) => `('${p.id}', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', '${p.email}', now(), jsonb_build_object('full_name', ${lit(p.name)}), '{"provider":"staging","providers":["staging"]}'::jsonb, '', '', '', '')`).join(",\n        ")}
       on conflict (id) do nothing`);
     out.push(`insert into public.institute_members (institute_id, user_id, role)
       values ${people.map((p) => `('${iid}', '${p.id}', '${p.role}')`).join(", ")}
