@@ -88,18 +88,18 @@ describe("staging seed", () => {
     expect(r.rows[0]!.id).toBe(stagingId("institute:sunrise"));
   });
 
-  it("passes the activation gate for Science and Biology, and deliberately fails it for Mathematics", async () => {
+  it("passes the activation gate for Maths and Biology, and deliberately fails it for Science", async () => {
     await actAs(db, OWNER);
     const coverage = (await db.query<{ label: string; bank_status: string; approved: number; chapters: number; thinnest_chapter: string | null; thinnest_chapter_count: number | null; thinnest_topic_count: number | null; staging: number }>(
       `select label, bank_status, approved, chapters, thinnest_chapter, thinnest_chapter_count, thinnest_topic_count, staging from platform_bank_coverage()`,
     )).rows;
     await actAsOwner(db);
     const byLabel = new Map(coverage.map((c) => [c.label, c]));
-    expect(gateStatus(byLabel.get("Class 10 · Science")!).met).toBe(true);
+    expect(gateStatus(byLabel.get("Class 10 · Mathematics")!).met).toBe(true);
     expect(gateStatus(byLabel.get("Class 12 · Biology")!).met).toBe(true);
-    expect(gateStatus(byLabel.get("Class 10 · Mathematics")!).met).toBe(false);
-    expect(byLabel.get("Class 10 · Mathematics")!.bank_status).toBe("seeding");
-    expect(byLabel.get("Class 10 · Science")!.staging).toBeGreaterThan(0);
+    expect(gateStatus(byLabel.get("Class 10 · Science")!).met).toBe(false);
+    expect(byLabel.get("Class 10 · Science")!.bank_status).toBe("seeding");
+    expect(byLabel.get("Class 10 · Mathematics")!.staging).toBeGreaterThan(0);
   });
 
   it("gives each institute two papers with two sets and ~75% of the batch logged", async () => {
@@ -142,7 +142,7 @@ describe("staging seed", () => {
     const teacher = stagingPeople("sunrise").find((p) => p.role === "teacher")!;
     const iid = instituteId("sunrise");
     const cs = (await db.query<{ id: string }>(
-      `select cs.id from class_subjects cs join classes c on c.id = cs.class_id join subjects s on s.id = cs.subject_id where c.name = '10' and s.name = 'Science'`,
+      `select cs.id from class_subjects cs join classes c on c.id = cs.class_id join subjects s on s.id = cs.subject_id where c.name = '10' and s.name = 'Mathematics'`,
     )).rows[0]!.id;
     await actAs(db, teacher.id);
     const pool = (await db.query<{
@@ -170,13 +170,13 @@ describe("staging seed", () => {
       positionLocked: q.position_locked,
     }));
     const sections = (await db.query<{ label: string; question_count: number; marks_each: number; question_types: string[] }>(
-      `select label, question_count, marks_each, question_types from pattern_sections where pattern_id = '${stagingId("pattern:10 Science")}' order by sort_order`,
+      `select label, question_count, marks_each, question_types from pattern_sections where pattern_id = '${stagingId("pattern:10 Mathematics")}' order by sort_order`,
     )).rows;
     const result = generatePaper(
       { instituteId: iid, classSubjectId: cs, allowedOwnerIds: ["11111111-1111-1111-1111-111111111111", iid], difficultySplit: { easy: 0.3, medium: 0.5, hard: 0.2 }, seed: 7 },
       buildBlocks(questions),
       {
-        id: stagingId("pattern:10 Science"),
+        id: stagingId("pattern:10 Mathematics"),
         name: "Staging Unit Test (25 marks)",
         totalMarks: 25,
         sections: sections.map((s) => ({
@@ -206,6 +206,17 @@ describe("staging users are readable by Supabase's auth server", () => {
     expect(
       await n(`select count(*)::int as n from auth.users where email like '%@users.paperflow.invalid'
         and (confirmation_token is null or recovery_token is null or email_change_token_new is null or email_change is null)`),
+    ).toBe(0);
+  });
+
+  // Found on dev: without these, every password sign-in answered
+  // "Database error querying schema".
+  it("shapes users like a real sign-up: timestamps, email provider, email identity", async () => {
+    await actAsOwner(db);
+    expect(
+      await n(`select count(*)::int as n from auth.users u where u.email like '%@users.paperflow.invalid'
+        and (u.created_at is null or u.updated_at is null or u.raw_app_meta_data->>'provider' <> 'email'
+          or not exists (select 1 from auth.identities i where i.user_id = u.id and i.provider = 'email'))`),
     ).toBe(0);
   });
 });

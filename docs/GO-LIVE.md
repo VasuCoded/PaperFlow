@@ -406,8 +406,10 @@ The question bank is empty, so there is nothing to make a paper from yet. The
 - three pretend institutes (Sunrise, Riverside, Hilltop), each with an admin,
   3 teachers and 24 students — **all of them real username accounts you can
   sign in as**
-- about 2,000 made-up questions in Class 10 Science, Class 10 Maths and
-  Class 12 Biology
+- about 2,000 questions: **Class 10 Maths** is the main one — real
+  chapter-by-chapter questions (HCF, polynomials, quadratics, AP, trigonometry,
+  mensuration, probability…) with worked answers — plus filler Class 10
+  Science and Class 12 Biology
 - batches, papers, logged attempts, flags and a review queue
 
 It **refuses to run on any database that has real institutes**, so it cannot
@@ -441,7 +443,7 @@ of these with `STAGING_PASSWORD`:
 | Username | Role |
 |---|---|
 | `sunrise.admin` | Institute admin of Staging Sunrise Academy |
-| `sunrise.teacher1` … `sunrise.teacher3` | Teachers (teacher 3 teaches Biology) |
+| `sunrise.teacher1` … `sunrise.teacher3` | Teachers (1 and 2 teach Class 10 Maths, 3 teaches Class 12 Biology) |
 | `sunrise.student1` … `sunrise.student24` | Students |
 | `riverside.*`, `hilltop.*` | The same, at the other two institutes |
 
@@ -452,7 +454,7 @@ looks wrong (URL + screenshot) for Claude.
 
 - [ ] **Institutes** lists three staging institutes.
 - [ ] **Review queue** shows staged questions, with maths rendered.
-- [ ] **Activation**: Maths fails the gate, Science and Biology pass.
+- [ ] **Activation**: Science fails the gate, Maths and Biology pass.
 - [ ] **Subject requests** has one pending request.
 - [ ] **Support** → look up `sunrise.student1`; try **Reset password…**.
 - [ ] **Health** and **Audit log** load.
@@ -465,14 +467,14 @@ looks wrong (URL + screenshot) for Claude.
 - [ ] **Members**: the members table shows usernames; try **Reset password**
       on a student.
 - [ ] Open **`/teacher/generate`** and set a paper:
-  - [ ] **Class and subject:** Class 10 · Science.
+  - [ ] **Class and subject:** Class 10 · Mathematics.
   - [ ] **Pattern:** **Staging Unit Test (25 marks)** (the CBSE board patterns
         need question types the synthetic data doesn't have).
   - [ ] A paper appears, formulas rendered. Try **Lock**, **Swap**, a different
         difficulty mix, and **2 printed sets**.
   - [ ] **Save and print** → each set on its own pages, answer keys, mapping
         sheet.
-- [ ] **`/teacher/batches`**: note the 6-character **join code** of **10-A Science**.
+- [ ] **`/teacher/batches`**: note the 6-character **join code** of the **10-Mathematics A** batch.
 
 ### 5.5 Walk through as a student, and the approval queue
 

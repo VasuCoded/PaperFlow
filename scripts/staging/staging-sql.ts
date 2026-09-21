@@ -11,14 +11,16 @@
  * changed things without undoing what they did.
  *
  * What it builds:
- *   class-subjects  10 Science (ready, 60 approved per chapter: passes the gate)
- *                   10 Mathematics (seeding, 30 per chapter: fails the gate)
- *                   12 Biology (ready, 60 per chapter)
+ *   class-subjects  10 Mathematics (ready, 60 approved per chapter, real
+ *                   chapter-by-chapter questions with computed answers —
+ *                   scripts/staging/maths.ts; passes the gate)
+ *                   10 Science (seeding, 30 per chapter: fails the gate)
+ *                   12 Biology (ready, 60 per chapter, generic filler)
  *                   chapters from docs/taxonomy, three synthetic topics each
  *   a platform "Staging Unit Test (25 marks)" pattern per class-subject
- *   institutes      Staging Sunrise Academy (Science + Biology active)
- *                   Staging Riverside Classes (Science; Mathematics requested)
- *                   Staging Hilltop Tutorials (Science; Biology declined)
+ *   institutes      Staging Sunrise Academy (Maths + Biology active)
+ *                   Staging Riverside Classes (Maths; Science requested)
+ *                   Staging Hilltop Tutorials (Maths; Biology declined)
  *   each            1 admin, 3 teachers, 24 students, 2 batches per subject,
  *                   2 generated papers (two sets each) with ~75% of students
  *                   logged, 10 approved private questions, 2 open flags,
@@ -36,6 +38,10 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { loginToEmail, USERNAME_EMAIL_DOMAIN } from "../../src/lib/identity";
+import { mathsQuestion } from "./maths";
+
+// Set by stagingStatements before the question SQL is built.
+let REPO_ROOT_FOR_MATHS = ".";
 
 export const STAGING_SLUG_PREFIX = "staging-";
 /** Staging people are username accounts, like everyone else. */
@@ -59,8 +65,8 @@ interface SubjectSpec {
 }
 
 export const STAGING_SUBJECTS: SubjectSpec[] = [
-  { cls: "10", subject: "Science", short: "SCI", csv: "10__Science.csv", bank: "ready", perTopic: 20 },
-  { cls: "10", subject: "Mathematics", short: "MAT", csv: "10__Mathematics.csv", bank: "seeding", perTopic: 10 },
+  { cls: "10", subject: "Mathematics", short: "MAT", csv: "10__Mathematics.csv", bank: "ready", perTopic: 20 },
+  { cls: "10", subject: "Science", short: "SCI", csv: "10__Science.csv", bank: "seeding", perTopic: 10 },
   { cls: "12", subject: "Biology", short: "BIO", csv: "12__Biology.csv", bank: "ready", perTopic: 20 },
 ];
 
@@ -74,12 +80,12 @@ interface InstituteSpec {
 }
 
 export const STAGING_INSTITUTES: InstituteSpec[] = [
-  { key: "sunrise", name: "Staging Sunrise Academy", active: ["10 Science", "12 Biology"], request: null },
-  { key: "riverside", name: "Staging Riverside Classes", active: ["10 Science"], request: { cs: "10 Mathematics", status: "pending" } },
+  { key: "sunrise", name: "Staging Sunrise Academy", active: ["10 Mathematics", "12 Biology"], request: null },
+  { key: "riverside", name: "Staging Riverside Classes", active: ["10 Mathematics"], request: { cs: "10 Science", status: "pending" } },
   {
     key: "hilltop",
     name: "Staging Hilltop Tutorials",
-    active: ["10 Science"],
+    active: ["10 Mathematics"],
     request: {
       cs: "12 Biology",
       status: "declined",
@@ -229,9 +235,53 @@ const SUBJECT_JOINS = `
   join public.classes c on c.id = cs.class_id
   join public.subjects s on s.id = cs.subject_id`;
 
+interface MathsRow {
+  chapter: number;
+  topic: number;
+  g: number;
+  salt: number;
+}
+
+/**
+ * Class 10 Mathematics questions from scripts/staging/maths.ts (real content,
+ * computed answers), inserted by chapter number and staging topic.
+ */
+function mathsInsertSql(opts: { owner: string; source: string; idExpr: string; rows: MathsRow[] }): string {
+  const values = opts.rows.map((r) => {
+    const q = mathsQuestion(r.chapter, r.topic, r.g, r.salt);
+    return `(${r.chapter}::int, ${r.topic}::int, ${r.g}::int, ${lit(q.body)}::text, ${lit(q.type)}::text, ${
+      q.options ? `${lit(JSON.stringify(q.options))}::jsonb` : "null::jsonb"
+    }, ${q.correct ? `${lit(q.correct)}::text` : "null::text"}, ${lit(q.answer)}::text, ${lit(q.solution)}::text, ${q.marks}::int, ${lit(q.difficulty)}::text)`;
+  });
+  return `insert into public.questions ${QUESTION_INSERT_COLUMNS}
+    select ${opts.idExpr}, ${opts.owner}, ch.class_subject_id, ch.id, t.id,
+           v.body, v.qtype, v.options, v.correct, v.answer, v.solution, v.marks, v.difficulty,
+           ${lit(opts.source)}, v.qtype = 'mcq'
+    from (values
+      ${values.join(",\n      ")}
+    ) v(ord, k, g, body, qtype, options, correct, answer, solution, marks, difficulty)
+    join public.chapters ch on ch.class_subject_id = ${csSql("10 Mathematics")} and ch.sort_order = v.ord
+    join public.topics t on t.chapter_id = ch.id and t.slug = 'staging-topic-' || v.k
+    on conflict (id) do nothing`;
+}
+
+const range = (from: number, to: number) => Array.from({ length: to - from + 1 }, (_, i) => from + i);
+
 function questionSql(): string[] {
   const out: string[] = [];
   for (const s of STAGING_SUBJECTS) {
+    if (s.subject === "Mathematics") {
+      const chapters = readChapters(REPO_ROOT_FOR_MATHS, s.csv).map((c) => Number(c.number));
+      out.push(
+        mathsInsertSql({
+          owner: "public.platform_institute_id()",
+          source: "Staging synthetic",
+          idExpr: "md5('staging:q:' || t.id::text || ':' || v.g)::uuid",
+          rows: chapters.flatMap((chapter) => [1, 2, 3].flatMap((topic) => range(1, s.perTopic).map((g) => ({ chapter, topic, g, salt: 0 })))),
+        }),
+      );
+      continue;
+    }
     out.push(`insert into public.questions ${QUESTION_INSERT_COLUMNS}
       select md5('staging:q:' || t.id::text || ':' || g)::uuid, ${questionColumns("g", "public.platform_institute_id()", "format('[Staging · %s · %s]', ch.name, t.name)", "Staging synthetic")}
       ${SUBJECT_JOINS}
@@ -239,37 +289,46 @@ function questionSql(): string[] {
       where c.name = ${lit(s.cls)} and s.name = ${lit(s.subject)} and t.slug like 'staging-topic-%'
       on conflict (id) do nothing`);
   }
-  for (const inst of STAGING_INSTITUTES) {
-    out.push(`insert into public.questions ${QUESTION_INSERT_COLUMNS}
-      select md5('staging:private:${inst.key}:' || ch.sort_order || ':' || g)::uuid, ${questionColumns("g", `'${instituteId(inst.key)}'::uuid`, `format('[Staging · ${inst.name.replace(/'/g, "''")} private · %s]', ch.name)`, "Staging private synthetic")}
-      ${SUBJECT_JOINS}
-      cross join generate_series(1, 5) g
-      where c.name = '10' and s.name = 'Science' and ch.sort_order in (1, 2) and t.slug = 'staging-topic-1'
-      on conflict (id) do nothing`);
-  }
+
+  // Each institute's own private Maths questions (chapters 1–2).
+  STAGING_INSTITUTES.forEach((inst, i) => {
+    out.push(
+      mathsInsertSql({
+        owner: `'${instituteId(inst.key)}'::uuid`,
+        source: "Staging private synthetic",
+        idExpr: `md5('staging:private:${inst.key}:' || ch.sort_order || ':' || v.g)::uuid`,
+        rows: [1, 2].flatMap((chapter) => range(1, 5).map((g) => ({ chapter, topic: 1, g, salt: 300 + i * 10 }))),
+      }),
+    );
+  });
+
   // Approve the synthetic bank. Only rows still in staging: anything a tester
   // has since rejected or retired stays as they left it.
   out.push(`update public.questions set status = 'approved'
     where source in ('Staging synthetic', 'Staging private synthetic') and status = 'staging'`);
 
   // The review queue: staged on purpose, never approved by the seed.
-  out.push(`insert into public.questions ${QUESTION_INSERT_COLUMNS}
-    select md5('staging:review:' || g)::uuid, ${questionColumns("g", "public.platform_institute_id()", "format('[Staging review · %s]', ch.name)", "Staging review sample")}
-    ${SUBJECT_JOINS}
-    cross join generate_series(1, 12) g
-    where c.name = '10' and s.name = 'Science' and ch.sort_order = 1 and t.slug = 'staging-topic-2'
-    on conflict (id) do nothing`);
+  out.push(
+    mathsInsertSql({
+      owner: "public.platform_institute_id()",
+      source: "Staging review sample",
+      idExpr: "md5('staging:review:' || v.g)::uuid",
+      rows: range(1, 12).map((g) => ({ chapter: 1, topic: 2, g, salt: 500 })),
+    }),
+  );
   out.push(`update public.questions set note = 'Unsure: option C may also be correct depending on the textbook edition.'
     where source = 'Staging review sample' and note is null and owner_institute_id = public.platform_institute_id()
       and id in (select md5('staging:review:' || g)::uuid from generate_series(3, 12, 3) g)`);
-  for (const inst of STAGING_INSTITUTES) {
-    out.push(`insert into public.questions ${QUESTION_INSERT_COLUMNS}
-      select md5('staging:review:${inst.key}:' || g)::uuid, ${questionColumns("g", `'${instituteId(inst.key)}'::uuid`, `format('[Staging review · ${inst.name.replace(/'/g, "''")} private · %s]', ch.name)`, "Staging review sample")}
-      ${SUBJECT_JOINS}
-      cross join generate_series(1, 3) g
-      where c.name = '10' and s.name = 'Science' and ch.sort_order = 2 and t.slug = 'staging-topic-3'
-      on conflict (id) do nothing`);
-  }
+  STAGING_INSTITUTES.forEach((inst, i) => {
+    out.push(
+      mathsInsertSql({
+        owner: `'${instituteId(inst.key)}'::uuid`,
+        source: "Staging review sample",
+        idExpr: `md5('staging:review:${inst.key}:' || v.g)::uuid`,
+        rows: range(1, 3).map((g) => ({ chapter: 2, topic: 3, g, salt: 700 + i * 10 })),
+      }),
+    );
+  });
   return out;
 }
 
@@ -285,13 +344,22 @@ function institutesSql(): string[] {
     out.push(`insert into public.institutes (id, name, slug, kind, status, contact_email)
       values ('${iid}', ${lit(inst.name)}, '${STAGING_SLUG_PREFIX}${inst.key}', 'institute', 'active', '${admin.email}')
       on conflict (id) do nothing`);
-    // The token columns must be '' rather than NULL: Supabase's auth server
-    // fails to read a user row with a NULL token ("converting NULL to string
-    // is unsupported"), which breaks the dashboard's user list.
+    // Shaped like a real sign-up, or Supabase's auth server cannot read the
+    // row ("Database error querying schema"): token columns '' rather than
+    // NULL, created_at/updated_at set, provider 'email' and an 'email'
+    // identity. The update repairs rows an older seed inserted.
     out.push(`insert into auth.users (id, instance_id, aud, role, email, email_confirmed_at, raw_user_meta_data, raw_app_meta_data,
-        confirmation_token, recovery_token, email_change_token_new, email_change)
-      values ${people.map((p) => `('${p.id}', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', '${p.email}', now(), jsonb_build_object('full_name', ${lit(p.name)}, 'username', '${p.username}'), '{"provider":"staging","providers":["staging"]}'::jsonb, '', '', '', '')`).join(",\n        ")}
+        confirmation_token, recovery_token, email_change_token_new, email_change, created_at, updated_at)
+      values ${people.map((p) => `('${p.id}', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', '${p.email}', now(), jsonb_build_object('full_name', ${lit(p.name)}, 'username', '${p.username}'), '{"provider":"email","providers":["email"]}'::jsonb, '', '', '', '', now(), now())`).join(",\n        ")}
       on conflict (id) do nothing`);
+    const ids = people.map((p) => `'${p.id}'`).join(", ");
+    out.push(`update auth.users set created_at = coalesce(created_at, now()), updated_at = coalesce(updated_at, now()),
+        raw_app_meta_data = '{"provider":"email","providers":["email"]}'::jsonb
+      where id in (${ids}) and (created_at is null or updated_at is null or raw_app_meta_data->>'provider' = 'staging')`);
+    out.push(`insert into auth.identities (provider_id, user_id, identity_data, provider, created_at, updated_at)
+      select u.id::text, u.id, jsonb_build_object('sub', u.id::text, 'email', u.email, 'email_verified', false, 'phone_verified', false), 'email', now(), now()
+      from auth.users u where u.id in (${ids})
+      on conflict (provider_id, provider) do nothing`);
     out.push(`insert into public.institute_members (institute_id, user_id, role)
       values ${people.map((p) => `('${iid}', '${p.id}', '${p.role}')`).join(", ")}
       on conflict (institute_id, user_id) do nothing`);
@@ -536,6 +604,7 @@ export interface StagingOptions {
 }
 
 export function stagingStatements(opts: StagingOptions): string[] {
+  REPO_ROOT_FOR_MATHS = opts.repoRoot;
   return [
     ...taxonomySql(opts.repoRoot),
     ...patternSql(),

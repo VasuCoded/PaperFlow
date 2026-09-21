@@ -46,8 +46,9 @@ create table if not exists auth.users (
   email_confirmed_at timestamptz default now(),
   raw_user_meta_data jsonb default '{}'::jsonb,
   raw_app_meta_data jsonb default '{}'::jsonb,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now(),
+  -- no default, as in Supabase; its auth server cannot read a NULL here either
+  created_at timestamptz,
+  updated_at timestamptz,
   is_sso_user boolean default false,
   is_anonymous boolean default false,
   -- nullable in Supabase too, but its auth server cannot read a NULL here;
@@ -56,6 +57,19 @@ create table if not exists auth.users (
   recovery_token varchar(255),
   email_change_token_new varchar(255),
   email_change varchar(255)
+);
+
+-- password sign-in needs an 'email' identity per user, as Supabase creates on sign-up
+create table if not exists auth.identities (
+  id uuid primary key default gen_random_uuid(),
+  provider_id text not null,
+  user_id uuid not null references auth.users (id) on delete cascade,
+  identity_data jsonb not null,
+  provider text not null,
+  last_sign_in_at timestamptz,
+  created_at timestamptz,
+  updated_at timestamptz,
+  unique (provider_id, provider)
 );
 
 -- auth.uid() as Supabase defines it: the sub claim of the request JWT
