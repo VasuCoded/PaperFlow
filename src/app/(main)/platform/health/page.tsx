@@ -50,17 +50,7 @@ export default async function HealthPage() {
   const hog = tenants.length > 1 ? tenants.find((r) => r.rows / tenantRows > 0.4) : undefined;
 
   return (
-    <AppShell
-      area="platform"
-      pathname="/platform/health"
-      eyebrow="Platform · health"
-      title={
-        <>
-          Headroom, backups <em>and who is using it</em>
-        </>
-      }
-      intro="Free-tier ceilings with a per-institute breakdown, so one runaway tenant is visible before the limit is."
-    >
+    <AppShell area="platform" pathname="/platform/health">
       {hog && (
         <div className="notice warn">
           <b>{hog.name ?? "One institute"}</b> holds {Math.round((hog.rows / tenantRows) * 100)}% of all tenant rows —

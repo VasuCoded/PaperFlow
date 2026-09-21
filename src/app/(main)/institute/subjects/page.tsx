@@ -27,17 +27,7 @@ export default async function SubjectsPage() {
   const declined = rows.filter((r) => r.last_decline_reason && r.status !== "active" && !r.pending_request);
 
   return (
-    <AppShell
-      area="institute"
-      pathname="/institute/subjects"
-      eyebrow="Institute · subjects"
-      title={
-        <>
-          What&rsquo;s available, <em>and what isn&rsquo;t yet</em>
-        </>
-      }
-      intro="Every class-subject is listed, including the ones you cannot use yet, with the reason. An empty dropdown makes an app look broken; an honest 'not yet' does not."
-    >
+    <AppShell area="institute" pathname="/institute/subjects">
       {declined.length > 0 && (
         <div className="notice warn">
           <b>Declined requests.</b>

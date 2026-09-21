@@ -53,17 +53,7 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
   };
 
   return (
-    <AppShell
-      area="platform"
-      pathname="/platform/audit"
-      eyebrow="Platform · audit log"
-      title={
-        <>
-          Who looked at <em>whose data</em>
-        </>
-      }
-      intro="Two trails merged, newest first: every role change in every institute, and every audited read or change the platform made. Reading this page is itself logged."
-    >
+    <AppShell area="platform" pathname="/platform/audit">
       <form method="get" className="btnrow" style={{ marginBottom: 14, alignItems: "flex-end", flexWrap: "wrap" }}>
         <div>
           <label htmlFor="audit-inst" style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 5 }}>Institute</label>

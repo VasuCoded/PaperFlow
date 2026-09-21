@@ -39,17 +39,7 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
   const count = (r: string) => members.filter((m) => m.role === r).length;
 
   return (
-    <AppShell
-      area="institute"
-      pathname="/institute/members"
-      eyebrow="Institute · members"
-      title={
-        <>
-          Members, <em>and how roles change</em>
-        </>
-      }
-      intro="You can invite teachers and students, and move someone between those two roles. You cannot grant institute admin or platform owner — that requires the platform, by construction."
-    >
+    <AppShell area="institute" pathname="/institute/members">
       <div className="cards c2" style={{ marginBottom: 22 }}>
         <div className="card">
           <h4>Invite someone</h4>

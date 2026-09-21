@@ -39,17 +39,7 @@ export default async function ExportPage() {
   ];
 
   return (
-    <AppShell
-      area="institute"
-      pathname="/institute/export"
-      eyebrow="Institute · export"
-      title={
-        <>
-          Your data, <em>whenever you want it</em>
-        </>
-      }
-      intro="One click gives you everything your institute owns as JSON, and every paper can be printed to PDF. A tenant that cannot leave is a tenant that is right to be nervous."
-    >
+    <AppShell area="institute" pathname="/institute/export">
       <div className="cards c2">
         <div className="card">
           <h4>What&rsquo;s included</h4>

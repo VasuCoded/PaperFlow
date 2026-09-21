@@ -29,17 +29,7 @@ export default async function ActivationPage() {
   );
 
   return (
-    <AppShell
-      area="platform"
-      pathname="/platform/activation"
-      eyebrow="Platform · activation"
-      title={
-        <>
-          Two statuses, <em>kept apart</em>
-        </>
-      }
-      intro="Bank status is platform-wide: how thick the shared bank is. Activation is per institute: whether that institute has it turned on. Activating for one institute never changes what another sees."
-    >
+    <AppShell area="platform" pathname="/platform/activation">
       <div className="notice warn">
         <b>The gate.</b> Never activate thin: no chapter under {GATE.minPerChapter} approved questions, no topic under{" "}
         {GATE.minPerTopic}, every pattern section type at 3× its required count, and a teacher confirming the

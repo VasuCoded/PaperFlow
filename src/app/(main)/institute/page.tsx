@@ -28,16 +28,9 @@ export default async function InstituteOverview() {
 
   const roles = (membersRes.data ?? []).map((m) => m.role);
   const batches = batchesRes.data ?? [];
-  const instituteName = session?.memberships.find((m) => m.instituteId === inst)?.instituteName ?? "Your institute";
 
   return (
-    <AppShell
-      area="institute"
-      pathname="/institute"
-      eyebrow="Institute console"
-      title={<>{instituteName}</>}
-      intro="Your members, your batches, your papers and your data. You cannot write to the question bank — that gate is what stands between a wrong answer key and a parent."
-    >
+    <AppShell area="institute" pathname="/institute">
       <div className="cards c4">
         <div className="card"><span className="big">{roles.filter((r) => r === "teacher").length}</span><span className="cap">Teachers</span></div>
         <div className="card"><span className="big">{roles.filter((r) => r === "student").length}</span><span className="cap">Students</span></div>

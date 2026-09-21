@@ -41,17 +41,7 @@ export default async function FlaggedPage() {
   const flags = data ?? [];
 
   return (
-    <AppShell
-      area="teacher"
-      pathname="/teacher/flagged"
-      eyebrow="Teacher · flagged questions"
-      title={
-        <>
-          Questions pulled <em>from your institute&rsquo;s papers</em>
-        </>
-      }
-      intro="Flag a question from the paper preview when it is wrong or badly worded."
-    >
+    <AppShell area="teacher" pathname="/teacher/flagged">
       <div className="notice warn">
         <b>What a flag does, exactly.</b> The question stops appearing in your institute&rsquo;s papers straight
         away. It stays in the shared bank for other institutes until the platform reviews it — one institute

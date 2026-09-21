@@ -23,17 +23,7 @@ export default async function RequestsPage() {
   const decided = rows.filter((r) => r.status !== "pending").sort((a, b) => (b.decided_at ?? "").localeCompare(a.decided_at ?? ""));
 
   return (
-    <AppShell
-      area="platform"
-      pathname="/platform/requests"
-      eyebrow="Platform · activation requests"
-      title={
-        <>
-          The honest version of <em>&ldquo;not yet&rdquo;</em>
-        </>
-      }
-      intro="Institutes ask here instead of staring at an empty dropdown. Oldest first, each with the coverage gate for that class-subject alongside."
-    >
+    <AppShell area="platform" pathname="/platform/requests">
       <h2 className="sect">Pending — {pending.length}</h2>
       {pending.length === 0 && <p className="lede">Nothing waiting.</p>}
       {pending.map((r) => {

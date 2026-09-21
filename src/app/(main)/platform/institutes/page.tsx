@@ -18,17 +18,7 @@ export default async function InstitutesPage() {
   const institutes = data ?? [];
 
   return (
-    <AppShell
-      area="platform"
-      pathname="/platform/institutes"
-      eyebrow="Platform · institutes"
-      title={
-        <>
-          Every institute, <em>counted not read</em>
-        </>
-      }
-      intro="Counts come from an aggregate function and are not logged. Opening an institute reads its members and papers, so that is logged — one row per visit, visible in the audit log."
-    >
+    <AppShell area="platform" pathname="/platform/institutes">
       {institutes.length === 0 ? (
         <p className="lede">No institutes yet. Create the first one below.</p>
       ) : (

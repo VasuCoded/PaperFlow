@@ -42,13 +42,13 @@ export default async function PaperDetailPage({ params }: { params: Promise<{ id
   const placedMarks = paper.canon.sections.reduce((n, s) => n + s.blocks.reduce((m, b) => m + blockMarks(b), 0), 0);
 
   return (
-    <AppShell
-      area="teacher"
-      pathname="/teacher/papers"
-      eyebrow={`Teacher · ${paper.classSubjectLabel}`}
-      title={<>{paper.title}</>}
-      intro={`${paper.batchName ?? "No batch"} · saved ${when.format(new Date(paper.createdAt))}`}
-    >
+    <AppShell area="teacher" pathname="/teacher/papers">
+      <div className="pagehead">
+        <h1>{paper.title}</h1>
+        <span>
+          {paper.classSubjectLabel} · {paper.batchName ?? "No batch"} · saved {when.format(new Date(paper.createdAt))}
+        </span>
+      </div>
       <div className="cards c4" style={{ marginBottom: 20 }}>
         <div className="card"><span className="big">{placedMarks}</span><span className="cap">Marks</span></div>
         <div className="card"><span className="big">{positions}</span><span className="cap">Numbered questions</span></div>

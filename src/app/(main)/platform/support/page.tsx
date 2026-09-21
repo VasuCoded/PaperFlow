@@ -25,17 +25,7 @@ export default async function SupportPage() {
   const institutes = (institutesRes.data ?? []).map((i) => ({ id: i.id, name: i.name }));
 
   return (
-    <AppShell
-      area="platform"
-      pathname="/platform/support"
-      eyebrow="Platform · support"
-      title={
-        <>
-          The support queue, <em>without hand-written SQL</em>
-        </>
-      }
-      intro="The fixes that used to be UPDATE statements against a live multi-tenant database. Each runs in one transaction, needs a reason, names the institute and the person before it runs, and is written to the audit log."
-    >
+    <AppShell area="platform" pathname="/platform/support">
       <h2 className="sect">Find a person</h2>
       <div className="card" style={{ marginBottom: 22 }}>
         <PersonLookup />

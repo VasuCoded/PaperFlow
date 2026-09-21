@@ -59,17 +59,11 @@ const BRAND: Record<Area, string> = {
 export async function AppShell({
   area,
   pathname,
-  eyebrow,
-  title,
-  intro,
   children,
   split = false,
 }: {
   area: Area;
   pathname: string;
-  eyebrow: string;
-  title: ReactNode;
-  intro?: string;
   children: ReactNode;
   split?: boolean;
 }) {
@@ -80,14 +74,6 @@ export async function AppShell({
 
   return (
     <div className="wrap">
-      <header className="masthead">
-        <div>
-          <p className="eyebrow">{eyebrow}</p>
-          <h1>{title}</h1>
-          {intro && <p>{intro}</p>}
-        </div>
-      </header>
-
       <PendingInvitesNotice />
       <AccessRequestsNotice session={session} area={area} />
 

@@ -53,16 +53,7 @@ export default async function InspectInstitutePage({ params }: { params: Promise
   const active = (inspection?.activation ?? []).filter((a) => a.status === "active");
 
   return (
-    <AppShell
-      area="platform"
-      pathname="/platform/institutes"
-      eyebrow="Platform · inspect"
-      title={
-        <>
-          {inst?.name ?? "Institute"} <em>— inspected</em>
-        </>
-      }
-    >
+    <AppShell area="platform" pathname="/platform/institutes">
       <div className="notice warn">
         <b>This visit was logged.</b> Opening this page wrote one row to the platform access log, with your
         account, this institute and the time. The institute&rsquo;s own admins can see that you looked.

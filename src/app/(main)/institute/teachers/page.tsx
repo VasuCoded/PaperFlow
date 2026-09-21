@@ -28,17 +28,7 @@ export default async function TeacherSubjectsPage() {
   const assigned = new Set((assignedRes.data ?? []).map((a) => `${a.teacher_id}:${a.class_subject_id}`));
 
   return (
-    <AppShell
-      area="institute"
-      pathname="/institute/teachers"
-      eyebrow="Institute · teacher subjects"
-      title={
-        <>
-          Who teaches <em>what</em>
-        </>
-      }
-      intro="A teacher can only generate papers and create batches for the class-subjects ticked here. Changes save as you tick."
-    >
+    <AppShell area="institute" pathname="/institute/teachers">
       {subjects.length === 0 ? (
         <div className="notice warn">
           <b>No subjects are active for your institute yet,</b> so there is nothing to assign.{" "}

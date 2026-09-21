@@ -78,6 +78,11 @@
 .masthead p { margin: 8px 0 0; font-size: 14px; color: var(--graphite); max-width: 60ch; }
 
 /* ---- app shell (teacher / institute / platform) ------------------------ */
+.wrap:has(> .appshell) { padding-top: 16px; }
+/* a page's own title inside the console, where the page is one record (a paper) */
+.pagehead { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin: 0 0 16px; }
+.pagehead h1 { font-family: var(--serif); font-weight: 500; font-size: 24px; margin: 0; line-height: 1.15; }
+.pagehead span { font-size: 13px; color: var(--graphite); }
 .appshell {
   position: relative; background: var(--white); border: 1px solid var(--hair);
   border-radius: 6px; overflow: hidden;

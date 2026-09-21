@@ -22,17 +22,7 @@ export default async function PapersPage({
   const batchName = batch ? all.find((p) => p.batchId === batch)?.batchName ?? null : null;
 
   return (
-    <AppShell
-      area="teacher"
-      pathname="/teacher/papers"
-      eyebrow="Teacher · my papers"
-      title={
-        <>
-          Every paper, <em>reprintable exactly</em>
-        </>
-      }
-      intro="Reprinting gives byte-identical sets: the orderings were stored as rows when the paper was saved, not regenerated."
-    >
+    <AppShell area="teacher" pathname="/teacher/papers">
       {subjects.length > 1 && (
         <div className="instbar">
           <h3 className="blk" style={{ margin: 0 }}>Filter by subject</h3>

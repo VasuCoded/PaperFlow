@@ -51,13 +51,6 @@ export default async function GeneratePage() {
     <AppShell
       area="teacher"
       pathname="/teacher/generate"
-      eyebrow="Teacher · set a paper"
-      title={
-        <>
-          Setting a paper, <em>start to print</em>
-        </>
-      }
-      intro="Pick class, chapters, pattern and difficulty. The paper, its printed sets and the answer keys come out together."
       split={bundles.length > 0}
     >
       {bundles.length === 0 ? (

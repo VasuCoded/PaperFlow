@@ -34,17 +34,7 @@ export default async function PlatformOverview() {
   const dbMb = health?.db_bytes ? Math.round(health.db_bytes / 1024 / 1024) : null;
 
   return (
-    <AppShell
-      area="platform"
-      pathname="/platform"
-      eyebrow="Platform console"
-      title={
-        <>
-          The whole platform, <em>from one screen</em>
-        </>
-      }
-      intro="Institutes, the review queue, activation and the audit trail. Reading a tenant's data happens only through audited functions — there is no impersonation and no blanket cross-tenant access."
-    >
+    <AppShell area="platform" pathname="/platform">
       <div className="cards c4">
         <div className="card"><span className="big">{institutes.length}</span><span className="cap">Institutes</span></div>
         <div className="card"><span className="big">{people}</span><span className="cap">People</span></div>

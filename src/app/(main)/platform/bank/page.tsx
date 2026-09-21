@@ -30,17 +30,7 @@ export default async function ReviewQueuePage() {
   const privateCount = queue.filter((q) => q.is_private).length;
 
   return (
-    <AppShell
-      area="platform"
-      pathname="/platform/bank"
-      eyebrow="Platform · review queue"
-      title={
-        <>
-          Nothing reaches a paper <em>unreviewed</em>
-        </>
-      }
-      intro="Everything an ingestion session writes lands as staging, enforced by the database rather than the session's good behaviour. This queue is the only way a question becomes approved."
-    >
+    <AppShell area="platform" pathname="/platform/bank">
       <div className="cards c4" style={{ marginBottom: 20 }}>
         <div className="card"><span className="big">{queue.length}{queue.length === LIMIT ? "+" : ""}</span><span className="cap">Staged, by subject</span></div>
         <div className="card"><span className="big">{flagged}</span><span className="cap">Flagged uncertain</span></div>
