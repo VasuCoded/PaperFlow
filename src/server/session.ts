@@ -1,7 +1,9 @@
 import "server-only";
 import { cookies } from "next/headers";
 import { createServerSupabaseClient } from "@/lib/db/server";
-import type { Tables } from "@/lib/database.types";
+import { ownMemberships, type Membership, type MembershipRow, type Role } from "@/lib/memberships";
+
+export type { Membership, Role };
 
 /**
  * Server-side session resolution (CLAUDE.md > Code):
@@ -20,16 +22,6 @@ import type { Tables } from "@/lib/database.types";
 export const PLATFORM_INSTITUTE_ID = "11111111-1111-1111-1111-111111111111";
 const INSTITUTE_COOKIE = "pf_institute";
 
-export type Role = "owner" | "institute_admin" | "teacher" | "student";
-
-export interface Membership {
-  instituteId: string;
-  instituteName: string;
-  instituteSlug: string;
-  role: Role;
-  kind: "platform" | "institute";
-}
-
 export interface Session {
   userId: string;
   email: string;
@@ -40,10 +32,6 @@ export interface Session {
   role: Role | null;
   isPlatformOwner: boolean;
 }
-
-type MembershipRow = Pick<Tables<"institute_members">, "institute_id" | "role"> & {
-  institutes: Pick<Tables<"institutes">, "id" | "name" | "slug" | "kind" | "status"> | null;
-};
 
 /**
  * Resolve the caller. Returns null when there is no authenticated user.
@@ -71,22 +59,16 @@ export async function getSession(): Promise<Session | null> {
     .eq("id", user.id)
     .maybeSingle();
 
+  // Only the caller's own rows: RLS also lets a member read their fellow
+  // members, and the first of THOSE could be the institute admin (see
+  // src/lib/memberships.ts).
   const { data: rows } = await supabase
     .from("institute_members")
-    .select("institute_id, role, institutes(id, name, slug, kind, status)")
+    .select("user_id, institute_id, role, institutes(id, name, slug, kind, status)")
+    .eq("user_id", user.id)
     .returns<MembershipRow[]>();
 
-  const memberships: Membership[] = (rows ?? [])
-    .filter((r) => r.institutes !== null && r.institutes.status === "active")
-    .map((r): Membership => ({
-      instituteId: r.institute_id,
-      instituteName: r.institutes!.name,
-      instituteSlug: r.institutes!.slug,
-      role: r.role as Role,
-      kind: r.institutes!.kind === "platform" ? "platform" : "institute",
-    }))
-    // platform membership last so a tenant is the natural default
-    .sort((a, b) => (a.kind === "platform" ? 1 : 0) - (b.kind === "platform" ? 1 : 0));
+  const memberships = ownMemberships(rows ?? [], user.id);
 
   const jar = await cookies();
   const preferred = jar.get(INSTITUTE_COOKIE)?.value;

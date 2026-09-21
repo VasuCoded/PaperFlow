@@ -265,6 +265,19 @@ describe("staging seed", () => {
     }
   });
 
+  // Found on dev: getSession selected institute_members without a user filter.
+  // RLS lets a member read their fellow members, so a teacher's first row
+  // could be the admin's, and the teacher got the institute console.
+  it("shows a teacher their fellow members, so the session must filter to its own row", async () => {
+    const teacher = stagingPeople("sunrise").find((p) => p.username === "sunrise.teacher2")!;
+    await actAs(db, teacher.id);
+    const all = (await db.query<{ user_id: string; role: string }>(`select user_id, role from institute_members`)).rows;
+    const own = (await db.query<{ role: string }>(`select role from institute_members where user_id = '${teacher.id}'`)).rows;
+    await actAsOwner(db);
+    expect(all.some((r) => r.role === "institute_admin")).toBe(true);
+    expect(own.map((r) => r.role)).toEqual(["teacher"]);
+  });
+
   it("is idempotent: running it again changes nothing", async () => {
     const before = await snapshot();
     await runSeed();
