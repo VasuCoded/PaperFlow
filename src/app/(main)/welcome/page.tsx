@@ -1,20 +1,28 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/db/server";
 import { getSession, homePath } from "@/server/session";
+import { displayIdentity } from "@/lib/identity";
 import { SignOutButton } from "../_components/SignOutButton";
 import { AcceptInvite } from "./AcceptInvite";
 import { JoinForm } from "./JoinForm";
+import { RequestAccessForm, WithdrawRequestButton } from "./RequestAccess";
 
 export const metadata: Metadata = { title: "Welcome · PaperFlow" };
+
+const dateFmt = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short" });
+const ROLE_LABEL: Record<string, string> = { institute_admin: "institute admin", teacher: "teacher", student: "student" };
 
 /**
  * The "you belong to nothing yet" screen (BUILD-PLAN 4.3 / C2 item 2).
  *
- * A new Google sign-in creates a profiles row and NOTHING else. This screen
- * offers exactly two ways forward — accept an invitation, or enter a batch code
- * — and deliberately offers no third. No signup form, no institute creation, no
- * role selection anywhere.
+ * A new account creates a profiles row and NOTHING else. There are exactly
+ * three ways forward, none of which lets a person choose their own role:
+ *   - a batch join code (the teacher's approval — students)
+ *   - an access request, approved by the institute or the platform, who pick
+ *     the role (migration 0019)
+ *   - an invitation matched on the account's confirmed address
  */
 export default async function WelcomePage({
   searchParams,
@@ -26,39 +34,46 @@ export default async function WelcomePage({
   if (!session) redirect("/login");
 
   const supabase = await createServerSupabaseClient();
-  // A user with no membership cannot SELECT invites under RLS, so this reads
-  // them through the SECURITY DEFINER function, matched on their verified email.
-  const [{ data: invites }, { data: suspendedRows }] = await Promise.all([
+  // Definer functions: a user with no membership can read neither invites nor
+  // institute names under RLS.
+  const [{ data: invites }, { data: suspendedRows }, { data: requestRows }, { data: institutes }] = await Promise.all([
     supabase.rpc("my_pending_invites"),
     // Members of a suspended institute resolve to no membership at all, so
     // without this they would land here with no idea why.
     supabase.rpc("my_suspended_institutes"),
+    supabase.rpc("my_access_requests"),
+    supabase.rpc("requestable_institutes"),
   ]);
   const pending = invites ?? [];
   const suspended = suspendedRows ?? [];
+  const requests = requestRows ?? [];
+  const waiting = requests.filter((r) => r.status === "pending");
 
   // Someone who already belongs somewhere does not need this screen — unless
   // an invitation is waiting (e.g. the platform owner invited to an institute,
   // or a teacher invited to a second one), or they came to join another batch.
   if (session.memberships.length > 0 && pending.length === 0 && join !== "1") redirect(homePath(session));
   const member = session.memberships.length > 0;
+  const whoami = displayIdentity(session.email);
 
   return (
     <div className="wrap narrow">
       <header className="masthead">
         <div>
-          <p className="eyebrow">{member ? "Join another batch" : "Signed in · no institute yet"}</p>
+          <p className="eyebrow">{member ? "Join another institute or batch" : `Signed in as ${whoami} · no institute yet`}</p>
           <h1>
             {member ? (
-              <>Enter the code for <em>your next batch.</em></>
+              <>Enter a code, or <em>ask another institute.</em></>
+            ) : waiting.length > 0 ? (
+              <>Your request is with <em>{waiting[0]!.institute_name}.</em></>
             ) : (
-              <>You&rsquo;re signed in. <em>Now you need an invite or a code.</em></>
+              <>You&rsquo;re signed in. <em>Now your institute lets you in.</em></>
             )}
           </h1>
           <p>
-            Signing in with Google proves who you are. It does not grant a role and does not put you
-            in an institute — that happens when an institute invites you, or when you enter a batch
-            code from your teacher.
+            An account proves who you are. It does not give you a role or put you in an institute:
+            students join with their teacher&rsquo;s batch code; teachers and staff ask their institute,
+            and the institute decides.
           </p>
         </div>
         <SignOutButton className="btn" />
@@ -74,67 +89,81 @@ export default async function WelcomePage({
         </div>
       )}
 
+      {pending.length > 0 && (
+        <div className="card" style={{ marginBottom: 18 }}>
+          <h4>Invitations for {whoami}</h4>
+          <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 10 }}>
+            {pending.map((inv) => (
+              <div key={inv.id} className="card tinted" style={{ padding: "12px 13px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start", flexWrap: "wrap" }}>
+                  <div>
+                    <b style={{ fontSize: 13.5 }}>{inv.institute_name}</b>
+                    <div className="cap" style={{ marginTop: 3 }}>AS {inv.role.replace("_", " ").toUpperCase()}</div>
+                  </div>
+                  <AcceptInvite inviteId={inv.id} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="cards c2">
         <div className="card">
-          <h4>Invitations for {session.email}</h4>
-          {pending.length === 0 ? (
-            <>
-              <p style={{ marginTop: 8 }}>
-                Nothing waiting for this email. If you were expecting an invitation, ask your
-                institute to send it to the address you just signed in with.
-              </p>
-              <div className="notice plain" style={{ marginTop: 14, marginBottom: 0 }}>
-                An invitation is matched on your <b>verified</b> email, case-insensitively. It
-                cannot be claimed by anyone else.
-              </div>
-            </>
-          ) : (
-            <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 10 }}>
-              {pending.map((inv) => (
-                <div key={inv.id} className="card tinted" style={{ padding: "12px 13px" }}>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      gap: 10,
-                      alignItems: "flex-start",
-                    }}
-                  >
-                    <div>
-                      <b style={{ fontSize: 13.5 }}>{inv.institute_name}</b>
-                      <div className="cap" style={{ marginTop: 3 }}>
-                        AS {inv.role.toUpperCase()}
-                      </div>
-                    </div>
-                    <AcceptInvite inviteId={inv.id} />
-                  </div>
-                </div>
-              ))}
-              <p style={{ fontSize: 12, color: "var(--graphite)", margin: 0 }}>
-                Accepting writes one membership row with the role you were invited as. You cannot
-                change that role here.
-              </p>
-            </div>
-          )}
-        </div>
-
-        <div className="card">
-          <h4>Join a batch with a code</h4>
-          <p style={{ marginBottom: 12 }}>
-            Six characters from your teacher. Students join this way.
-          </p>
+          <h4>Students: join with your batch code</h4>
+          <p style={{ marginBottom: 12 }}>Six characters from your teacher. You are in straight away.</p>
           <JoinForm />
           <p style={{ fontSize: 11.5, color: "var(--graphite)", marginTop: 14 }}>
             Codes never contain O, 0, I or 1, and are unique across every institute.
           </p>
         </div>
+
+        <div className="card">
+          <h4>Teachers and staff: ask your institute</h4>
+          <p style={{ marginBottom: 12 }}>Your institute admin approves you and sets up your subjects.</p>
+          <RequestAccessForm institutes={institutes ?? []} />
+        </div>
       </div>
 
-      <div className="notice plain" style={{ marginTop: 18 }}>
-        There is deliberately no third option on this screen. No &ldquo;create an institute&rdquo;,
-        no &ldquo;I am a teacher&rdquo; checkbox, no role dropdown — a form that lets a user
-        influence their own role is the one thing the invitation system exists to prevent.
-      </div>
+      {requests.length > 0 && (
+        <>
+          <h2 className="sect">Your requests</h2>
+          <div className="tablewrap">
+            <table className="lt">
+              <thead>
+                <tr><th>Institute</th><th>Asked</th><th>Status</th><th /></tr>
+              </thead>
+              <tbody>
+                {requests.map((r) => (
+                  <tr key={r.id}>
+                    <td><b>{r.institute_name}</b></td>
+                    <td>{dateFmt.format(new Date(r.created_at))}</td>
+                    <td>
+                      {r.status === "pending" && <span className="pill seeding">Waiting</span>}
+                      {r.status === "approved" && (
+                        <span className="pill active">Approved{r.granted_role ? ` · ${ROLE_LABEL[r.granted_role] ?? r.granted_role}` : ""}</span>
+                      )}
+                      {r.status === "declined" && (
+                        <>
+                          <span className="pill suspended">Declined</span>
+                          {r.reason && <span className="sub">&ldquo;{r.reason}&rdquo;</span>}
+                        </>
+                      )}
+                      {r.status === "withdrawn" && <span className="pill planned">Withdrawn</span>}
+                    </td>
+                    <td>{r.status === "pending" && <WithdrawRequestButton requestId={r.id} />}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {requests.some((r) => r.status === "approved") && !member && (
+            <p style={{ fontSize: 12.5, marginTop: 8 }}>
+              Approved? <Link href="/">Open PaperFlow →</Link>
+            </p>
+          )}
+        </>
+      )}
     </div>
   );
 }

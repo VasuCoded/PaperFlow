@@ -4,10 +4,12 @@ import { useState, useTransition } from "react";
 import {
   correctAttemptSetAction,
   moveStudentAction,
+  platformResetPassword,
   platformRevokeInviteAction,
   supportLookupAction,
   type SupportLookup,
 } from "@/server/actions/platform";
+import { confirmsIdentity, displayIdentity, isUsernameEmail } from "@/lib/identity";
 
 const dateFmt = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
@@ -121,7 +123,7 @@ export function PersonLookup() {
       }
     });
 
-  const person = result?.user ? (result.user.full_name ?? result.user.email) : searched ?? "";
+  const person = result?.user ? (result.user.full_name ?? displayIdentity(result.user.email)) : displayIdentity(searched ?? "");
   const nothing =
     result && !result.user && result.invites.length === 0;
 
@@ -137,9 +139,9 @@ export function PersonLookup() {
       >
         <div style={{ flex: "1 1 260px" }}>
           <label htmlFor="support-email" style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 5 }}>
-            Email of the student, teacher or admin
+            Username (or email) of the student, teacher or admin
           </label>
-          <input id="support-email" className="inp" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="student@gmail.com" />
+          <input id="support-email" className="inp" autoCapitalize="none" spellCheck={false} required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="e.g. ravi.kumar" />
         </div>
         <button type="submit" className="btn solid" disabled={pending}>
           {pending ? "Looking…" : "Look up"}
@@ -151,13 +153,14 @@ export function PersonLookup() {
 
       {error && <div className="notice warn">{error}</div>}
       {notice && <div className="notice">{notice}</div>}
-      {nothing && <p className="lede">No account and no pending invite for {searched}.</p>}
+      {nothing && <p className="lede">No account and no pending invite for {displayIdentity(searched ?? "")}.</p>}
 
       {result && !nothing && (
         <div>
           <div className="card" style={{ marginBottom: 14 }}>
-            <h4>{result.user ? person : `${searched} — no account yet`}</h4>
-            {result.user?.full_name && <p style={{ margin: 0 }}>{result.user.email}</p>}
+            <h4>{result.user ? person : `${displayIdentity(searched ?? "")} — no account yet`}</h4>
+            {result.user?.full_name && <p style={{ margin: 0 }}>{displayIdentity(result.user.email)}</p>}
+            {result.user && isUsernameEmail(result.user.email) && <PlatformReset email={result.user.email} />}
             <div className="chips">
               {result.memberships.length === 0 && result.user && <span className="chip dim">No institute memberships</span>}
               {result.memberships.map((m) => (
@@ -251,7 +254,7 @@ export function PersonLookup() {
                         <td>{dateFmt.format(new Date(i.created_at))}</td>
                         <td>
                           <RevokeButton
-                            label={`Revoke ${searched}'s ${i.role.replace("_", " ")} invitation to ${i.institute_name}?`}
+                            label={`Revoke ${displayIdentity(searched ?? "")}'s ${i.role.replace("_", " ")} invitation to ${i.institute_name}?`}
                             run={() => platformRevokeInviteAction(i.id)}
                             onDone={() => lookup(searched ?? email, "Invitation revoked.")}
                           />
@@ -316,5 +319,56 @@ export function RevokeButton({
       </button>
       {error && <span style={{ fontSize: 11.5, color: "var(--pen)" }}>{error}</span>}
     </span>
+  );
+}
+
+
+/** Platform: issue a temporary password for a username account (logged). */
+function PlatformReset({ email }: { email: string }) {
+  const [asking, setAsking] = useState(false);
+  const [typed, setTyped] = useState("");
+  const [password, setPassword] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+  const shown = displayIdentity(email);
+
+  if (password) {
+    return (
+      <div className="notice" style={{ marginTop: 10, marginBottom: 0 }}>
+        New password for <b>{shown}</b>: <b style={{ fontFamily: "var(--mono)", userSelect: "all" }}>{password}</b> — shown once.
+      </div>
+    );
+  }
+  if (!asking) {
+    return (
+      <button type="button" className="btn sm ghost" style={{ marginTop: 10 }} onClick={() => setAsking(true)}>
+        Reset password…
+      </button>
+    );
+  }
+  return (
+    <div className="notice warn" style={{ marginTop: 10, marginBottom: 0, fontSize: 12 }}>
+      Their current password stops working. Type <b>{shown}</b> to confirm:
+      <input className="inp" style={{ fontSize: 12, padding: "5px 7px", marginTop: 6 }} value={typed} onChange={(e) => setTyped(e.target.value)} aria-label="Confirm username" autoComplete="off" />
+      <div className="btnrow" style={{ marginTop: 6 }}>
+        <button
+          type="button"
+          className="btn sm solid"
+          disabled={pending || !confirmsIdentity(typed, email)}
+          onClick={() =>
+            start(async () => {
+              setError(null);
+              const res = await platformResetPassword(email, typed);
+              if (res.ok && res.password) setPassword(res.password);
+              else setError(res.message ?? "That did not work.");
+            })
+          }
+        >
+          {pending ? "Resetting…" : "Reset password"}
+        </button>
+        <button type="button" className="btn sm ghost" disabled={pending} onClick={() => setAsking(false)}>Cancel</button>
+      </div>
+      {error && <p style={{ fontSize: 11.5, color: "var(--pen)", margin: "6px 0 0" }}>{error}</p>}
+    </div>
   );
 }

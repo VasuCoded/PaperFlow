@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { canAccess, getSession, type Session } from "@/server/session";
 import { InstituteLinks, InstituteSwitcher } from "./InstituteSwitcher";
 import { PendingInvitesNotice } from "./PendingInvites";
+import { AccessRequestsNotice } from "./AccessRequestsNotice";
 import { SignOutButton } from "./SignOutButton";
 
 export type Area = "platform" | "institute" | "teacher";
@@ -21,7 +22,8 @@ const NAV: Record<Area, { href: string; label: string }[]> = {
     { href: "/platform/institutes", label: "Institutes" },
     { href: "/platform/bank", label: "Review queue" },
     { href: "/platform/activation", label: "Activation" },
-    { href: "/platform/requests", label: "Requests" },
+    { href: "/platform/accounts", label: "Access requests" },
+    { href: "/platform/requests", label: "Subject requests" },
     { href: "/platform/support", label: "Support" },
     { href: "/platform/health", label: "Health" },
     { href: "/platform/audit", label: "Audit log" },
@@ -87,6 +89,7 @@ export async function AppShell({
       </header>
 
       <PendingInvitesNotice />
+      <AccessRequestsNotice session={session} area={area} />
 
       <div className="appshell">
         <nav className="rail">
@@ -138,6 +141,9 @@ function RailFoot({ session, area }: { session: Session; area: Area }) {
           )}
         </>
       )}
+      <div style={{ marginTop: 8 }}>
+        <Link href="/app/me#password" style={{ fontSize: 11 }}>Change password</Link>
+      </div>
       <div style={{ marginTop: 10 }}>
         <SignOutButton />
       </div>

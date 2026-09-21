@@ -104,3 +104,34 @@ export async function joinBatch(code: string): Promise<ActionResult> {
   revalidatePath("/", "layout");
   return { ok: true };
 }
+
+// ---------------------------------------------------------------------------
+// Access requests (migration 0019). The requester names an institute and
+// writes a note; they never choose a role — the approver does.
+// ---------------------------------------------------------------------------
+
+export async function requestAccess(instituteId: string, note: string): Promise<ActionResult> {
+  const session = await getSession();
+  if (!session) return { ok: false, message: "Please sign in again." };
+  const supabase = await createServerSupabaseClient();
+  const { error } = await supabase.rpc("request_access", {
+    p_institute_id: instituteId,
+    p_note: note.trim().slice(0, 500) || undefined,
+  });
+  if (error) {
+    const known = /already|five requests|institute not found/i.test(error.message);
+    return { ok: false, message: known ? error.message.charAt(0).toUpperCase() + error.message.slice(1) + "." : "Could not send the request." };
+  }
+  revalidatePath("/welcome");
+  return { ok: true };
+}
+
+export async function withdrawAccessRequest(requestId: string): Promise<ActionResult> {
+  const session = await getSession();
+  if (!session) return { ok: false, message: "Please sign in again." };
+  const supabase = await createServerSupabaseClient();
+  const { error } = await supabase.rpc("withdraw_access_request", { p_request_id: requestId });
+  if (error) return { ok: false, message: "That request has already been answered." };
+  revalidatePath("/welcome");
+  return { ok: true };
+}

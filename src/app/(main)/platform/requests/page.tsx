@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { AppShell } from "../../_components/AppShell";
 import { createServerSupabaseClient } from "@/lib/db/server";
 import { getSession } from "@/server/session";
+import { displayIdentity } from "@/lib/identity";
 import { gateStatus } from "@/lib/gate";
 import { DecideRequest } from "./DecideRequest";
 
@@ -48,7 +49,7 @@ export default async function RequestsPage() {
                   {c && <span className={`pill ${c.bank_status}`}>bank {c.bank_status}</span>}
                 </h4>
                 <p style={{ marginBottom: 8 }}>
-                  <b>{r.institute_name}</b> · requested by {r.requested_by_email ?? "an admin"} · {dateFmt.format(new Date(r.created_at))}
+                  <b>{r.institute_name}</b> · requested by {r.requested_by_email ? displayIdentity(r.requested_by_email) : "an admin"} · {dateFmt.format(new Date(r.created_at))}
                 </p>
                 <div className={gate.met ? "notice" : "notice warn"} style={{ margin: 0 }}>
                   {gate.met

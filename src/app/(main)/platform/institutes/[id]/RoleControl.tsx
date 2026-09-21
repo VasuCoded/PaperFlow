@@ -2,12 +2,13 @@
 
 import { useState, useTransition } from "react";
 import { platformSetRoleAction } from "@/server/actions/platform";
+import { confirmsIdentity, displayIdentity } from "@/lib/identity";
 
 type Role = "institute_admin" | "teacher" | "student";
 const LABEL: Record<Role, string> = { institute_admin: "Institute admin", teacher: "Teacher", student: "Student" };
 
 /**
- * Platform-side role change for one member. Requires typing the person's email:
+ * Platform-side role change for one member. Requires typing the person's username:
  * making someone an institute admin hands them the institute.
  */
 export function RoleControl({
@@ -54,14 +55,14 @@ export function RoleControl({
       <p style={{ fontSize: 11.5, margin: "0 0 6px", color: next === "institute_admin" ? "var(--pen)" : "var(--graphite)" }}>
         Make <b>{name}</b> {LABEL[next].toLowerCase()} at <b>{instituteName}</b>?
         {next === "institute_admin" && " They will be able to invite, change roles and export the institute's data."} Type{" "}
-        <b style={{ overflowWrap: "anywhere" }}>{email}</b> to confirm:
+        <b style={{ overflowWrap: "anywhere" }}>{displayIdentity(email)}</b> to confirm:
       </p>
-      <input className="inp" style={{ fontSize: 11.5, padding: "6px 8px" }} value={typed} onChange={(e) => setTyped(e.target.value)} aria-label="Confirm email" autoComplete="off" />
+      <input className="inp" style={{ fontSize: 11.5, padding: "6px 8px" }} value={typed} onChange={(e) => setTyped(e.target.value)} aria-label="Confirm username" autoComplete="off" />
       <div className="btnrow" style={{ marginTop: 6 }}>
         <button
           type="button"
           className="btn sm solid"
-          disabled={pending || typed.trim().toLowerCase() !== email.toLowerCase()}
+          disabled={pending || !confirmsIdentity(typed, email)}
           onClick={() =>
             start(async () => {
               setError(null);

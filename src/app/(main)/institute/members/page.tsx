@@ -5,6 +5,8 @@ import { createServerSupabaseClient } from "@/lib/db/server";
 import { getSession } from "@/server/session";
 import { getMembers, getPendingInvites } from "@/server/data/institute";
 import { InviteForm, MemberActions, RevokeInviteButton } from "./MemberControls";
+import { AccessRequestList } from "../../_components/AccessRequestList";
+import { displayIdentity } from "@/lib/identity";
 
 export const metadata: Metadata = { title: "Members · PaperFlow" };
 
@@ -17,7 +19,7 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
   const session = await getSession();
   const admin = session?.role === "institute_admin" ? session : null;
 
-  const [members, invites, auditRes] = admin
+  const [members, invites, auditRes, requestsRes] = admin
     ? await Promise.all([
         getMembers(admin),
         getPendingInvites(admin),
@@ -27,10 +29,12 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
           .eq("institute_id", admin.instituteId!)
           .order("at", { ascending: false })
           .limit(15),
+        (await createServerSupabaseClient()).rpc("institute_access_requests", { p_institute_id: admin.instituteId! }),
       ])
-    : [[], [], { data: [] }];
+    : [[], [], { data: [] }, { data: [] }];
+  const accessRequests = requestsRes.data ?? [];
 
-  const emailById = new Map(members.map((m) => [m.userId, m.fullName ?? m.email]));
+  const emailById = new Map(members.map((m) => [m.userId, m.fullName ?? displayIdentity(m.email)]));
   const shown = roleFilter ? members.filter((m) => m.role === roleFilter) : members;
   const count = (r: string) => members.filter((m) => m.role === r).length;
 
@@ -50,8 +54,8 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
         <div className="card">
           <h4>Invite someone</h4>
           <p style={{ marginBottom: 12 }}>
-            An invite is matched on the person&rsquo;s verified Google email when they sign in. Students can also
-            join with a batch code, without an invite.
+            Invite someone by their PaperFlow username (or a Google email). They see the invitation when they
+            sign in. Students can also join with a batch code, and anyone can ask to join below.
           </p>
           <InviteForm />
         </div>
@@ -68,12 +72,12 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
                   style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, fontSize: 13, padding: "8px 0", borderBottom: "1px solid var(--hair)" }}
                 >
                   <span style={{ overflowWrap: "anywhere" }}>
-                    {i.email}
+                    {displayIdentity(i.email)}
                     <span className="cap" style={{ display: "block" }}>
                       {i.role.replace("_", " ").toUpperCase()} · SENT {dateFmt.format(new Date(i.createdAt)).toUpperCase()}
                     </span>
                   </span>
-                  <RevokeInviteButton inviteId={i.id} email={i.email} />
+                  <RevokeInviteButton inviteId={i.id} email={displayIdentity(i.email)} />
                 </div>
               ))}
             </div>
@@ -83,6 +87,12 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
           </p>
         </div>
       </div>
+
+      <h2 className="sect" id="requests">Asking to join — {accessRequests.length}</h2>
+      <p style={{ fontSize: 12.5, color: "var(--graphite)", marginTop: -4 }}>
+        People who created an account and asked for access to this institute. You choose their role.
+      </p>
+      <AccessRequestList mode="institute" requests={accessRequests} />
 
       <h2 className="sect">Current members — {members.length}</h2>
       <nav className="chips" aria-label="Filter by role" style={{ marginBottom: 12 }}>
@@ -111,7 +121,7 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
             <thead>
               <tr>
                 <th>Name</th>
-                <th>Email</th>
+                <th>Username</th>
                 <th>Role</th>
                 <th>Subjects</th>
                 <th>Joined</th>
@@ -122,7 +132,7 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
               {shown.map((m) => (
                 <tr key={m.userId}>
                   <td><b>{m.fullName ?? "—"}</b></td>
-                  <td style={{ fontFamily: "var(--mono)", fontSize: 11.5, overflowWrap: "anywhere" }}>{m.email}</td>
+                  <td style={{ fontFamily: "var(--mono)", fontSize: 11.5, overflowWrap: "anywhere" }}>{displayIdentity(m.email)}</td>
                   <td><span className={`pill ${ROLE_PILL[m.role] ?? "student"}`}>{ROLE_LABEL[m.role] ?? m.role}</span></td>
                   <td>{m.subjects.length ? m.subjects.join(", ") : <span style={{ color: "var(--graphite)" }}>—</span>}</td>
                   <td style={{ whiteSpace: "nowrap" }}>{dateFmt.format(new Date(m.joinedAt))}</td>

@@ -5,7 +5,7 @@ project or real Google sign-in yet — that is the next step, and it needs you.
 The **"Prompt for the next session"** block at the bottom is meant to be pasted
 as the first message of the next Claude Code session.
 
-All commits local (no git remote) · 18 migrations · 282 tests green ·
+All commits local (no git remote) · 19 migrations · 308 tests green ·
 typecheck, lint, tenancy lint, schema verify and production build clean.
 
 ---
@@ -106,9 +106,12 @@ Found by building against the real schema, or by the tests:
 
 ## 4. Open issues — read before shipping
 
-1. **Nothing has touched a live Supabase project.** The PGlite shim models what
-   the migrations depend on, not all of Supabase. Expect small differences on
-   first `supabase db push`, and Google sign-in (`/auth/callback`) is untested.
+1. **Live so far: the dev database only.** All 19 migrations are applied to
+   the dev project and the access-request flow passed an end-to-end check
+   through real Supabase auth. The screens have not been clicked through in a
+   browser by Claude (the preview tool in this session resolves to another
+   project); the first person to use them is the owner. Google sign-in is
+   untested and optional.
 2. **Privacy decision needed (yours):** any member of an institute — including
    a student — can list every member of that institute, with emails, through
    the API (`institute_members_select` + `profiles_select`). The UI never shows
@@ -138,7 +141,8 @@ PaperFlow/
 ├─ supabase/migrations/      0001–0008 schema + RLS; 0009 pool; 0010 activity;
 │                            0011 platform; 0012 suspension; 0013 roles;
 │                            0014 institute console; 0015 FK fix; 0016 support;
-│                            0017 rate limit; 0018 hide answer columns
+│                            0017 rate limit; 0018 hide answer columns;
+│                            0019 username accounts + access requests
 ├─ supabase/tests/*.sql      psql suites for a live database (CI)
 ├─ tests/db/*.test.ts        the same guarantees, executable in npm test
 ├─ tests/app/*.test.ts       area guards, insert paths, load-test helpers
@@ -185,8 +189,12 @@ never scores. Web first on Vercel (Mumbai); Capacitor maybe later.
 
 STATE
 The whole app is built and committed locally (no git remote): platform and
-institute consoles, teacher screens, student PWA, print, 18 migrations.
-The dev Supabase project (Sydney, ref hvctndzlaobbxrehuxgn) has all 18 applied
+institute consoles, teacher screens, student PWA, print, 19 migrations.
+SIGN-IN IS USERNAME + PASSWORD (decided 21 Sep 2026; Google optional behind
+NEXT_PUBLIC_ENABLE_GOOGLE_SIGNIN=1). New accounts get nothing until a join
+code, an invite, or an approved access request (institute admin or platform
+approves and picks the role). Admins and the platform can reset passwords.
+The dev Supabase project (Sydney, ref hvctndzlaobbxrehuxgn) has all 19 applied
 and .env.local points at it.
 275 tests pass, including executable database suites that run the real
 migrations in PGlite. NOTHING has run against a live Supabase project or

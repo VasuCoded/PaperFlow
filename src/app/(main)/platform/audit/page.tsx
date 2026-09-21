@@ -3,6 +3,7 @@ import Link from "next/link";
 import { AppShell } from "../../_components/AppShell";
 import { createServerSupabaseClient } from "@/lib/db/server";
 import { getSession } from "@/server/session";
+import { displayIdentity } from "@/lib/identity";
 
 export const metadata: Metadata = { title: "Audit log · PaperFlow" };
 
@@ -98,7 +99,7 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
                 <tr key={`${r.at}-${idx}`}>
                   <td style={{ whiteSpace: "nowrap" }}>{timeFmt.format(new Date(r.at))}</td>
                   <td><span className={`pill ${r.kind === "role" ? "teacher" : "owner"}`}>{r.kind}</span></td>
-                  <td>{r.actor_email ?? "system"}</td>
+                  <td>{r.actor_email ? displayIdentity(r.actor_email) : "system"}</td>
                   <td>
                     {r.institute_id ? (
                       <Link href={`/platform/audit${qs({ institute: r.institute_id })}`}>{r.institute_name ?? "—"}</Link>

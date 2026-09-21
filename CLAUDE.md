@@ -54,10 +54,19 @@
   in a variable name, a route, a policy or a comment.
 - platform_owner is membership with role='owner' on the platform institute.
   It is NOT a boolean on profiles. Do not add one.
-- Sign-in is Google OAuth only and carries no role and no institute. A new
-  user belongs to nothing until they accept an invite or enter a join code.
-- Never build a role selector, a role field on a signup form, an "I am a
-  teacher" checkbox, or a public institute-creation form.
+- Sign-in is username + password (decided 21 Sep 2026, migration 0019). A
+  username account carries a synthetic address `<username>@users.paperflow.invalid`
+  so Supabase's password auth works; people only see and type the username
+  (`src/lib/identity.ts`). Google OAuth remains, behind
+  `NEXT_PUBLIC_ENABLE_GOOGLE_SIGNIN=1`.
+- Signing up carries no role and no institute. A new user belongs to nothing
+  until they enter a join code, accept an invite (matched on a CONFIRMED
+  address), or have an access request approved. The requester names an
+  institute and writes a note; the APPROVER chooses the role. Institute
+  admins approve teachers and students of their own institute; only the
+  platform owner makes institute admins.
+- Never build a role selector, a role field on a signup or request form, an
+  "I am a teacher" checkbox, or a public institute-creation form.
 - NEVER write an API route, server action, or RPC that updates
   institute_members.role. Changes go through set_member_role, which writes
   an audit row.

@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { createServerSupabaseClient } from "@/lib/db/server";
 import { getSession } from "@/server/session";
 import type { ActionResult } from "@/server/actions/membership";
+import { confirmsIdentity, displayIdentity, loginToEmail, usernameProblem } from "@/lib/identity";
+import { resetPassword } from "@/server/passwords";
 
 /**
  * Institute console mutations. The institute is always the session's — never a
@@ -19,11 +21,16 @@ async function adminContext() {
 const DENIED: ActionResult = { ok: false, message: "Institute admin only." };
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export async function inviteMember(emailRaw: string, role: "teacher" | "student"): Promise<ActionResult> {
+/** Invite by username (a username account) or by email (a Google account). */
+export async function inviteMember(loginRaw: string, role: "teacher" | "student"): Promise<ActionResult> {
   const ctx = await adminContext();
   if (!ctx) return DENIED;
-  const email = emailRaw.trim().toLowerCase();
-  if (!EMAIL.test(email)) return { ok: false, message: "Enter a valid email address." };
+  const raw = loginRaw.trim();
+  const isEmail = raw.includes("@") && !raw.startsWith("@");
+  if (isEmail ? !EMAIL.test(raw) : usernameProblem(raw) !== null) {
+    return { ok: false, message: "Enter their PaperFlow username (or a Google email address)." };
+  }
+  const email = loginToEmail(raw);
   if (role !== "teacher" && role !== "student") return { ok: false, message: "Choose teacher or student." };
 
   const { error } = await ctx.supabase.from("institute_invites").insert({
@@ -33,7 +40,7 @@ export async function inviteMember(emailRaw: string, role: "teacher" | "student"
     invited_by: ctx.session.userId,
   });
   if (error) {
-    if (error.code === "23505") return { ok: false, message: `${email} has already been invited to this institute.` };
+    if (error.code === "23505") return { ok: false, message: `${displayIdentity(email)} has already been invited to this institute.` };
     return { ok: false, message: error.message };
   }
   revalidatePath("/institute/members");
@@ -64,8 +71,8 @@ export async function changeMemberRole(
   if (!ctx) return DENIED;
   const email = targetEmail.trim().toLowerCase();
   // The typed confirmation is re-checked here, not only in the browser.
-  if (typedConfirmation.trim().toLowerCase() !== email) {
-    return { ok: false, message: "Type the person's email exactly to confirm." };
+  if (!confirmsIdentity(typedConfirmation, email)) {
+    return { ok: false, message: "Type the person's username (or email) exactly to confirm." };
   }
   const { error } = await ctx.supabase.rpc("set_member_role", {
     p_institute_id: ctx.instituteId,
@@ -148,4 +155,65 @@ export async function requestActivation(classSubjectId: string): Promise<ActionR
   revalidatePath("/institute/subjects");
   revalidatePath("/institute");
   return { ok: true };
+}
+
+/**
+ * Answer an access request to this institute (migration 0019). An institute
+ * admin grants teacher or student; only the platform makes institute admins.
+ * Declining needs a reason the requester will read.
+ */
+export async function decideAccessRequest(
+  requestId: string,
+  approve: boolean,
+  role: "teacher" | "student" | null,
+  reason: string,
+): Promise<ActionResult> {
+  const ctx = await adminContext();
+  if (!ctx) return DENIED;
+  if (approve && role !== "teacher" && role !== "student") return { ok: false, message: "Choose teacher or student." };
+  if (!approve && reason.trim().length < 3) return { ok: false, message: "Give a reason they will see." };
+  const { error } = await ctx.supabase.rpc("decide_access_request", {
+    p_request_id: requestId,
+    p_approve: approve,
+    p_role: approve ? (role ?? undefined) : undefined,
+    p_reason: approve ? undefined : reason.trim().slice(0, 500),
+  });
+  if (error) return { ok: false, message: error.message };
+  revalidatePath("/institute/members");
+  revalidatePath("/institute");
+  return { ok: true };
+}
+
+/**
+ * Give a teacher or student of this institute a temporary password (username
+ * accounts only). Needs the person's username typed to confirm; the new
+ * password is shown once, to the admin, and the reset is logged.
+ */
+export async function resetMemberPassword(
+  userId: string,
+  typedConfirmation: string,
+): Promise<ActionResult & { password?: string }> {
+  const ctx = await adminContext();
+  if (!ctx) return DENIED;
+  const { data: member } = await ctx.supabase
+    .from("institute_members")
+    .select("role")
+    .eq("institute_id", ctx.instituteId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (member?.role !== "teacher" && member?.role !== "student") {
+    return { ok: false, message: "You can reset passwords for teachers and students of your institute." };
+  }
+  const { data: profile } = await ctx.supabase.from("profiles").select("email").eq("id", userId).maybeSingle();
+  if (!profile || !confirmsIdentity(typedConfirmation, profile.email)) {
+    return { ok: false, message: "Type the person's username exactly to confirm." };
+  }
+  const res = await resetPassword({
+    userId,
+    targetEmail: profile.email,
+    actorId: ctx.session.userId,
+    instituteId: ctx.instituteId,
+    action: "password_reset_by_institute_admin",
+  });
+  return res.ok ? { ok: true, password: res.password } : { ok: false, message: res.message };
 }

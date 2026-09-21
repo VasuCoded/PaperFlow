@@ -3,6 +3,8 @@ import Link from "next/link";
 import { getStudentContext, StudentShell } from "../_components/StudentShell";
 import { SignOutButton } from "../../_components/SignOutButton";
 import { InstituteSwitcher } from "../../_components/InstituteSwitcher";
+import { displayIdentity, isUsernameEmail } from "@/lib/identity";
+import { ChangePassword } from "../../_components/ChangePassword";
 
 export const metadata: Metadata = { title: "Me · PaperFlow" };
 
@@ -16,11 +18,21 @@ export default async function MePage() {
       <p className="sec-label">Account</p>
       <div className="testcard">
         <h3 style={{ fontSize: 17 }}>{session.fullName ?? "Your account"}</h3>
-        <div className="meta">{session.email.toUpperCase()}</div>
+        <div className="meta">{displayIdentity(session.email).toUpperCase()}</div>
         <p style={{ fontSize: 12.5, color: "var(--graphite)", margin: "10px 0 0" }}>
-          Signed in with Google. Your institute decides what you can see; nothing here changes that.
+          {isUsernameEmail(session.email) ? "Signed in with your username." : "Signed in with Google."} Your institute decides what you can see;
+          nothing here changes that.
         </p>
       </div>
+
+      {isUsernameEmail(session.email) && (
+        <>
+          <p className="sec-label" id="password">Password</p>
+          <div className="testcard quiet">
+            <ChangePassword />
+          </div>
+        </>
+      )}
 
       <p className="sec-label">Institute</p>
       <div className="testcard quiet">

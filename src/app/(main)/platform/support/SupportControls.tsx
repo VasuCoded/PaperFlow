@@ -9,6 +9,7 @@ import {
   retireQuestionAction,
 } from "@/server/actions/platform";
 import { RevokeButton } from "./PersonLookup";
+import { displayIdentity, loginToEmail } from "@/lib/identity";
 
 const dateFmt = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
@@ -193,11 +194,11 @@ export function InstituteInvites({ institutes }: { institutes: { id: string; nam
               {invites.map((i) => (
                 <div key={i.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, fontSize: 13, padding: "7px 0", borderBottom: "1px solid var(--hair)", flexWrap: "wrap" }}>
                   <span style={{ overflowWrap: "anywhere" }}>
-                    {i.email}
+                    {displayIdentity(i.email)}
                     <span className="cap" style={{ display: "block" }}>{i.role.replace("_", " ").toUpperCase()} · {dateFmt.format(new Date(i.created_at)).toUpperCase()}</span>
                   </span>
                   <RevokeButton
-                    label={`Revoke ${i.email}'s ${i.role.replace("_", " ")} invitation to ${name}?`}
+                    label={`Revoke ${displayIdentity(i.email)}'s ${i.role.replace("_", " ")} invitation to ${name}?`}
                     run={() => platformRevokeInviteAction(i.id)}
                     onDone={() => load(instituteId)}
                   />
@@ -213,7 +214,7 @@ export function InstituteInvites({ institutes }: { institutes: { id: string; nam
               start(async () => {
                 const res = await platformInviteAction(instituteId, email, role);
                 if (res.ok) {
-                  setMessage({ ok: true, text: `Invitation recorded: ${email.trim().toLowerCase()} as ${role.replace("_", " ")} at ${name}. Tell them to sign in with Google using that address.` });
+                  setMessage({ ok: true, text: `Invitation recorded: ${displayIdentity(loginToEmail(email))} as ${role.replace("_", " ")} at ${name}. They see it the next time they sign in.` });
                   setEmail("");
                   load(instituteId);
                 } else setMessage({ ok: false, text: res.message ?? "Could not invite." });
@@ -222,7 +223,7 @@ export function InstituteInvites({ institutes }: { institutes: { id: string; nam
           >
             <div className="field">
               <label htmlFor="inv-email">Invite to {name}</label>
-              <input id="inv-email" className="inp" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="new.admin@gmail.com" />
+              <input id="inv-email" className="inp" autoCapitalize="none" spellCheck={false} required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="their username (or a Google email)" />
             </div>
             <div className="field">
               <label htmlFor="inv-role">Role</label>

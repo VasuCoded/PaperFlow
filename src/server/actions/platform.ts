@@ -4,6 +4,9 @@ import { revalidatePath } from "next/cache";
 import { createServerSupabaseClient } from "@/lib/db/server";
 import { getSession } from "@/server/session";
 import type { ActionResult } from "@/server/actions/membership";
+import { confirmsIdentity, loginToEmail, usernameProblem } from "@/lib/identity";
+import { createAdminClient } from "@/lib/db/admin";
+import { resetPassword } from "@/server/passwords";
 
 /**
  * Platform console mutations. Each checks the platform owner here for a clear
@@ -29,15 +32,20 @@ export async function createInstituteAction(input: {
 
   const name = input.name.trim();
   const slug = input.slug.trim().toLowerCase();
-  const admin = input.firstAdminEmail.trim().toLowerCase();
+  // A username (username account) or an email (Google account).
+  const adminRaw = input.firstAdminEmail.trim();
+  const adminIsEmail = adminRaw.includes("@") && !adminRaw.startsWith("@");
+  if (adminIsEmail ? !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(adminRaw) : usernameProblem(adminRaw) !== null) {
+    return { ok: false, message: "Enter the first admin's username (or Google email)." };
+  }
+  const admin = loginToEmail(adminRaw);
   if (name.length < 2) return { ok: false, message: "Give the institute a name." };
   if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug)) return { ok: false, message: "The slug may contain lowercase letters, digits and single hyphens." };
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(admin)) return { ok: false, message: "Enter the first admin's email address." };
 
   const { data, error } = await supabase.rpc("create_institute", {
     p_name: name,
     p_slug: slug,
-    p_contact_email: input.contactEmail.trim() || admin,
+    p_contact_email: input.contactEmail.trim() || (adminIsEmail ? admin : ""),
     p_first_admin_email: admin,
   });
   if (error) {
@@ -150,8 +158,8 @@ const needsReason = (reason: string): ActionResult | null =>
 export async function supportLookupAction(email: string): Promise<ActionResult & { result?: SupportLookup }> {
   const supabase = await ownerClient();
   if (!supabase) return DENIED;
-  const clean = email.trim().toLowerCase();
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean)) return { ok: false, message: "Enter a full email address." };
+  if (!email.trim()) return { ok: false, message: "Enter a username or an email address." };
+  const clean = loginToEmail(email);
   const { data, error } = await supabase.rpc("platform_support_lookup", { p_email: clean });
   if (error) return { ok: false, message: error.message };
   return { ok: true, result: data as unknown as SupportLookup };
@@ -228,7 +236,7 @@ export async function platformInviteAction(
 ): Promise<ActionResult> {
   const supabase = await ownerClient();
   if (!supabase) return DENIED;
-  const { error } = await supabase.rpc("platform_invite", { p_institute_id: instituteId, p_email: email, p_role: role });
+  const { error } = await supabase.rpc("platform_invite", { p_institute_id: instituteId, p_email: loginToEmail(email), p_role: role });
   if (error) return { ok: false, message: error.message };
   return { ok: true };
 }
@@ -250,8 +258,8 @@ export async function platformSetRoleAction(
 ): Promise<ActionResult> {
   const supabase = await ownerClient();
   if (!supabase) return DENIED;
-  if (typedConfirmation.trim().toLowerCase() !== email.trim().toLowerCase()) {
-    return { ok: false, message: "Type the person's email exactly to confirm." };
+  if (!confirmsIdentity(typedConfirmation, email)) {
+    return { ok: false, message: "Type the person's username (or email) exactly to confirm." };
   }
   const { error } = await supabase.rpc("set_member_role", {
     p_institute_id: instituteId,
@@ -261,4 +269,46 @@ export async function platformSetRoleAction(
   if (error) return { ok: false, message: error.message };
   revalidatePath(`/platform/institutes/${instituteId}`);
   return { ok: true };
+}
+
+/** Answer any access request, including making someone an institute admin (migration 0019). */
+export async function platformDecideAccessRequest(
+  requestId: string,
+  approve: boolean,
+  role: "institute_admin" | "teacher" | "student" | null,
+  reason: string,
+): Promise<ActionResult> {
+  const supabase = await ownerClient();
+  if (!supabase) return DENIED;
+  if (approve && !role) return { ok: false, message: "Choose a role." };
+  if (!approve && reason.trim().length < 3) return { ok: false, message: "Give a reason they will see." };
+  const { error } = await supabase.rpc("decide_access_request", {
+    p_request_id: requestId,
+    p_approve: approve,
+    p_role: approve ? (role ?? undefined) : undefined,
+    p_reason: approve ? undefined : reason.trim().slice(0, 500),
+  });
+  if (error) return { ok: false, message: error.message };
+  revalidatePath("/platform/accounts");
+  return { ok: true };
+}
+
+/** Platform: a temporary password for any username account, looked up by username. */
+export async function platformResetPassword(login: string, typedConfirmation: string): Promise<ActionResult & { password?: string }> {
+  const supabase = await ownerClient();
+  if (!supabase) return DENIED;
+  const session = await getSession();
+  const email = loginToEmail(login);
+  if (!confirmsIdentity(typedConfirmation, email)) return { ok: false, message: "Type the person's username exactly to confirm." };
+  const admin = createAdminClient();
+  const { data: profile } = await admin.from("profiles").select("id, email").eq("email", email).maybeSingle();
+  if (!profile) return { ok: false, message: "No account with that username." };
+  const res = await resetPassword({
+    userId: profile.id,
+    targetEmail: profile.email,
+    actorId: session!.userId,
+    instituteId: null,
+    action: "password_reset_by_platform",
+  });
+  return res.ok ? { ok: true, password: res.password } : { ok: false, message: res.message };
 }

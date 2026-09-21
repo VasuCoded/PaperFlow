@@ -14,6 +14,67 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export type Database = {
   public: {
     Tables: {
+      access_requests: {
+        Row: {
+          id: string
+          institute_id: string
+          user_id: string
+          note: string | null
+          status: string
+          granted_role: string | null
+          reason: string | null
+          decided_by: string | null
+          decided_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          institute_id: string
+          user_id: string
+          note?: string | null
+          status?: string
+          granted_role?: string | null
+          reason?: string | null
+          decided_by?: string | null
+          decided_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          institute_id?: string
+          user_id?: string
+          note?: string | null
+          status?: string
+          granted_role?: string | null
+          reason?: string | null
+          decided_by?: string | null
+          decided_at?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "access_requests_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "access_requests_institute_id_fkey"
+            columns: ["institute_id"]
+            isOneToOne: false
+            referencedRelation: "institutes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "access_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       activation_requests: {
         Row: {
           id: string
@@ -1243,18 +1304,21 @@ export type Database = {
           email: string
           full_name: string | null
           created_at: string
+          username: string | null
         }
         Insert: {
           id: string
           email: string
           full_name?: string | null
           created_at?: string
+          username?: string | null
         }
         Update: {
           id?: string
           email?: string
           full_name?: string | null
           created_at?: string
+          username?: string | null
         }
         Relationships: [
           {
@@ -1880,6 +1944,15 @@ export type Database = {
         }
         Returns: string
       }
+      decide_access_request: {
+        Args: {
+          p_request_id: string
+          p_approve: boolean
+          p_role?: string
+          p_reason?: string
+        }
+        Returns: undefined
+      }
       decide_activation_request: {
         Args: {
           p_request_id: string
@@ -1936,6 +2009,20 @@ export type Database = {
         Args: Record<string, never>
         Returns: unknown
       }
+      institute_access_requests: {
+        Args: {
+          p_institute_id: string
+        }
+        Returns: {
+          id: string
+          user_id: string
+          username: string
+          full_name: string
+          email: string
+          note: string
+          created_at: string
+        }[]
+      }
       institute_subject_overview: {
         Args: {
           p_institute_id: string
@@ -1976,6 +2063,19 @@ export type Database = {
           p_institute_id: string
         }
         Returns: undefined
+      }
+      my_access_requests: {
+        Args: Record<string, never>
+        Returns: {
+          id: string
+          institute_id: string
+          institute_name: string
+          status: string
+          granted_role: string
+          reason: string
+          created_at: string
+          decided_at: string
+        }[]
       }
       my_institutes: {
         Args: Record<string, never>
@@ -2035,6 +2135,22 @@ export type Database = {
           subject_name: string
           class_name: string
           already_enrolled_batch: string
+        }[]
+      }
+      platform_access_requests_pending: {
+        Args: {
+          p_limit?: number
+        }
+        Returns: {
+          id: string
+          institute_id: string
+          institute_name: string
+          user_id: string
+          username: string
+          full_name: string
+          email: string
+          note: string
+          created_at: string
         }[]
       }
       platform_activation_requests: {
@@ -2178,6 +2294,10 @@ export type Database = {
           open_on_question: number
         }[]
       }
+      platform_pending_access_count: {
+        Args: Record<string, never>
+        Returns: number
+      }
       platform_require_reason: {
         Args: {
           p_reason: string
@@ -2279,6 +2399,20 @@ export type Database = {
         }
         Returns: undefined
       }
+      request_access: {
+        Args: {
+          p_institute_id: string
+          p_note?: string
+        }
+        Returns: string
+      }
+      requestable_institutes: {
+        Args: Record<string, never>
+        Returns: {
+          id: string
+          name: string
+        }[]
+      }
       rotate_join_code: {
         Args: {
           p_batch_id: string
@@ -2313,6 +2447,12 @@ export type Database = {
           p_class_subject_id: string
         }
         Returns: boolean
+      }
+      withdraw_access_request: {
+        Args: {
+          p_request_id: string
+        }
+        Returns: undefined
       }
       withdraw_flag: {
         Args: {

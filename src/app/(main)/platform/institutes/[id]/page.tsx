@@ -7,6 +7,7 @@ import { getSession } from "@/server/session";
 import { setInstituteStatusAction } from "@/server/actions/platform";
 import { ActionButton } from "../../../_components/ActionButton";
 import { RoleControl } from "./RoleControl";
+import { displayIdentity } from "@/lib/identity";
 
 export const metadata: Metadata = { title: "Inspect institute · PaperFlow" };
 
@@ -121,14 +122,14 @@ export default async function InspectInstitutePage({ params }: { params: Promise
               {members.map((m) => (
                 <tr key={m.user_id}>
                   <td>
-                    <b>{m.full_name ?? m.email}</b>
-                    {m.full_name && <span className="sub">{m.email}</span>}
+                    <b>{m.full_name ?? displayIdentity(m.email)}</b>
+                    {m.full_name && <span className="sub">{displayIdentity(m.email)}</span>}
                   </td>
                   <td><span className={`pill ${ROLE_PILL[m.role] ?? "student"}`}>{m.role.replace("_", " ")}</span></td>
                   <td>{dateFmt.format(new Date(m.created_at))}</td>
                   <td>
                     {inst && (
-                      <RoleControl instituteId={inst.id} instituteName={inst.name} email={m.email} name={m.full_name ?? m.email} role={m.role} />
+                      <RoleControl instituteId={inst.id} instituteName={inst.name} email={m.email} name={m.full_name ?? displayIdentity(m.email)} role={m.role} />
                     )}
                   </td>
                 </tr>

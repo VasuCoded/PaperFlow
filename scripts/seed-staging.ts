@@ -3,16 +3,20 @@
  * built by scripts/staging/staging-sql.ts into a STAGING Supabase project.
  *
  *   SUPABASE_DB_URL=<staging connection string> \
- *   STAGING_OWNER_EMAIL=you@gmail.com \
- *   STAGING_TESTERS='[{"email":"friend@gmail.com","role":"teacher","institute":"sunrise"}]' \
- *   npm run seed:staging -- --i-know-this-is-staging
+ *   STAGING_PASSWORD=<a password every staging person gets> \
+ *   STAGING_OWNER=<your username> \
+ *   STAGING_TESTERS='[{"login":"friend.username","role":"teacher","institute":"sunrise"}]' \
+ *   npx tsx scripts/seed-staging.ts --i-know-this-is-staging
+ *
+ * With STAGING_PASSWORD set you can sign in as sunrise.admin, sunrise.teacher1,
+ * sunrise.student1 (… riverside.*, hilltop.*) to see every role.
  *
  * Refuses unless:
  *   - the flag --i-know-this-is-staging is given, and
  *   - the database has no institute whose slug lacks the "staging-" prefix
  *     (a production database always has one).
- * Runs in one transaction; safe to re-run. STAGING_OWNER_EMAIL gets the
- * platform owner role only if that person has already signed in once.
+ * Runs in one transaction; safe to re-run. STAGING_OWNER gets the platform
+ * owner role only if that account already exists (sign up first).
  */
 import { Client } from "pg";
 import { join, dirname } from "node:path";
@@ -32,7 +36,8 @@ async function main() {
   const statements = stagingStatements({
     repoRoot,
     testers,
-    platformOwnerEmail: process.env.STAGING_OWNER_EMAIL || undefined,
+    platformOwner: process.env.STAGING_OWNER || process.env.STAGING_OWNER_EMAIL || undefined,
+    password: process.env.STAGING_PASSWORD || undefined,
   });
 
   const client = new Client({ connectionString: url });

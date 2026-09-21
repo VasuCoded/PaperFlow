@@ -4,6 +4,7 @@ import { AppShell } from "../../_components/AppShell";
 import { createServerSupabaseClient } from "@/lib/db/server";
 import { getSession } from "@/server/session";
 import { renderRich } from "@/lib/print/math";
+import { displayIdentity } from "@/lib/identity";
 import { PersonLookup } from "./PersonLookup";
 import { FlagActions, InstituteInvites, RetireById } from "./SupportControls";
 
@@ -57,7 +58,7 @@ export default async function SupportPage() {
                 </div>
                 <div className="qtext" style={{ fontSize: 13.5, lineHeight: 1.5, marginBottom: 8 }} dangerouslySetInnerHTML={{ __html: f.bodyHtml }} />
                 <p style={{ margin: 0, fontSize: 12.5 }}>
-                  <b>{f.institute_name}</b> · {f.raised_by_email ?? "a teacher"} · {dateFmt.format(new Date(f.created_at))}
+                  <b>{f.institute_name}</b> · {f.raised_by_email ? displayIdentity(f.raised_by_email) : "a teacher"} · {dateFmt.format(new Date(f.created_at))}
                   {f.reason && <> — &ldquo;{f.reason}&rdquo;</>}
                 </p>
                 <p style={{ margin: "4px 0 0", fontSize: 11, fontFamily: "var(--mono)", color: "var(--graphite)" }}>{f.question_id}</p>

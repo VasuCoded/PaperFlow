@@ -4,7 +4,7 @@ This takes PaperFlow from a folder on your laptop to a live website:
 
 - the code in a **private GitHub repository**
 - a **Supabase** database (Postgres + sign-in), in Mumbai
-- **Google sign-in** ("Continue with Google")
+- **sign-in with a username and password** (Google sign-in optional, later)
 - the website on **Vercel**, redeployed automatically every time you push
 - **Claude** able to work on the test database directly, so it can run
   migrations and fix things without you copying and pasting
@@ -25,7 +25,7 @@ about **3 hours** in total. Sections 1–6 get you a working test site; section 
 0. [Before you start](#0-before-you-start)
 1. [Put the code on GitHub](#1-put-the-code-on-github-15-min)
 2. [Create the test database on Supabase](#2-create-the-test-database-on-supabase-25-min)
-3. [Set up Google sign-in](#3-set-up-google-sign-in-25-min)
+3. [Google sign-in (optional — skip it)](#3-google-sign-in-optional--skip-it)
 4. [First sign-in on your laptop](#4-first-sign-in-on-your-laptop-15-min)
 5. [Load test data and walk through the app](#5-load-test-data-and-walk-through-the-app-40-min)
 6. [Put the website on Vercel](#6-put-the-website-on-vercel-25-min)
@@ -53,7 +53,7 @@ below is created by signing in with it.
 | [GitHub](https://github.com) | Hosting the code (private repository) | Free |
 | [Supabase](https://supabase.com) | Database + sign-in | Free for 2 projects. A free project **pauses after 7 days without use**; unpause it from the dashboard |
 | [Vercel](https://vercel.com) | Hosting the website | Hobby is free but **for personal, non-commercial use only**. Once institutes pay you, move to Pro (about $20/month) |
-| [Google Cloud](https://console.cloud.google.com) | The "Continue with Google" button | Free |
+| [Google Cloud](https://console.cloud.google.com) | *Optional:* a "Continue with Google" button | Free |
 
 ### 0.2 Your values sheet
 
@@ -68,8 +68,8 @@ never in a chat, a document you share, or a file you commit.
 | Dev anon (publishable) key | Supabase → Connect | 2.3 |
 | Dev service_role (secret) key | Supabase → Project Settings → API Keys | 2.3 |
 | Dev session pooler connection string | Supabase → Connect | 2.3 |
-| Google Client ID | Google Cloud → Clients | 3.5 |
-| Google Client secret | Google Cloud → Clients (**shown once**) | 3.5 |
+| Google Client ID *(optional)* | Google Cloud → Clients | 3.5 |
+| Google Client secret *(optional)* | Google Cloud → Clients (**shown once**) | 3.5 |
 | Vercel domain (e.g. `paperflow-xyz.vercel.app`) | Vercel after first deploy | 6.5 |
 | Prod: ref, password, URL, keys, connection string | Supabase prod project | 7 |
 
@@ -270,18 +270,28 @@ npx supabase db push --db-url "<dev session pooler connection string>"
 
 ### 2.7 Sign-in settings
 
+PaperFlow signs people in with a **username and password**. Supabase does
+password sign-in through its **Email** provider, so it must stay on:
+
 1. **Authentication** → **Sign In / Providers** (may be called
    **Providers**).
-2. **Email:** turn it **off**. PaperFlow signs in with Google only. Leaving
-   email on would let anyone create password accounts through the public API.
-   Harmless, since they would get no role, but unnecessary.
-3. Leave **Allow new users to sign up** **on**. Google sign-in needs it to
-   create the account on first sign-in; roles still come only from
-   invitations and join codes.
+2. **Email:** leave it **on**. Leave **Confirm email** **on** too: PaperFlow
+   creates accounts on the server and marks them confirmed itself, and this
+   setting stops anyone registering through the public API from signing in.
+3. Leave **Allow new users to sign up** **on**.
+
+Nobody gets a role by signing up: a new account belongs to no institute until
+it enters a batch join code, accepts an invitation, or has an access request
+approved.
 
 ---
 
-## 3. Set up Google sign-in (25 min)
+## 3. Google sign-in (optional — skip it)
+
+**You do not need this.** Username and password sign-in works out of the box.
+Come back here only if you want a "Continue with Google" button as well;
+after setting it up, add `NEXT_PUBLIC_ENABLE_GOOGLE_SIGNIN=1` to `.env.local`
+and to Vercel.
 
 **How it fits together:** your site sends the user to Google → Google sends
 them to **Supabase** (`https://<DEV_REF>.supabase.co/auth/v1/callback`) →
@@ -305,52 +315,39 @@ know Supabase's address, and Supabase must know your site's address.
 4. **Contact information:** your email → **Next**.
 5. Tick the agreement → **Continue** → **Create**.
 
-### 3.3 Scopes (what the app asks Google for)
+### 3.3 Scopes
 
-1. **Data Access** → **Add or remove scopes**.
-2. Tick `.../auth/userinfo.email`, `.../auth/userinfo.profile` and `openid` →
-   **Update** → **Save**.
-
-These are basic scopes, so Google does not require an app review.
+**Data Access** → **Add or remove scopes** → tick `.../auth/userinfo.email`,
+`.../auth/userinfo.profile` and `openid` → **Update** → **Save**. These are
+basic scopes, so Google does not require an app review.
 
 ### 3.4 Test users
 
-While the app is in **Testing** mode, **only people on this list can sign
-in** (up to 100). That's ideal until section 9.
-
-1. **Audience** → **Test users** → **+ Add users**.
-2. Add every Google account you will test with: your platform account, a
-   second Google account to play a student, and any friends helping.
-3. **Save**.
+While the app is in **Testing** mode, only listed people can use Google
+sign-in (up to 100). **Audience** → **Test users** → **+ Add users** → add
+them → **Save**. Section 9 opens it to everyone.
 
 ### 3.5 Create the sign-in credentials
 
-1. **Clients** → **+ Create client**.
-2. **Application type:** **Web application**. **Name:** `PaperFlow web`.
-3. **Authorized JavaScript origins** → **+ Add URI** → `http://localhost:3005`
-   (you add the Vercel address in 6.6).
-4. **Authorized redirect URIs** → **+ Add URI** →
-   `https://<DEV_REF>.supabase.co/auth/v1/callback`
-   This is **Supabase's** address, not your website's. Copy it exactly.
-5. **Create**.
-6. **Copy the Client ID and the Client secret immediately** (or click
-   **Download JSON**). Google may never show the secret again; if you lose it,
-   you would create a new secret.
+1. **Clients** → **+ Create client** → **Web application**, name
+   `PaperFlow web`.
+2. **Authorized JavaScript origins:** `http://localhost:3005` (the Vercel
+   address is added in 6.6).
+3. **Authorized redirect URIs:** `https://<DEV_REF>.supabase.co/auth/v1/callback`
+   — Supabase's address, exactly.
+4. **Create**, then **copy the Client ID and Client secret immediately** (or
+   **Download JSON**); Google may not show the secret again.
 
 ### 3.6 Give the credentials to Supabase
 
-1. Supabase (dev) → **Authentication** → **Sign In / Providers** → **Google**.
-2. **Enable** it. Paste the **Client ID** (into "Client IDs") and the **Client
-   secret**. Leave other options at their defaults.
-3. The panel shows a **Callback URL (for OAuth)**. Check it matches exactly
-   what you entered in 3.5 step 4.
-4. **Save**.
+Supabase (dev) → **Authentication** → **Sign In / Providers** → **Google** →
+**Enable** → paste Client ID and secret → check the **Callback URL** shown
+matches 3.5 step 3 → **Save**.
 
 ### 3.7 Tell Supabase where your site lives
 
-1. **Authentication** → **URL Configuration**.
-2. **Site URL:** `http://localhost:3005` for now (changed in 6.6).
-3. **Redirect URLs** → **Add URL** → `http://localhost:3005/**` → save.
+**Authentication** → **URL Configuration** → **Site URL**
+`http://localhost:3005` → **Redirect URLs** add `http://localhost:3005/**`.
 
 ---
 
@@ -368,35 +365,36 @@ window (in the same folder) for any other commands.
 > Use `npx next dev -p 3005`, not `npm run dev -- -p 3005`. In PowerShell,
 > npm's wrapper can swallow the `--`, and the port setting is lost.
 
-### 4.2 Sign in
+### 4.2 Create your account
 
 1. Open **http://localhost:3005**. You are sent to `/login`.
-2. **Continue with Google** → choose the **platform account** → allow.
-3. You land on **`/welcome`**: *"You're signed in. Now you need an invite or a
-   code."* That's correct. Signing in never grants a role by itself.
+2. Click **Create an account**. Enter your full name, a **username** (letters,
+   numbers, dots and underscores — e.g. `sanskar`) and a password (8+
+   characters, with a letter and a number).
+3. You land on **`/welcome`**: *"You're signed in. Now your institute lets you
+   in."* That's correct. An account never grants a role by itself.
 
 ### 4.3 Make yourself the platform owner
 
 This is done once, by hand, because nobody exists yet who could grant it.
-
-Supabase (dev) → **SQL Editor** → **New query** → paste, put in **your**
-platform email, and **Run**:
+**Easiest: tell Claude your username and ask it to make you platform owner**
+— it has access to the dev database (section 10). Or do it yourself:
+Supabase (dev) → **SQL Editor** → **New query** → put in **your** username →
+**Run**:
 
 ```sql
 insert into public.institute_members (institute_id, user_id, role)
 select public.platform_institute_id(), id, 'owner'
-from auth.users where email = '<YOUR_PLATFORM_EMAIL>'
+from public.profiles where username = '<YOUR_USERNAME>'
 on conflict (institute_id, user_id) do update set role = 'owner';
 ```
 
-- Expect **1 row** affected.
-- **0 rows** means the email doesn't match. Check **Authentication → Users**
-  for the exact address and run it again.
+- Expect **1 row** affected. **0 rows** means the username doesn't match.
 
 ### 4.4 Check
 
 Open **http://localhost:3005** again. You should now land on **`/platform`**,
-the platform console.
+the platform console. The left rail has **Change password** under your name.
 
 ---
 
@@ -405,13 +403,15 @@ the platform console.
 The question bank is empty, so there is nothing to make a paper from yet. The
 **staging seed** fills the **dev** database with synthetic data:
 
-- three pretend institutes
+- three pretend institutes (Sunrise, Riverside, Hilltop), each with an admin,
+  3 teachers and 24 students — **all of them real username accounts you can
+  sign in as**
 - about 2,000 made-up questions in Class 10 Science, Class 10 Maths and
   Class 12 Biology
-- batches, papers and logged attempts
+- batches, papers, logged attempts, flags and a review queue
 
 It **refuses to run on any database that has real institutes**, so it cannot
-touch production.
+touch production. (Claude can run this whole section for you — just ask.)
 
 ### 5.1 Load the class/subject lists and paper patterns
 
@@ -425,62 +425,71 @@ npx tsx scripts/seed-patterns.ts
 
 Each prints what it seeded and ends with `… complete.`
 
-### 5.2 Load the staging data, and invite yourself into it
+### 5.2 Load the staging data
 
-In the same window:
+Pick a password that every pretend person will share (testing only):
 
 ```powershell
-$env:STAGING_OWNER_EMAIL = "<YOUR_PLATFORM_EMAIL>"
-$env:STAGING_TESTERS = '[{"email":"<YOUR_PLATFORM_EMAIL>","role":"institute_admin","institute":"sunrise"}]'
+$env:STAGING_PASSWORD = "<a test password, 8+ characters>"
+$env:STAGING_OWNER = "<YOUR_USERNAME>"
 npx tsx scripts/seed-staging.ts --i-know-this-is-staging
 ```
 
-It ends with a summary (3 institutes, about 2,000 approved questions, papers,
-attempts) and `staging seed complete.` This invites you as admin of the
-pretend "Staging Sunrise Academy".
+It ends with a summary and `staging seed complete.` Now you can sign in as any
+of these with `STAGING_PASSWORD`:
 
-### 5.3 Walk through as owner and admin
+| Username | Role |
+|---|---|
+| `sunrise.admin` | Institute admin of Staging Sunrise Academy |
+| `sunrise.teacher1` … `sunrise.teacher3` | Teachers (teacher 3 teaches Biology) |
+| `sunrise.student1` … `sunrise.student24` | Students |
+| `riverside.*`, `hilltop.*` | The same, at the other two institutes |
 
-Refresh **http://localhost:3005**. Tick each item as it works; note anything
-that looks wrong (URL + screenshot) for Claude.
+### 5.3 Walk through as platform owner
 
-- [ ] A notice says **an invitation is waiting from Staging Sunrise Academy**
-      → **Review it** → **Accept**.
-- [ ] **Platform console** (`/platform`):
-  - [ ] **Institutes** lists three staging institutes.
-  - [ ] **Review queue** shows staged questions, with maths rendered.
-  - [ ] **Activation** shows the matrix: Maths fails the gate, Science and
-        Biology pass.
-  - [ ] **Requests** has one pending request.
-  - [ ] **Support** → look up `sunrise.student1@staging.paperflow.test`.
-  - [ ] **Health** and **Audit log** load.
-- [ ] In the left rail under **Your institutes**, click **Staging Sunrise
-      Academy →** to open the **institute console**. Members, Teacher
-      subjects, Subjects and Export all load.
-- [ ] Open **`/teacher/generate`** (the address bar works) and set a paper:
+Signed in as **yourself**. Tick each item as it works; note anything that
+looks wrong (URL + screenshot) for Claude.
+
+- [ ] **Institutes** lists three staging institutes.
+- [ ] **Review queue** shows staged questions, with maths rendered.
+- [ ] **Activation**: Maths fails the gate, Science and Biology pass.
+- [ ] **Subject requests** has one pending request.
+- [ ] **Support** → look up `sunrise.student1`; try **Reset password…**.
+- [ ] **Health** and **Audit log** load.
+
+### 5.4 Walk through as an institute admin and a teacher
+
+**Sign out**, then sign in as **`sunrise.admin`**:
+
+- [ ] **Institute console** loads: Members, Teacher subjects, Subjects, Export.
+- [ ] **Members**: the members table shows usernames; try **Reset password**
+      on a student.
+- [ ] Open **`/teacher/generate`** and set a paper:
   - [ ] **Class and subject:** Class 10 · Science.
-  - [ ] **Pattern:** **Staging Unit Test (25 marks)**. The CBSE board
-        patterns need question types the synthetic data doesn't have.
-  - [ ] A paper appears on the right, formulas rendered. Try **Lock**,
-        **Swap**, a different difficulty mix, and **2 printed sets**.
-  - [ ] **Save and print** → the print view shows each set on its own pages,
-        answer keys and the mapping sheet.
-- [ ] **`/teacher/batches`**: write down the 6-character **join code** of the
-      batch **10-A Science**.
+  - [ ] **Pattern:** **Staging Unit Test (25 marks)** (the CBSE board patterns
+        need question types the synthetic data doesn't have).
+  - [ ] A paper appears, formulas rendered. Try **Lock**, **Swap**, a different
+        difficulty mix, and **2 printed sets**.
+  - [ ] **Save and print** → each set on its own pages, answer keys, mapping
+        sheet.
+- [ ] **`/teacher/batches`**: note the 6-character **join code** of **10-A Science**.
 
-### 5.4 Walk through as a student
+### 5.5 Walk through as a student, and the approval queue
 
-Use the **second Google account** (it must be a test user, from 3.4), in a
-**private/incognito window** so you don't sign out of the first:
+In a **private/incognito window** (so you stay signed in in the first):
 
-- [ ] Open **http://localhost:3005** → **Continue with Google** → second
-      account → `/welcome`.
-- [ ] Enter the **join code** → it shows the institute and batch → **Join**.
-- [ ] The student app lists **Staging Unit Test 1** and **2** (and any paper
-      you saved).
-- [ ] Open one → **choose a set** → it shows the start of question 1 → **Yes**
-      → tap a few questions as wrong → **Save** → a practice set is built.
-- [ ] **Practice** and **Weak spots** tabs show content.
+- [ ] Sign in as **`sunrise.student1`** → the student app lists **Staging Unit
+      Test 1** and **2**. Open one → **choose a set** → confirm question 1 →
+      tap a few as wrong → **Save** → a practice set is built. **Practice** and
+      **Weak spots** show content.
+- [ ] Sign out, then **Create an account** as a brand-new person (e.g.
+      `test.newteacher`). On `/welcome`, **ask Staging Sunrise Academy for
+      access** with a note like "Physics teacher".
+- [ ] Back in the first window as `sunrise.admin` (or as yourself): a notice
+      says **1 person is asking to join** → **Review** → **Approve as Teacher**.
+- [ ] The new account refreshes into the teacher console.
+- [ ] Also try: a new account entering the **join code** from 5.4 becomes a
+      student straight away.
 
 ---
 
@@ -520,6 +529,7 @@ Expand **Environment Variables** and add these **before** the first deploy
 | `SUPABASE_SERVICE_ROLE_KEY` | dev service_role/secret key | Mark **Sensitive** if offered. **Never** put this in a `NEXT_PUBLIC_…` variable: those are sent to every browser |
 | `PLATFORM_INSTITUTE_ID` | `11111111-1111-1111-1111-111111111111` | Fixed value; do not change |
 | `HUSKY` | `0` | Skips a developer-only git hook during Vercel's install |
+| `NEXT_PUBLIC_ENABLE_GOOGLE_SIGNIN` | `1` | **Only** if you set up section 3; leave it out otherwise |
 
 Do **not** add `SUPABASE_DB_URL` to Vercel. The website doesn't use it; only
 your scripts do.
@@ -535,9 +545,9 @@ Settings → Domains** and copy your production domain, e.g.
 
 ### 6.6 Tell Google and Supabase about the new address
 
-1. **Google Cloud** → Google Auth Platform → **Clients** → `PaperFlow web` →
-   **Authorized JavaScript origins** → **+ Add URI** →
-   `https://<VERCEL_DOMAIN>` → **Save**.
+1. *(Only if you set up Google, section 3.)* **Google Cloud** → Google Auth
+   Platform → **Clients** → `PaperFlow web` → **Authorized JavaScript
+   origins** → **+ Add URI** → `https://<VERCEL_DOMAIN>` → **Save**.
 2. **Supabase (dev)** → **Authentication** → **URL Configuration**:
    - **Site URL:** `https://<VERCEL_DOMAIN>`
    - **Redirect URLs** → add `https://<VERCEL_DOMAIN>/**`
@@ -548,10 +558,9 @@ Settings → Domains** and copy your production domain, e.g.
 
 ### 6.7 Test the live site
 
-- [ ] `https://<VERCEL_DOMAIN>` → sign in as the platform account →
-      `/platform`.
-- [ ] On your **phone** (Chrome on Android): open the site → sign in as the
-      student account → open it a second time → Chrome offers **Install
+- [ ] `https://<VERCEL_DOMAIN>` → sign in with your username → `/platform`.
+- [ ] On your **phone** (Chrome on Android): open the site → sign in as
+      `sunrise.student1` → open it a second time → Chrome offers **Install
       PaperFlow**. Install it; it opens like an app.
 - [ ] Turn on airplane mode → the test list still opens, and logging says
       clearly that it needs a connection.
@@ -608,15 +617,16 @@ touches prod by accident.
 
 ### 7.5 Sign-in for prod
 
-1. **Supabase (prod)** → Authentication → **Sign In / Providers**: turn
-   **Email off** and **Google on**, with the **same** Client ID and secret as
-   dev.
+1. **Supabase (prod)** → Authentication → **Sign In / Providers**: leave
+   **Email on** (with **Confirm email** on). Only if you use Google: turn it on
+   with the **same** Client ID and secret as dev.
 2. **Supabase (prod)** → **URL Configuration**: **Site URL**
    `https://<VERCEL_DOMAIN>`; **Redirect URLs**
    `https://<VERCEL_DOMAIN>/**`.
-3. **Google Cloud** → **Clients** → `PaperFlow web` → **Authorized redirect
-   URIs** → add `https://<PROD_REF>.supabase.co/auth/v1/callback` → **Save**.
-   Keep the dev one.
+3. *(Google only.)* **Google Cloud** → **Clients** → `PaperFlow web` →
+   **Authorized redirect URIs** → add
+   `https://<PROD_REF>.supabase.co/auth/v1/callback` → **Save**. Keep the dev
+   one.
 
 ### 7.6 Point the live site at prod (and previews at dev)
 
@@ -634,10 +644,11 @@ Then redeploy: **Deployments** → newest production deployment → **⋯** →
 
 ### 7.7 Become owner in prod
 
-1. `https://<VERCEL_DOMAIN>` → sign in with the platform account → you land on
-   `/welcome` (a fresh database, so no role yet).
+1. `https://<VERCEL_DOMAIN>` → **Create an account** (prod is a separate
+   database, so your dev account doesn't exist there) → you land on
+   `/welcome`.
 2. **Supabase (prod)** → **SQL Editor** → run the owner query from 4.3 with
-   your email.
+   your username. (Claude has no access to prod — do this one yourself.)
 3. Reload → `/platform`. It is empty: no institutes, no questions. That is
    correct for production.
 
@@ -673,7 +684,7 @@ Then redeploy: **Deployments** → newest production deployment → **⋯** →
 
 ---
 
-## 9. Let anyone sign in (5 min)
+## 9. Let anyone use Google sign-in (only if you set up section 3)
 
 While Google's app is in **Testing**, only your listed test users can sign
 in. Before inviting real teachers and students:
@@ -749,6 +760,9 @@ Supabase's security advisors.
 
 | What you see | Likely cause | Fix |
 |---|---|---|
+| **Wrong username or password** | Typo, or the account doesn't exist in *this* database (dev and prod are separate) | Check the username; an institute admin or the platform can **Reset password** |
+| **Email logins are disabled** when signing in | The Email provider was switched off | Supabase → Authentication → Sign In / Providers → **Email on** (2.7) |
+| **That username is taken** on sign-up | Someone has it | Pick another |
 | Google: **Error 400: redirect_uri_mismatch** | The Supabase callback URL isn't in the Google client's **Authorized redirect URIs**, or has a typo | Copy the exact **Callback URL** from Supabase → Google provider into Google → Clients (3.5 / 7.5) |
 | Google: **Access blocked: PaperFlow has not completed the Google verification process** or "app is in testing" | That account isn't a test user | Add it in Audience → Test users (3.4), or publish the app (section 9) |
 | After Google you land on `/login?error=exchange` | Your site's address isn't in Supabase's **Redirect URLs**, or you started on a different address than you finished on (e.g. `127.0.0.1` vs `localhost`) | Add `https://<your domain>/**` in Supabase URL Configuration; always use the same address |
@@ -781,12 +795,11 @@ Supabase's security advisors.
 
 - [ ] Code on GitHub (private), CI **build** job green
 - [ ] Dev Supabase project in Mumbai, all migrations applied
-- [ ] Google sign-in working on `localhost:3005`
-- [ ] You are platform owner in dev
+- [ ] Your account created on `localhost:3005`, and you are platform owner in dev
 - [ ] Staging data loaded; teacher and student walkthroughs done
 - [ ] Website live on Vercel, sign-in working there and on your phone
 - [ ] (When ready) Prod Supabase project, migrations applied, owner set,
       Vercel Production pointed at prod
 - [ ] Keep-alive enabled with `SUPABASE_PROD_DB_URL`
-- [ ] Google app published (before real users)
+- [ ] (Only if using Google) Google app published
 - [ ] `SUPABASE_DEV_REF` set and the Supabase MCP authorised (optional)

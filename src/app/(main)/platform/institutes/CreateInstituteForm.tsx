@@ -91,11 +91,11 @@ export function CreateInstituteForm() {
         />
       </div>
       <div className="field">
-        <label htmlFor="inst-admin">First institute admin (Google account email)</label>
-        <input id="inst-admin" className="inp" type="email" value={admin} required onChange={(e) => setAdmin(e.target.value)} placeholder="owner@sunrise.in" />
+        <label htmlFor="inst-admin">First institute admin&rsquo;s username</label>
+        <input id="inst-admin" className="inp" autoCapitalize="none" spellCheck={false} value={admin} required onChange={(e) => setAdmin(e.target.value)} placeholder="e.g. sunrise.office (or a Google email)" />
       </div>
       <div className="field">
-        <label htmlFor="inst-contact">Contact email (optional — defaults to the admin)</label>
+        <label htmlFor="inst-contact">Contact email (optional)</label>
         <input id="inst-contact" className="inp" type="email" value={contact} onChange={(e) => setContact(e.target.value)} />
       </div>
       {error && <p style={{ color: "var(--pen)", fontSize: 12.5, margin: "0 0 10px" }}>{error}</p>}

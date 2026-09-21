@@ -26,16 +26,20 @@
  *   review queue    12 staged shared questions (4 with session notes) and
  *                   3 staged private questions per institute
  *
- * Synthetic users cannot sign in (sign-in is Google). Real testers are invited
- * through `testers`, and the platform owner is granted through
- * `platformOwnerEmail` once that person has signed in once.
+ * Every synthetic person is a username account (`sunrise.admin`,
+ * `sunrise.teacher1`, `sunrise.student1`, …). With `password` set, they can all
+ * sign in with it — so one tester can walk through every role. Real testers
+ * can also be invited through `testers`, and the platform owner is granted
+ * through `platformOwner` (a username or email) once that account exists.
  */
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { loginToEmail, USERNAME_EMAIL_DOMAIN } from "../../src/lib/identity";
 
 export const STAGING_SLUG_PREFIX = "staging-";
-export const STAGING_EMAIL_DOMAIN = "staging.paperflow.test";
+/** Staging people are username accounts, like everyone else. */
+export const STAGING_EMAIL_DOMAIN = USERNAME_EMAIL_DOMAIN;
 
 /** md5("staging:" + key) as a uuid — the same value SQL gets from md5(...)::uuid. */
 export function stagingId(key: string): string {
@@ -92,6 +96,8 @@ const LAST = ["Sharma", "Verma", "Iyer", "Patel", "Reddy", "Gupta", "Nair", "Sin
 
 export interface StagingPerson {
   id: string;
+  /** what they sign in with, e.g. sunrise.teacher1 */
+  username: string;
   email: string;
   name: string;
   role: "institute_admin" | "teacher" | "student";
@@ -102,6 +108,7 @@ export function stagingPeople(inst: string): StagingPerson[] {
   const name = (i: number) => `${FIRST[(seed + i * 7) % FIRST.length]} ${LAST[(seed + i * 3) % LAST.length]}`;
   const person = (role: StagingPerson["role"], slug: string, i: number): StagingPerson => ({
     id: stagingId(`user:${inst}:${slug}`),
+    username: `${inst}.${slug}`,
     email: `${inst}.${slug}@${STAGING_EMAIL_DOMAIN}`,
     name: name(i),
     role,
@@ -283,7 +290,7 @@ function institutesSql(): string[] {
     // is unsupported"), which breaks the dashboard's user list.
     out.push(`insert into auth.users (id, instance_id, aud, role, email, email_confirmed_at, raw_user_meta_data, raw_app_meta_data,
         confirmation_token, recovery_token, email_change_token_new, email_change)
-      values ${people.map((p) => `('${p.id}', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', '${p.email}', now(), jsonb_build_object('full_name', ${lit(p.name)}), '{"provider":"staging","providers":["staging"]}'::jsonb, '', '', '', '')`).join(",\n        ")}
+      values ${people.map((p) => `('${p.id}', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', '${p.email}', now(), jsonb_build_object('full_name', ${lit(p.name)}, 'username', '${p.username}'), '{"provider":"staging","providers":["staging"]}'::jsonb, '', '', '', '')`).join(",\n        ")}
       on conflict (id) do nothing`);
     out.push(`insert into public.institute_members (institute_id, user_id, role)
       values ${people.map((p) => `('${iid}', '${p.id}', '${p.role}')`).join(", ")}
@@ -482,25 +489,39 @@ function activitySql(): string[] {
   return out;
 }
 
-function testerSql(testers: StagingTester[], platformOwnerEmail?: string): string[] {
+/** Give every staging person the same password (bcrypt, as Supabase stores it). */
+function passwordSql(password: string | undefined): string[] {
+  if (!password) return [];
+  if (password.length < 8) throw new Error("STAGING_PASSWORD must be at least 8 characters");
+  const ids = STAGING_INSTITUTES.flatMap((i) => stagingPeople(i.key).map((p) => `'${p.id}'`));
+  return [
+    `update auth.users set encrypted_password = crypt(${lit(password)}, gen_salt('bf'))
+      where id in (${ids.join(", ")})`,
+  ];
+}
+
+function testerSql(testers: StagingTester[], platformOwner?: string): string[] {
   const out: string[] = [];
   for (const t of testers) {
     const inst = STAGING_INSTITUTES.find((i) => i.key === t.institute);
     if (!inst) throw new Error(`unknown staging institute "${t.institute}" (use ${STAGING_INSTITUTES.map((i) => i.key).join(", ")})`);
     out.push(`insert into public.institute_invites (institute_id, email, role)
-      values ('${instituteId(inst.key)}', ${lit(t.email.trim().toLowerCase())}, '${t.role}')
+      values ('${instituteId(inst.key)}', ${lit(loginToEmail(t.login ?? t.email ?? ""))}, '${t.role}')
       on conflict (institute_id, email) do update set role = excluded.role`);
   }
-  if (platformOwnerEmail) {
+  if (platformOwner) {
     out.push(`insert into public.institute_members (institute_id, user_id, role)
-      select public.platform_institute_id(), p.id, 'owner' from public.profiles p where p.email = ${lit(platformOwnerEmail.trim().toLowerCase())}
+      select public.platform_institute_id(), p.id, 'owner' from public.profiles p where p.email = ${lit(loginToEmail(platformOwner))}
       on conflict (institute_id, user_id) do nothing`);
   }
   return out;
 }
 
 export interface StagingTester {
-  email: string;
+  /** a username or an email */
+  login?: string;
+  /** older name for `login` */
+  email?: string;
   role: "institute_admin" | "teacher" | "student";
   institute: string;
 }
@@ -508,8 +529,10 @@ export interface StagingTester {
 export interface StagingOptions {
   repoRoot: string;
   testers?: StagingTester[];
-  /** Must have signed in once; the seed cannot create a Google account. */
-  platformOwnerEmail?: string;
+  /** Username or email of an EXISTING account to make platform owner. */
+  platformOwner?: string;
+  /** Sign-in password for every staging person; omit to leave them unable to sign in. */
+  password?: string;
 }
 
 export function stagingStatements(opts: StagingOptions): string[] {
@@ -520,7 +543,8 @@ export function stagingStatements(opts: StagingOptions): string[] {
     ...institutesSql(),
     ...questionSql(),
     ...activitySql(),
-    ...testerSql(opts.testers ?? [], opts.platformOwnerEmail),
+    ...passwordSql(opts.password),
+    ...testerSql(opts.testers ?? [], opts.platformOwner),
   ];
 }
 

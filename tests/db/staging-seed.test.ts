@@ -35,8 +35,12 @@ async function runSeed() {
   try {
     for (const stmt of stagingStatements({
       repoRoot: ROOT,
-      testers: [{ email: "Tester.One@example.com", role: "teacher", institute: "riverside" }],
-      platformOwnerEmail: "owner@platform.test",
+      testers: [
+        { email: "Tester.One@example.com", role: "teacher", institute: "riverside" },
+        { login: "@Friend.Two", role: "student", institute: "hilltop" },
+      ],
+      platformOwner: "owner@platform.test",
+      password: "staging-pass-123",
     })) {
       await db.exec(stmt);
     }
@@ -200,8 +204,20 @@ describe("staging users are readable by Supabase's auth server", () => {
   it("never leaves an auth token column NULL", async () => {
     await actAsOwner(db);
     expect(
-      await n(`select count(*)::int as n from auth.users where email like '%@staging.paperflow.test'
+      await n(`select count(*)::int as n from auth.users where email like '%@users.paperflow.invalid'
         and (confirmation_token is null or recovery_token is null or email_change_token_new is null or email_change is null)`),
     ).toBe(0);
+  });
+});
+
+describe("staging people are username accounts", () => {
+  it("have usernames, a password when one is given, and tester invites by username", async () => {
+    await actAsOwner(db);
+    expect(await n(`select count(*)::int as n from profiles where username = 'sunrise.teacher1'`)).toBe(1);
+    const pw = (await db.query<{ ok: boolean }>(
+      `select encrypted_password = crypt('staging-pass-123', encrypted_password) as ok from auth.users where email = 'sunrise.student1@users.paperflow.invalid'`,
+    )).rows[0];
+    expect(pw?.ok).toBe(true);
+    expect(await n(`select count(*)::int as n from institute_invites where email = 'friend.two@users.paperflow.invalid' and role = 'student'`)).toBe(1);
   });
 });

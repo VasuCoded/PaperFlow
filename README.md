@@ -22,8 +22,8 @@ Supabase project or real Google sign-in yet** — see `docs/SETUP.md`.
 | CP | Scope | State |
 |----|-------|-------|
 | C0 | Repo, tooling, DB-control guardrails | Done |
-| C1 | Multi-tenant schema, RLS, taxonomy, seeds | Done — 18 migrations, executed locally and applied to the live dev project |
-| C2 | Sign-in, welcome, invites, batch join codes | Done |
+| C1 | Multi-tenant schema, RLS, taxonomy, seeds | Done — 19 migrations, executed locally and applied to the live dev project |
+| C2 | Username sign-up/sign-in, access-request approvals, invites, batch join codes (Google optional) | Done |
 | C2b | Platform console: institutes, inspect, review queue, activation, requests, support, health, audit | Done |
 | C3 | Ingestion standing brief | Doc only (ingestion is a Claude Code session, not app code) |
 | C4 | Review flow | `/platform/bank` |
@@ -69,7 +69,7 @@ src/server/sets       multi-set shuffle engine (pure)
 src/server/practice   practice matcher + analytics (pure)
 src/lib/pwa           service worker policy + generator
 src/lib/print         print model, KaTeX/mhchem, compose
-supabase/migrations   0001–0017
+supabase/migrations   0001–0019
 tests/db              executable database suites (isolation, suspension, support, …)
 scripts               schema harness, type generation, seeds, staging seed, load test
 docs                  BUILD-PLAN, SETUP, RUNBOOK, HANDOFF, DELIVERY, ingest brief

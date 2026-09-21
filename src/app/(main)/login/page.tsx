@@ -1,10 +1,16 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { GoogleButton } from "./GoogleButton";
+import { SignInForm } from "./PasswordForms";
+import { getSession, homePath } from "@/server/session";
 
 export const metadata: Metadata = { title: "Sign in · PaperFlow" };
 
 const configured =
   !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+// Username + password is the default. Google sign-in stays available behind a
+// flag, for when a Google Cloud project has been set up (docs/GO-LIVE.md §3).
+const googleEnabled = process.env.NEXT_PUBLIC_ENABLE_GOOGLE_SIGNIN === "1";
 
 export default async function LoginPage({
   searchParams,
@@ -12,6 +18,8 @@ export default async function LoginPage({
   searchParams: Promise<{ next?: string; error?: string }>;
 }) {
   const { next, error } = await searchParams;
+  const session = await getSession();
+  if (session) redirect(homePath(session));
 
   return (
     <div className="loginpage">
@@ -63,25 +71,28 @@ export default async function LoginPage({
         )}
 
         {configured ? (
-          <GoogleButton next={next} />
+          <>
+            <SignInForm next={next} />
+            {googleEnabled && (
+              <>
+                <div className="rulebreak">or</div>
+                <GoogleButton next={next} />
+              </>
+            )}
+          </>
         ) : (
           <div className="notice warn" style={{ marginBottom: 0 }}>
             <b>Not configured yet.</b> Set <span className="mono">NEXT_PUBLIC_SUPABASE_URL</span>{" "}
-            and <span className="mono">NEXT_PUBLIC_SUPABASE_ANON_KEY</span>, and enable Google in
-            Supabase Auth. See <span className="mono">docs/SETUP.md</span>.
+            and <span className="mono">NEXT_PUBLIC_SUPABASE_ANON_KEY</span>. See{" "}
+            <span className="mono">docs/GO-LIVE.md</span>.
           </div>
         )}
 
-        <p className="loginnote">
-          Google is the only way in. Signing in carries no role and no institute — you get access
-          when your institute invites you, or when you enter a batch code.
-        </p>
-
-        <div className="rulebreak">No account picker</div>
+        <div className="rulebreak">How access works</div>
         <p className="loginnote" style={{ textAlign: "left", margin: 0 }}>
-          There is deliberately no signup form, no role dropdown and no way to create an institute
-          here. Roles come from an invitation matched to your verified email, or from a batch join
-          code. It is the single control that keeps a wrong answer key away from a parent.
+          An account on its own opens nothing. Students join with the batch code their teacher gives
+          them. Teachers and staff ask their institute for access, and the institute approves them —
+          you never choose your own role. That is what keeps a wrong answer key away from a parent.
         </p>
       </section>
     </div>
