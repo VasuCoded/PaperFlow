@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 import { GoogleButton } from "./GoogleButton";
 import { SignInForm } from "./PasswordForms";
-import { getSession, homePath } from "@/server/session";
+import { getSession } from "@/server/session";
+import { SignedInAs } from "../_components/SignedInAs";
 
 export const metadata: Metadata = { title: "Sign in · PaperFlow" };
 
@@ -19,7 +19,6 @@ export default async function LoginPage({
 }) {
   const { next, error } = await searchParams;
   const session = await getSession();
-  if (session) redirect(homePath(session));
 
   return (
     <div className="loginpage">
@@ -70,7 +69,9 @@ export default async function LoginPage({
           </div>
         )}
 
-        {configured ? (
+        {session ? (
+          <SignedInAs session={session} />
+        ) : configured ? (
           <>
             <SignInForm next={next} />
             {googleEnabled && (

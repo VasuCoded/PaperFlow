@@ -17,7 +17,6 @@ function safeNext(next?: string): string {
  * per-address sign-in limits apply per person rather than to our server.
  */
 export function SignInForm({ next }: { next?: string }) {
-  const router = useRouter();
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -39,8 +38,9 @@ export function SignInForm({ next }: { next?: string }) {
             setBusy(false);
             return;
           }
-          router.replace(safeNext(next));
-          router.refresh();
+          // A full load, not a client-side navigation: nothing the previous
+          // person loaded in this tab may survive into the new session.
+          window.location.replace(safeNext(next));
         } catch {
           setError("Could not reach the server. Check your connection and try again.");
           setBusy(false);
@@ -123,8 +123,7 @@ export function SignUpForm() {
             router.replace("/login");
             return;
           }
-          router.replace("/welcome");
-          router.refresh();
+          window.location.replace("/welcome");
         } catch {
           setError("Could not reach the server. Check your connection and try again.");
           setBusy(false);

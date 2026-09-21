@@ -1,7 +1,6 @@
 "use server";
 
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createServerSupabaseClient } from "@/lib/db/server";
 import { getSession, INSTITUTE_COOKIE_NAME } from "@/server/session";
@@ -35,12 +34,12 @@ export async function switchInstitute(instituteId: string): Promise<ActionResult
   return { ok: true };
 }
 
-export async function signOutAction(): Promise<never> {
+/** Ends the session. The caller then loads /login as a full page (SignOutButton). */
+export async function signOutAction(): Promise<void> {
   const supabase = await createServerSupabaseClient();
   await supabase.auth.signOut();
   const jar = await cookies();
   jar.delete(INSTITUTE_COOKIE_NAME);
-  redirect("/login");
 }
 
 /** Accept an invitation. The RPC matches the caller's verified email itself. */

@@ -20,16 +20,35 @@ async function clearOfflinePages() {
   }
 }
 
-export function SignOutButton({ className = "btn sm ghost" }: { className?: string }) {
+/**
+ * Signs out, then loads /login as a full page rather than a client-side
+ * navigation, so nothing the previous person loaded stays in the tab.
+ */
+export function SignOutButton({
+  className = "btn sm ghost",
+  label = "Sign out",
+  block = false,
+}: {
+  className?: string;
+  label?: string;
+  block?: boolean;
+}) {
   const [pending, start] = useTransition();
   return (
     <button
       type="button"
       className={className}
       disabled={pending}
-      onClick={() => start(async () => { await clearOfflinePages(); await signOutAction(); })}
+      style={block ? { display: "block", width: "100%" } : undefined}
+      onClick={() =>
+        start(async () => {
+          await clearOfflinePages();
+          await signOutAction();
+          window.location.replace("/login");
+        })
+      }
     >
-      {pending ? "Signing out…" : "Sign out"}
+      {pending ? "Signing out…" : label}
     </button>
   );
 }

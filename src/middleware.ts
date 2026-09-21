@@ -56,13 +56,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(login);
   }
 
-  if (path === "/login" && user) {
-    const home = request.nextUrl.clone();
-    home.pathname = "/welcome";
-    home.search = "";
-    return NextResponse.redirect(home);
-  }
-
   return response;
 }
 

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 import { SignUpForm } from "../login/PasswordForms";
-import { getSession, homePath } from "@/server/session";
+import { getSession } from "@/server/session";
+import { SignedInAs } from "../_components/SignedInAs";
 
 export const metadata: Metadata = { title: "Create an account · PaperFlow" };
 
@@ -11,7 +11,6 @@ export const metadata: Metadata = { title: "Create an account · PaperFlow" };
  */
 export default async function SignUpPage() {
   const session = await getSession();
-  if (session) redirect(homePath(session));
 
   return (
     <div className="loginpage">
@@ -43,7 +42,7 @@ export default async function SignUpPage() {
       <section className="loginpanel">
         <div className="mark">PaperFlow</div>
         <p className="markcap">Create an account</p>
-        <SignUpForm />
+        {session ? <SignedInAs session={session} /> : <SignUpForm />}
         <p className="loginnote" style={{ textAlign: "left", marginTop: 16 }}>
           There is no email and no password reset by email. If you forget your password, ask your
           institute admin or the platform to reset it.
