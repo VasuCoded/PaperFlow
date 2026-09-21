@@ -14,11 +14,15 @@
  *   class-subjects  10 Mathematics (ready, 60 approved per chapter, real
  *                   chapter-by-chapter questions with computed answers —
  *                   scripts/staging/maths.ts; passes the gate)
- *                   10 Science (seeding, 30 per chapter: fails the gate)
+ *                   10 Science (seeding, 30 per chapter: fails the gate) —
+ *                   except Life Processes, a real CBSE-style chapter of ~170
+ *                   questions (scripts/staging/life-processes.ts)
  *                   12 Biology (ready, 60 per chapter, generic filler)
- *                   chapters from docs/taxonomy, three synthetic topics each
+ *                   chapters from docs/taxonomy, matched on NCERT number,
+ *                   three synthetic topics each
  *   a platform "Staging Unit Test (25 marks)" pattern per class-subject
- *   institutes      Staging Sunrise Academy (Maths + Biology active)
+ *   institutes      Staging Sunrise Academy (Maths + Biology active, and
+ *                   Science taught by teacher 2 for Life Processes)
  *                   Staging Riverside Classes (Maths; Science requested)
  *                   Staging Hilltop Tutorials (Maths; Biology declined)
  *   each            1 admin, 3 teachers, 24 students, 2 batches per subject,
@@ -39,9 +43,23 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { loginToEmail, USERNAME_EMAIL_DOMAIN } from "../../src/lib/identity";
 import { mathsQuestion } from "./maths";
+import { lifeProcessesSql } from "./life-processes-sql";
 
 // Set by stagingStatements before the question SQL is built.
 let REPO_ROOT_FOR_MATHS = ".";
+let REFRESH_CONTENT = false;
+
+/**
+ * With refreshContent, a synthetic question that already exists is rewritten
+ * to what the generator now says: content, chapter and topic. Ids never
+ * change, so papers and attempts that reference them keep working. Status is
+ * never touched, so whatever testers approved, rejected or flagged stays.
+ */
+export function onConflictSql(columns: string[]): string {
+  return REFRESH_CONTENT
+    ? `on conflict (id) do update set ${columns.map((c) => `${c} = excluded.${c}`).join(", ")}`
+    : "on conflict (id) do nothing";
+}
 
 export const STAGING_SLUG_PREFIX = "staging-";
 /** Staging people are username accounts, like everyone else. */
@@ -167,7 +185,7 @@ function taxonomySql(repoRoot: string): string[] {
     const chapters = readChapters(repoRoot, s.csv);
     out.push(`insert into public.chapters (class_subject_id, name, ncert_number, sort_order)
       select ${csSql(cs)}, v.name, v.num, v.ord
-      from (values ${chapters.map((c) => `(${lit(c.name)}, ${lit(c.number)}, ${Number(c.number) || 0})`).join(", ")}) v(name, num, ord)
+      from (values ${chapters.map((c, i) => `(${lit(c.name)}, ${lit(c.number)}, ${i})`).join(", ")}) v(name, num, ord)
       on conflict (class_subject_id, name) do nothing`);
   }
   out.push(`insert into public.topics (chapter_id, name, slug)
@@ -260,9 +278,9 @@ function mathsInsertSql(opts: { owner: string; source: string; idExpr: string; r
     from (values
       ${values.join(",\n      ")}
     ) v(ord, k, g, body, qtype, options, correct, answer, solution, marks, difficulty)
-    join public.chapters ch on ch.class_subject_id = ${csSql("10 Mathematics")} and ch.sort_order = v.ord
+    join public.chapters ch on ch.class_subject_id = ${csSql("10 Mathematics")} and ch.ncert_number = v.ord::text
     join public.topics t on t.chapter_id = ch.id and t.slug = 'staging-topic-' || v.k
-    on conflict (id) do nothing`;
+    ${onConflictSql(["chapter_id", "topic_id", "body", "question_type", "options", "correct_option", "answer", "solution", "marks", "difficulty", "options_shufflable"])}`;
 }
 
 const range = (from: number, to: number) => Array.from({ length: to - from + 1 }, (_, i) => from + i);
@@ -296,7 +314,7 @@ function questionSql(): string[] {
       mathsInsertSql({
         owner: `'${instituteId(inst.key)}'::uuid`,
         source: "Staging private synthetic",
-        idExpr: `md5('staging:private:${inst.key}:' || ch.sort_order || ':' || v.g)::uuid`,
+        idExpr: `md5('staging:private:${inst.key}:' || ch.ncert_number || ':' || v.g)::uuid`,
         rows: [1, 2].flatMap((chapter) => range(1, 5).map((g) => ({ chapter, topic: 1, g, salt: 300 + i * 10 }))),
       }),
     );
@@ -475,7 +493,7 @@ begin
       join public.chapters ch on ch.id = qq.chapter_id
       where qq.class_subject_id = v_cs and qq.status = 'approved' and qq.source = 'Staging synthetic'
         and qq.question_type = any (sec.question_types) and qq.marks = sec.marks_each
-        and ch.sort_order between ${p.chapters[0]} and ${p.chapters[1]}
+        and ch.ncert_number::int between ${p.chapters[0]} and ${p.chapters[1]}
       order by md5(qq.id::text || '${p.key}')
       limit sec.question_count
     loop
@@ -601,16 +619,29 @@ export interface StagingOptions {
   platformOwner?: string;
   /** Sign-in password for every staging person; omit to leave them unable to sign in. */
   password?: string;
+  /** Rewrite existing synthetic questions to the current content (see onConflictSql). */
+  refreshContent?: boolean;
 }
 
 export function stagingStatements(opts: StagingOptions): string[] {
   REPO_ROOT_FOR_MATHS = opts.repoRoot;
+  REFRESH_CONTENT = opts.refreshContent ?? false;
   return [
     ...taxonomySql(opts.repoRoot),
     ...patternSql(),
     // institutes before questions: private questions reference their owner
     ...institutesSql(),
     ...questionSql(),
+    ...lifeProcessesSql({
+      lit,
+      csSql,
+      onConflictSql,
+      stagingId,
+      instituteId,
+      batchId,
+      sunriseTeacherId: stagingPeople("sunrise").find((p) => p.username === "sunrise.teacher2")!.id,
+      sunriseAdminId: stagingPeople("sunrise").find((p) => p.role === "institute_admin")!.id,
+    }),
     ...activitySql(),
     ...passwordSql(opts.password),
     ...testerSql(opts.testers ?? [], opts.platformOwner),

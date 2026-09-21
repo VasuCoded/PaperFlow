@@ -38,6 +38,7 @@ async function main() {
     testers,
     platformOwner: process.env.STAGING_OWNER || process.env.STAGING_OWNER_EMAIL || undefined,
     password: process.env.STAGING_PASSWORD || undefined,
+    refreshContent: process.argv.includes("--refresh-content"),
   });
 
   const client = new Client({ connectionString: url });
