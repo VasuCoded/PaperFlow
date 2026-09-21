@@ -9,6 +9,7 @@ import {
   getStrands,
   getTeachingSubjects,
 } from "@/server/data/teacher";
+import { defaultInstructions } from "@/lib/paper-layout";
 import { GenerateClient, type SubjectBundle } from "./GenerateClient";
 
 export const metadata: Metadata = { title: "Set a paper · PaperFlow" };
@@ -39,7 +40,22 @@ export default async function GeneratePage() {
           totalMarks: p.totalMarks,
           durationMin: p.durationMin,
           origin: p.origin,
-          sectionCount: p.sections.length,
+          /** an institute template (not a platform / board pattern) */
+          isInstituteTemplate: p.ownerInstituteId === instituteId,
+          // whoever saved a template, or an institute admin, may take it off the list
+          canRemove:
+            p.ownerInstituteId === instituteId &&
+            (p.createdBy === session?.userId || session?.role === "institute_admin"),
+          generalInstructions: p.generalInstructions ?? "",
+          sections: p.sections.map((sec, i) => ({
+            questionTypes: sec.questionTypes,
+            requiresStimulus: sec.requiresStimulus,
+            questionCount: sec.questionCount,
+            marksEach: sec.marksEach,
+            allowChoice: sec.allowChoice,
+            practiceEligible: sec.practiceEligible,
+            instructions: p.sectionInstructions[i] ?? defaultInstructions(sec),
+          })),
         })),
         batches,
         strands,

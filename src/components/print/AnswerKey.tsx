@@ -6,13 +6,14 @@ import { renderRich } from "@/lib/print/math";
  * order was shuffled, the answer letter shown must be the shuffled letter
  * (§C7 item 2) — the DB layer resolves that before building this model.
  */
-export function AnswerKey({ model }: { model: AnswerKeyModel }) {
+export function AnswerKey({ model, pageName }: { model: AnswerKeyModel; pageName?: string }) {
   return (
-    <div className="pf-paper">
+    <div className="pf-paper" style={pageName ? { page: pageName } : undefined}>
       <header className="pf-paper-header">
         <div>
           <div className="pf-institute">{model.instituteName}</div>
           <div className="pf-meta">Answer key · {model.title}</div>
+          {model.code && <div className="pf-code">Paper code {model.code}</div>}
         </div>
         <div className="pf-set-badge">SET {model.setLabel}</div>
       </header>

@@ -150,6 +150,21 @@ body {
   overflow-y: hidden;
 }
 
+/* The paper code: small, in the header of each document; the page margin
+   repeats it on every page (named pages, print/paper/[id]/page.tsx). */
+.pf-code {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 8pt;
+  letter-spacing: 0.04em;
+  color: #333;
+  margin-top: 2px;
+}
+.pf-general {
+  font-size: 10pt;
+  font-style: italic;
+  margin: 0 0 10px;
+}
+
 .pf-footer {
   margin-top: 14px;
   border-top: 1px solid #000;

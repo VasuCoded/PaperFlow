@@ -43,9 +43,13 @@ function Block({ block }: { block: PrintBlock }) {
   );
 }
 
-export function QuestionPaper({ model }: { model: PaperPrintModel }) {
+/**
+ * pageName: a CSS named page (see app/print/paper/[id]/page.tsx) whose top
+ * margin carries this document's paper code on every printed page.
+ */
+export function QuestionPaper({ model, pageName }: { model: PaperPrintModel; pageName?: string }) {
   return (
-    <div className="pf-paper">
+    <div className="pf-paper" style={pageName ? { page: pageName } : undefined}>
       <header className="pf-paper-header">
         <div>
           <div className="pf-institute">{model.instituteName}</div>
@@ -56,6 +60,7 @@ export function QuestionPaper({ model }: { model: PaperPrintModel }) {
             Max Marks: {model.totalMarks}
             {model.durationMin ? ` · Time: ${model.durationMin} min` : ""}
           </div>
+          {model.code && <div className="pf-code">Paper code {model.code}</div>}
         </div>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           {model.setCount > 1 && (
@@ -71,6 +76,8 @@ export function QuestionPaper({ model }: { model: PaperPrintModel }) {
           )}
         </div>
       </header>
+
+      {model.generalInstructions && <p className="pf-general">{model.generalInstructions}</p>}
 
       {model.sections.map((section) => (
         <section key={section.label} className="pf-section">

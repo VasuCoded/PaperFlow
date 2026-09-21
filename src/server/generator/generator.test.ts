@@ -36,11 +36,14 @@ function makeStandalone(
     withinBlockOrder: 0,
     difficulty,
     marks,
-    questionType: "mcq",
+    // the CBSE type that carries these marks, so typed sections can find them
+    questionType: TYPE_BY_MARKS[marks] ?? "sa",
     optionsShufflable: false,
     positionLocked: false,
   };
 }
+
+const TYPE_BY_MARKS: Record<number, string> = { 1: "mcq", 2: "vsa", 3: "sa", 5: "la" };
 
 function makeStimulusGroup(
   owner: string,
@@ -465,5 +468,53 @@ describe("swapBlock", () => {
     }) };
     const swap = swapBlock(locked, "A", target.key, blocks, { ...BASE_INPUT, seed: 6 });
     expect(swap.ok).toBe(false);
+  });
+});
+
+describe("question types", () => {
+  const q = (id: string, type: string, marks = 1, difficulty: Difficulty = "medium"): GenQuestion => ({
+    id, ownerInstituteId: "P", classSubjectId: CS, chapterId: "ch1", topicId: `t-${id}`, strandId: null,
+    stimulusId: null, parentQuestionId: null, withinBlockOrder: 0, difficulty, marks, questionType: type,
+    optionsShufflable: false, positionLocked: false,
+  });
+  // 1-mark questions of three types; only the MCQs may fill an "MCQ only" section
+  const pool = buildBlocks([
+    ...Array.from({ length: 6 }, (_, i) => q(`m${i}`, "mcq")),
+    ...Array.from({ length: 6 }, (_, i) => q(`v${i}`, "vsa")),
+    ...Array.from({ length: 6 }, (_, i) => q(`a${i}`, "assertion_reason")),
+  ]);
+  const input: GenerateInput = { instituteId: "I", classSubjectId: CS, allowedOwnerIds: ["P"], difficultySplit: { easy: 0, medium: 1, hard: 0 }, seed: 3 };
+  const pattern = (types: string[], count: number): Pattern => ({
+    id: "p", name: "p", totalMarks: count,
+    sections: [{ label: "A", questionCount: count, marksEach: 1, questionTypes: types, allowChoice: false, practiceEligible: true, requiresStimulus: false }],
+  });
+
+  it("fills a section only with the types it allows", () => {
+    const r = generatePaper(input, pool, pattern(["mcq"], 6));
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.sections[0]!.blocks.every((pb) => pb.block.questions[0]!.questionType === "mcq")).toBe(true);
+  });
+
+  it("reports a shortfall rather than padding with another type of the same marks", () => {
+    const r = generatePaper(input, pool, pattern(["mcq"], 7));
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.shortfall[0]).toMatchObject({ section: "A", needed: 7, available: 6 });
+  });
+
+  it("treats an empty type list as any type", () => {
+    expect(generatePaper(input, pool, pattern([], 18)).ok).toBe(true);
+  });
+
+  it("swaps an MCQ only for another MCQ", () => {
+    const r = generatePaper(input, pool, pattern(["mcq", "vsa"], 2));
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    for (const pb of r.sections[0]!.blocks) {
+      const s = swapBlock(r, "A", pb.block.key, pool, input);
+      expect(s.ok).toBe(true);
+      if (s.ok) expect(s.block.questions[0]!.questionType).toBe(pb.block.questions[0]!.questionType);
+    }
   });
 });

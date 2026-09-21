@@ -6,14 +6,15 @@ import { renderRich } from "@/lib/print/math";
  * the answer and the marks (§C7 item 3). This is what keeps hand-checking cheap
  * across sets. Header carries the distribution instruction.
  */
-export function MappingSheet({ model }: { model: MappingSheetModel }) {
+export function MappingSheet({ model, pageName }: { model: MappingSheetModel; pageName?: string }) {
   return (
-    <div className="pf-paper">
+    <div className="pf-paper" style={pageName ? { page: pageName } : undefined}>
       <header className="pf-paper-header">
         <div>
           <div className="pf-institute">{model.instituteName}</div>
           <div className="pf-meta">Master mapping sheet · {model.title}</div>
           <div className="pf-meta">Hand out in a repeating cycle {model.setLabels.join(", ")} along each row.</div>
+          {model.code && <div className="pf-code">Paper code {model.code}</div>}
         </div>
         <div className="pf-meta">
           {model.setLabels.map((l) => (

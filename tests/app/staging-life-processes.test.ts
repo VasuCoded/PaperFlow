@@ -79,6 +79,8 @@ describe("Life Processes staging set", () => {
       { easy: 0.3, medium: 0.5, hard: 0.2 },
       { easy: 0.4, medium: 0.4, hard: 0.2 },
       { easy: 0.2, medium: 0.5, hard: 0.3 },
+      // a teacher's own, hard-heavy mix
+      { easy: 0.1, medium: 0.3, hard: 0.6 },
     ];
     for (const difficultySplit of mixes) {
       for (const seed of [1, 2, 3, 42, 2026]) {

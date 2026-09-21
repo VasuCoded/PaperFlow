@@ -107,9 +107,17 @@ export interface PatternWithSections extends Pattern {
   durationMin: number | null;
   isDefault: boolean;
   ownerInstituteId: string;
+  /** per section, parallel to sections */
+  sectionInstructions: (string | null)[];
+  generalInstructions: string | null;
+  /** who saved it, for an institute template; null for platform patterns */
+  createdBy: string | null;
 }
 
-/** Platform (board) patterns plus this institute's own, for one class-subject. */
+/**
+ * Platform (board) patterns plus this institute's saved templates, for one
+ * class-subject. The one-off layouts behind single papers are not listed.
+ */
 export async function getPatterns(
   instituteId: string,
   classSubjectId: string,
@@ -118,13 +126,14 @@ export async function getPatterns(
   const { data } = await supabase
     .from("paper_patterns")
     .select(
-      `id, name, total_marks, duration_min, origin, is_default, owner_institute_id,
+      `id, name, total_marks, duration_min, origin, is_default, owner_institute_id, created_by, general_instructions,
        pattern_sections (
          id, label, sort_order, instructions, question_count, marks_each,
          question_types, allow_choice, practice_eligible, requires_stimulus
        )`,
     )
     .eq("class_subject_id", classSubjectId)
+    .eq("listed", true)
     .order("is_default", { ascending: false })
     .order("total_marks", { ascending: true });
 
@@ -150,6 +159,9 @@ export async function getPatterns(
       durationMin: p.duration_min,
       isDefault: p.is_default,
       ownerInstituteId: p.owner_institute_id,
+      sectionInstructions: ordered.map((s) => s.instructions),
+      generalInstructions: p.general_instructions,
+      createdBy: p.created_by,
     };
   });
 }

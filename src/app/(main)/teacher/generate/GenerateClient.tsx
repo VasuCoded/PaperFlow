@@ -4,12 +4,25 @@ import { useCallback, useEffect, useMemo, useState, useTransition } from "react"
 import { useRouter } from "next/navigation";
 import {
   previewPaper,
+  removeSavedLayout,
   savePaper,
+  type LayoutChoice,
   type PaperRequest,
   type PreviewResponse,
 } from "@/server/actions/paper";
 import { flagQuestion } from "@/server/actions/teacher";
 import type { BatchOption, ChapterCount } from "@/server/data/teacher";
+import {
+  kindLabel,
+  layoutTotals,
+  QUICK_TEMPLATES,
+  sectionLabel,
+  templateByKey,
+  type AvailabilityRow,
+  type CustomLayout,
+  type LayoutSection,
+} from "@/lib/paper-layout";
+import { LayoutEditor } from "./LayoutEditor";
 
 export interface SubjectBundle {
   classSubjectId: string;
@@ -21,7 +34,10 @@ export interface SubjectBundle {
     totalMarks: number;
     durationMin: number | null;
     origin: string;
-    sectionCount: number;
+    isInstituteTemplate: boolean;
+    canRemove: boolean;
+    generalInstructions: string;
+    sections: LayoutSection[];
   }[];
   batches: BatchOption[];
   /** strands of this class-subject; the balance control shows when there are two or more */
@@ -68,21 +84,50 @@ function newSeed(): number {
   return Math.floor(Math.random() * 2_000_000_000);
 }
 
+/**
+ * The layout picker's value: "p:<patternId>" a stored pattern, "t:<key>" a
+ * quick template, "custom" the teacher's own (edited in LayoutEditor).
+ */
+type LayoutSel = string;
+
+function firstLayout(b: SubjectBundle): LayoutSel {
+  return b.patterns[0] ? `p:${b.patterns[0].id}` : `t:${QUICK_TEMPLATES[0]!.key}`;
+}
+
+/** Only what changes the paper — so typing a name or instructions never re-generates. */
+function structureKey(l: CustomLayout): string {
+  return JSON.stringify([l.durationMin, l.sections.map((s) => [s.questionTypes, s.requiresStimulus, s.questionCount, s.marksEach, s.allowChoice])]);
+}
+
 export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
   const router = useRouter();
 
   const [csId, setCsId] = useState(subjects[0]!.classSubjectId);
   const bundle = subjects.find((s) => s.classSubjectId === csId) ?? subjects[0]!;
 
-  const [patternId, setPatternId] = useState(bundle.patterns[0]?.id ?? "");
+  const [layoutSel, setLayoutSel] = useState<LayoutSel>(() => firstLayout(bundle));
+  const [custom, setCustom] = useState<CustomLayout | null>(null);
+  const [saveAsTemplate, setSaveAsTemplate] = useState(false);
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [availability, setAvailability] = useState<AvailabilityRow[] | null>(null);
+  const [removing, startRemove] = useTransition();
   const [chapterIds, setChapterIds] = useState<string[]>(
     bundle.chapters.filter((c) => c.approved > 0).slice(0, 3).map((c) => c.chapterId),
   );
+  // -1 = the teacher's own percentages
   const [splitIdx, setSplitIdx] = useState(0);
+  const [customPct, setCustomPct] = useState({ easy: 30, medium: 50, hard: 20 });
+  const customSum = customPct.easy + customPct.medium + customPct.hard;
+  // Only a mix that adds up to 100% is ever sent; a half-typed one keeps the last good paper.
+  const [lastGoodCustom, setLastGoodCustom] = useState(customPct);
+  const split = splitIdx >= 0
+    ? SPLITS[splitIdx]!.value
+    : { easy: lastGoodCustom.easy / 100, medium: lastGoodCustom.medium / 100, hard: lastGoodCustom.hard / 100 };
+  const splitKey = JSON.stringify(split);
   const [setCount, setSetCount] = useState(1);
   const [batchId, setBatchId] = useState<string | null>(bundle.batches[0]?.id ?? null);
   const [repeatGuard, setRepeatGuard] = useState(true);
-  const [title, setTitle] = useState("Unit test");
+  const [title, setTitle] = useState("");
   // Relaxations are only ever added by the teacher clicking one (C8: never auto-relax).
   const [relaxed, setRelaxed] = useState<Relax[]>([]);
   const [strandOn, setStrandOn] = useState(false);
@@ -112,15 +157,63 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
   const [poolVersion, setPoolVersion] = useState(0);
   const [flagPending, startFlag] = useTransition();
 
-  const pattern = bundle.patterns.find((p) => p.id === patternId) ?? bundle.patterns[0];
+  // What the picker currently means, as a layout — for the summary, the preview
+  // header and as the starting point when the teacher chooses to customise.
+  const storedPattern = layoutSel.startsWith("p:") ? bundle.patterns.find((p) => `p:${p.id}` === layoutSel) : undefined;
+  const template = layoutSel.startsWith("t:") ? templateByKey(layoutSel.slice(2)) : undefined;
+  const current: CustomLayout | null =
+    layoutSel === "custom"
+      ? custom
+      : storedPattern
+        ? { name: storedPattern.name, durationMin: storedPattern.durationMin, generalInstructions: storedPattern.generalInstructions, sections: storedPattern.sections }
+        : (template?.layout ?? null);
+  const totals = current ? layoutTotals(current.sections) : { questions: 0, marks: 0 };
+
+  const layoutChoice = useMemo<LayoutChoice | null>(() => {
+    if (storedPattern) return { kind: "pattern", patternId: storedPattern.id };
+    if (template) return { kind: "custom", layout: template.layout };
+    if (layoutSel === "custom" && custom) return { kind: "custom", layout: custom, saveAsTemplate };
+    return null;
+  }, [storedPattern, template, layoutSel, custom, saveAsTemplate]);
+  const layoutKey = layoutSel === "custom" && custom ? `custom:${structureKey(custom)}` : layoutSel;
+
+  function chooseLayout(sel: LayoutSel) {
+    if (sel === "custom") {
+      // Back to their own layout if they have one; otherwise start from what
+      // was chosen, so "custom" means "this, changed".
+      if (!custom && current) setCustom({ ...current, name: `${current.name} (custom)` });
+      setEditorOpen(true);
+    }
+    setLayoutSel(sel);
+    setLocked([]);
+    setSwaps([]);
+  }
+
+  function customiseCurrent() {
+    if (!current) return;
+    setCustom({ ...current, name: layoutSel === "custom" ? current.name : `${current.name} (custom)` });
+    setLayoutSel("custom");
+    setEditorOpen(true);
+    setLocked([]);
+    setSwaps([]);
+  }
+
+  function editCustom(next: CustomLayout) {
+    // a different structure invalidates locks and swaps; names and instructions do not
+    if (!custom || structureKey(next) !== structureKey(custom)) {
+      setLocked([]);
+      setSwaps([]);
+    }
+    setCustom(next);
+  }
 
   const request = useMemo<PaperRequest | null>(() => {
-    if (!pattern) return null;
+    if (!layoutChoice) return null;
     return {
       classSubjectId: bundle.classSubjectId,
-      patternId: pattern.id,
+      layout: layoutChoice,
       chapterIds,
-      difficulty: SPLITS[splitIdx]!.value,
+      difficulty: split,
       setCount,
       batchId,
       excludeRecentPapers: repeatGuard ? 3 : 0,
@@ -131,12 +224,15 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
       relax: relaxed,
       strandWeights,
     };
-  }, [bundle.classSubjectId, pattern, chapterIds, splitIdx, setCount, batchId, repeatGuard, title, seed, locked, swaps, relaxed, strandWeights]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- split is keyed by splitKey
+  }, [bundle.classSubjectId, layoutChoice, chapterIds, splitKey, setCount, batchId, repeatGuard, title, seed, locked, swaps, relaxed, strandWeights]);
 
   const run = useCallback(() => {
     if (!request) return;
     startPreview(async () => {
-      setPreview(await previewPaper(request));
+      const res = await previewPaper(request);
+      setPreview(res);
+      if (res.availability.length > 0 || res.ok) setAvailability(res.availability);
     });
   }, [request]);
 
@@ -147,13 +243,15 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
     const t = setTimeout(run, 350);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bundle.classSubjectId, patternId, chapterIds, splitIdx, setCount, batchId, repeatGuard, seed, locked, swaps, poolVersion, relaxed, strandKey]);
+  }, [bundle.classSubjectId, layoutKey, chapterIds, splitKey, setCount, batchId, repeatGuard, seed, locked, swaps, poolVersion, relaxed, strandKey]);
 
   function changeSubject(id: string) {
     const next = subjects.find((s) => s.classSubjectId === id);
     if (!next) return;
     setCsId(id);
-    setPatternId(next.patterns[0]?.id ?? "");
+    // a custom layout carries over (it names kinds, not a subject); a stored pattern cannot
+    if (layoutSel !== "custom") setLayoutSel(firstLayout(next));
+    setAvailability(null);
     setChapterIds(next.chapters.filter((c) => c.approved > 0).slice(0, 3).map((c) => c.chapterId));
     setBatchId(next.batches[0]?.id ?? null);
     setLocked([]);
@@ -209,7 +307,7 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
 
         <div className="field">
           <label htmlFor="title">Title</label>
-          <input className="inp" id="title" value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} />
+          <input className="inp" id="title" value={title} maxLength={120} placeholder={current?.name ?? "Unit test"} onChange={(e) => setTitle(e.target.value)} />
         </div>
 
         <div className="field">
@@ -241,20 +339,72 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
         </div>
 
         <div className="field">
-          <label htmlFor="pat">Pattern</label>
-          {bundle.patterns.length === 0 ? (
-            <p style={{ fontSize: 12, color: "var(--pen)", margin: 0 }}>
-              No paper pattern exists for this subject yet.
-            </p>
-          ) : (
-            <select className="sel" id="pat" value={pattern?.id ?? ""} onChange={(e) => { setPatternId(e.target.value); setLocked([]); setSwaps([]); }}>
-              {bundle.patterns.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} · {p.totalMarks} marks{p.origin === "board" ? " · board" : ""}
-                </option>
+          <label htmlFor="pat">Paper layout</label>
+          <select className="sel" id="pat" value={layoutSel} onChange={(e) => chooseLayout(e.target.value)}>
+            {bundle.patterns.some((p) => !p.isInstituteTemplate) && (
+              <optgroup label="CBSE and standard patterns">
+                {bundle.patterns.filter((p) => !p.isInstituteTemplate).map((p) => (
+                  <option key={p.id} value={`p:${p.id}`}>
+                    {p.name} · {p.totalMarks} marks{p.origin === "board" ? " · board" : ""}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {bundle.patterns.some((p) => p.isInstituteTemplate) && (
+              <optgroup label="Saved by your institute">
+                {bundle.patterns.filter((p) => p.isInstituteTemplate).map((p) => (
+                  <option key={p.id} value={`p:${p.id}`}>
+                    {p.name} · {p.totalMarks} marks
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            <optgroup label="Quick templates">
+              {QUICK_TEMPLATES.map((t) => (
+                <option key={t.key} value={`t:${t.key}`}>{t.name}</option>
               ))}
-            </select>
+            </optgroup>
+            <optgroup label="Your own">
+              <option value="custom">{custom ? `Custom: ${custom.name}` : "Custom — build your own"}</option>
+            </optgroup>
+          </select>
+          {current && (
+            <div className="laysum">
+              {current.sections.map((s, i) => (
+                <div key={i}>
+                  <span className="mono">{sectionLabel(i)}</span> {s.questionCount} × {kindLabel(s.questionTypes, s.requiresStimulus)}{" "}
+                  <span className="mk">({s.marksEach})</span>
+                  {s.allowChoice ? " · choice" : ""}
+                </div>
+              ))}
+              <div className="laysum-total">
+                {totals.marks} marks · {totals.questions} questions{current.durationMin ? ` · ${current.durationMin} min` : ""}
+              </div>
+            </div>
           )}
+          <div className="btnrow" style={{ marginTop: 8 }}>
+            <button type="button" className="btn sm ghost" onClick={layoutSel === "custom" ? () => setEditorOpen((o) => !o) : customiseCurrent} disabled={!current}>
+              {layoutSel === "custom" ? (editorOpen ? "Hide the editor" : "Edit layout") : "Customise this layout"}
+            </button>
+            {storedPattern?.canRemove && (
+              <button
+                type="button"
+                className="btn sm ghost"
+                disabled={removing}
+                onClick={() =>
+                  startRemove(async () => {
+                    const res = await removeSavedLayout(storedPattern.id);
+                    if (res.ok) {
+                      setLayoutSel(`t:${QUICK_TEMPLATES[0]!.key}`);
+                      router.refresh();
+                    } else setSaveError(res.message ?? "Could not remove it.");
+                  })
+                }
+              >
+                {removing ? "Removing…" : "Remove from our list"}
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="field">
@@ -262,7 +412,7 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
           <div className="mixrow">
             {(["easy", "medium", "hard"] as const).map((k) => (
               <div key={k} className={`mix ${k[0]}`}>
-                <b>{Math.round(SPLITS[splitIdx]!.value[k] * 100)}%</b>
+                <b>{Math.round(split[k] * 100)}%</b>
                 <span>{k}</span>
               </div>
             ))}
@@ -273,7 +423,41 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
                 {s.label}
               </button>
             ))}
+            <button type="button" className={`btn sm${splitIdx === -1 ? " solid" : " ghost"}`} onClick={() => setSplitIdx(-1)}>
+              My own
+            </button>
           </div>
+          {splitIdx === -1 && (
+            <div style={{ marginTop: 8 }}>
+              <div className="mixedit">
+                {(["easy", "medium", "hard"] as const).map((k) => (
+                  <label key={k} className={`mixin ${k[0]}`}>
+                    <span>{k} %</span>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min={0}
+                      max={100}
+                      step={5}
+                      className="inp"
+                      value={customPct[k]}
+                      onChange={(e) => {
+                        const v = Math.max(0, Math.min(100, Math.round(Number(e.target.value) || 0)));
+                        const next = { ...customPct, [k]: v };
+                        setCustomPct(next);
+                        if (next.easy + next.medium + next.hard === 100) setLastGoodCustom(next);
+                      }}
+                    />
+                  </label>
+                ))}
+              </div>
+              <p style={{ fontSize: 11.5, margin: "6px 0 0", color: customSum === 100 ? "var(--graphite)" : "var(--pen)" }}>
+                {customSum === 100
+                  ? "Adds up to 100%. The paper matches this as closely as the chapters allow."
+                  : `Adds up to ${customSum}% — it must be 100% to apply.`}
+              </p>
+            </div>
+          )}
         </div>
 
         {bundle.strands.length >= 2 && (
@@ -382,7 +566,7 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
           )}
         </div>
 
-        <button type="button" className="gen" onClick={regenerate} disabled={loading || !pattern}>
+        <button type="button" className="gen" onClick={regenerate} disabled={loading || !layoutChoice}>
           {loading ? "Building…" : "Generate a different paper"}
         </button>
         <p className="genmeta">
@@ -395,10 +579,10 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
       <section className="preview">
         <div className="pvhead">
           <div>
-            <h2>{title || pattern?.name}</h2>
+            <h2>{title || current?.name}</h2>
             <div className="sub">
-              {bundle.label.toUpperCase()} · {pattern?.totalMarks ?? 0} MARKS
-              {pattern?.durationMin ? ` · ${pattern.durationMin} MIN` : ""} · {setCount} SET
+              {bundle.label.toUpperCase()} · {totals.marks} MARKS
+              {current?.durationMin ? ` · ${current.durationMin} MIN` : ""} · {setCount} SET
               {setCount === 1 ? "" : "S"} · DRAFT
             </div>
           </div>
@@ -410,6 +594,17 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
         </div>
 
         {saveError && <div className="notice warn" style={{ marginTop: 12 }}>{saveError}</div>}
+
+        {layoutSel === "custom" && custom && editorOpen && (
+          <LayoutEditor
+            layout={custom}
+            onChange={editCustom}
+            availability={availability}
+            saveAsTemplate={saveAsTemplate}
+            onSaveAsTemplate={setSaveAsTemplate}
+            onClose={() => setEditorOpen(false)}
+          />
+        )}
 
         {!preview && <p className="lede" style={{ marginTop: 16 }}>Building a first paper…</p>}
 
@@ -494,10 +689,14 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
               </div>
             )}
             <div className="paper">
-              {preview.sections.map((section) => (
+              {current?.generalInstructions && <p className="pvgeneral">{current.generalInstructions}</p>}
+              {preview.sections.map((section, si) => (
                 <div key={section.label}>
                   <p className="qsec">
                     Section {section.label} · {section.marksEach} mark{section.marksEach === 1 ? "" : "s"} each
+                    {(current?.sections[si]?.instructions ?? section.instructions) && (
+                      <span className="qsec-ins"> — {current?.sections[si]?.instructions ?? section.instructions}</span>
+                    )}
                   </p>
                   {section.blocks.map((b) => {
                     counter += 1;

@@ -5,15 +5,24 @@ import { createServerSupabaseClient } from "@/lib/db/server";
 import { getSession, PLATFORM_INSTITUTE_ID, type Session } from "@/server/session";
 import { buildBlocks, generatePaper, swapBlock } from "@/server/generator";
 import type {
+  Block,
   Difficulty,
   GenQuestion,
   GeneratedPaper,
   Pattern,
 } from "@/server/generator/types";
 import { buildSets, type BuildSetsResult } from "@/server/sets";
-import { getPatterns, type PatternWithSections } from "@/server/data/teacher";
+import { getPatterns } from "@/server/data/teacher";
 import { parseOptions } from "@/lib/options";
 import { renderRich } from "@/lib/print/math";
+import {
+  defaultInstructions,
+  sectionLabel,
+  validateLayout,
+  type AvailabilityRow,
+  type CustomLayout,
+  type LayoutSection,
+} from "@/lib/paper-layout";
 
 /**
  * Paper generation, in two steps:
@@ -26,11 +35,19 @@ import { renderRich } from "@/lib/print/math";
  * pool it fetches itself. The generator is deterministic for a given seed and
  * pool order, so the saved paper is the previewed paper — and a crafted request
  * cannot smuggle in a question the teacher is not allowed to draw from.
+ *
+ * The LAYOUT is either a stored pattern (by id) or a template / custom layout
+ * sent as data. A layout sent as data is validated here (lib/paper-layout.ts)
+ * and again by the database when the paper is saved.
  */
+
+export type LayoutChoice =
+  | { kind: "pattern"; patternId: string }
+  | { kind: "custom"; layout: CustomLayout; saveAsTemplate?: boolean };
 
 export interface PaperRequest {
   classSubjectId: string;
-  patternId: string;
+  layout: LayoutChoice;
   chapterIds: string[];
   difficulty: { easy: number; medium: number; hard: number };
   setCount: number;
@@ -86,6 +103,7 @@ export type PreviewResponse =
       seed: number;
       totalMarks: number;
       durationMin: number | null;
+      generalInstructions: string;
       difficultyActual: { easy: number; medium: number; hard: number };
       forcedTopicRepeats: number;
       poolSize: number;
@@ -94,15 +112,18 @@ export type PreviewResponse =
       warnings: { section: string; blocks: number }[];
       overlap: number;
       unappliedSwaps: number;
+      /** what the chosen chapters hold, by kind and marks — for the layout editor */
+      availability: AvailabilityRow[];
     }
   | {
       ok: false;
       reason: string;
       shortfall: ShortfallRow[];
       suggestions: { relax: string; would_yield: number }[];
+      availability: AvailabilityRow[];
     };
 
-export type SaveResponse = { ok: true; paperId: string } | { ok: false; reason: string };
+export type SaveResponse = { ok: true; paperId: string; code: string } | { ok: false; reason: string };
 
 // ---------------------------------------------------------------------------
 // shared build
@@ -127,23 +148,82 @@ type PoolRow = {
   position_locked: boolean;
 };
 
+/** The layout a paper is built from, however it was chosen. */
+interface ResolvedLayout {
+  name: string;
+  durationMin: number | null;
+  generalInstructions: string;
+  sections: LayoutSection[];
+  /** set when the layout is a stored pattern; otherwise it is stored on save */
+  stored: { patternId: string; sectionIds: string[] } | null;
+  saveAsTemplate: boolean;
+}
+
 type Draft =
   | {
       ok: true;
       session: Session;
       instituteId: string;
-      pattern: PatternWithSections;
+      layout: ResolvedLayout;
       paper: GeneratedPaper;
       pool: Map<string, PoolRow>;
       poolSize: number;
       chapterNames: Map<string, string>;
       sets: BuildSetsResult;
       unappliedSwaps: number;
+      availability: AvailabilityRow[];
     }
   | { ok: false; response: Extract<PreviewResponse, { ok: false }> };
 
-function fail(reason: string): Draft {
-  return { ok: false, response: { ok: false, reason, shortfall: [], suggestions: [] } };
+function fail(reason: string, availability: AvailabilityRow[] = []): Draft {
+  return { ok: false, response: { ok: false, reason, shortfall: [], suggestions: [], availability } };
+}
+
+async function resolveLayout(
+  choice: LayoutChoice | undefined,
+  instituteId: string,
+  classSubjectId: string,
+): Promise<ResolvedLayout | string> {
+  if (choice?.kind === "pattern") {
+    const patterns = await getPatterns(instituteId, classSubjectId);
+    const p = patterns.find((x) => x.id === choice.patternId);
+    if (!p) return "That paper layout is not available for this subject.";
+    return {
+      name: p.name,
+      durationMin: p.durationMin,
+      generalInstructions: p.generalInstructions ?? "",
+      sections: p.sections.map((s, i) => ({
+        questionTypes: s.questionTypes,
+        requiresStimulus: s.requiresStimulus,
+        questionCount: s.questionCount,
+        marksEach: s.marksEach,
+        allowChoice: s.allowChoice,
+        practiceEligible: s.practiceEligible,
+        instructions: p.sectionInstructions[i] ?? defaultInstructions(s),
+      })),
+      stored: { patternId: p.id, sectionIds: p.sectionIds },
+      saveAsTemplate: false,
+    };
+  }
+  if (choice?.kind === "custom") {
+    const v = validateLayout(choice.layout);
+    if (!v.ok) return v.message;
+    return { ...v.layout, stored: null, saveAsTemplate: choice.saveAsTemplate === true };
+  }
+  return "Choose a paper layout.";
+}
+
+/** Whole questions in the pool, grouped the way a layout section asks for them. */
+function availabilityOf(blocks: readonly Block[]): AvailabilityRow[] {
+  const byKey = new Map<string, AvailabilityRow>();
+  for (const b of blocks) {
+    const types = [...new Set(b.questions.map((q) => q.questionType))].sort();
+    const key = `${types.join(",")}|${b.totalMarks}|${b.isStimulus}`;
+    const row = byKey.get(key);
+    if (row) row.count++;
+    else byKey.set(key, { types, marks: b.totalMarks, stimulus: b.isStimulus, count: 1 });
+  }
+  return [...byKey.values()];
 }
 
 async function buildDraft(req: PaperRequest, kind: "preview" | "save"): Promise<Draft> {
@@ -180,6 +260,14 @@ async function buildDraft(req: PaperRequest, kind: "preview" | "save"): Promise<
     );
   }
 
+  // The difficulty mix is the teacher's own choice now, so it is checked like
+  // any other input: three shares between 0 and 1 that add up to the paper.
+  const d = req.difficulty;
+  const shares = d ? [d.easy, d.medium, d.hard] : [];
+  if (shares.length !== 3 || shares.some((x) => typeof x !== "number" || !Number.isFinite(x) || x < 0 || x > 1) || Math.abs(shares.reduce((a, b) => a + b, 0) - 1) > 0.011) {
+    return fail("The easy / medium / hard mix must add up to 100%.");
+  }
+
   // Strand weights, if given, must name this class-subject's strands and add
   // up to the whole paper; anything else is refused rather than guessed at.
   let strandWeights: Record<string, number> | undefined;
@@ -194,30 +282,27 @@ async function buildDraft(req: PaperRequest, kind: "preview" | "save"): Promise<
     strandWeights = Object.fromEntries(entries);
   }
 
-  const patterns = await getPatterns(instituteId, req.classSubjectId);
-  const pattern = patterns.find((p) => p.id === req.patternId);
-  if (!pattern) return fail("That paper pattern is not available for this subject.");
-
-  const { data: poolData, error } = await supabase.rpc("eligible_questions", {
-    p_institute_id: instituteId,
-    p_class_subject_id: req.classSubjectId,
-    p_chapter_ids: req.chapterIds.length > 0 ? req.chapterIds : undefined,
-    p_teacher_id: session.userId,
-    p_exclude_recent_papers: Math.max(0, Math.min(10, req.excludeRecentPapers)),
-  });
-  if (error) return fail(error.message);
+  const [layout, poolResult, chaptersResult] = await Promise.all([
+    resolveLayout(req.layout, instituteId, req.classSubjectId),
+    supabase.rpc("eligible_questions", {
+      p_institute_id: instituteId,
+      p_class_subject_id: req.classSubjectId,
+      p_chapter_ids: req.chapterIds.length > 0 ? req.chapterIds : undefined,
+      p_teacher_id: session.userId,
+      p_exclude_recent_papers: Math.max(0, Math.min(10, req.excludeRecentPapers)),
+    }),
+    supabase.from("chapters").select("id, name").eq("class_subject_id", req.classSubjectId),
+  ]);
+  if (poolResult.error) return fail(poolResult.error.message);
 
   // The RPC has no ORDER BY, and generation is only reproducible for a stable
   // pool order — so order it here, deterministically.
-  const rows = [...((poolData ?? []) as PoolRow[])].sort((a, b) =>
+  const rows = [...((poolResult.data ?? []) as PoolRow[])].sort((a, b) =>
     (a.stimulus_id ?? "").localeCompare(b.stimulus_id ?? "") ||
     (a.parent_question_id ?? "").localeCompare(b.parent_question_id ?? "") ||
     (a.part_label ?? "").localeCompare(b.part_label ?? "") ||
     a.id.localeCompare(b.id),
   );
-  if (rows.length === 0) {
-    return fail("There are no approved questions in those chapters yet.");
-  }
 
   const genQuestions: GenQuestion[] = rows.map((q, i) => ({
     id: q.id,
@@ -237,8 +322,12 @@ async function buildDraft(req: PaperRequest, kind: "preview" | "save"): Promise<
     optionsShufflable: q.options_shufflable,
     positionLocked: q.position_locked,
   }));
-
   const blocks = buildBlocks(genQuestions);
+  const availability = availabilityOf(blocks);
+
+  if (typeof layout === "string") return fail(layout, availability);
+  if (rows.length === 0) return fail("There are no approved questions in those chapters yet.", availability);
+
   const input = {
     instituteId,
     classSubjectId: req.classSubjectId,
@@ -254,10 +343,18 @@ async function buildDraft(req: PaperRequest, kind: "preview" | "save"): Promise<
     },
   };
   const genPattern: Pattern = {
-    id: pattern.id,
-    name: pattern.name,
-    totalMarks: pattern.totalMarks,
-    sections: pattern.sections,
+    id: layout.stored?.patternId ?? "custom",
+    name: layout.name,
+    totalMarks: layout.sections.reduce((n, s) => n + s.questionCount * s.marksEach, 0),
+    sections: layout.sections.map((s, i) => ({
+      label: sectionLabel(i),
+      questionCount: s.questionCount,
+      marksEach: s.marksEach,
+      questionTypes: s.questionTypes,
+      allowChoice: s.allowChoice,
+      practiceEligible: s.practiceEligible,
+      requiresStimulus: s.requiresStimulus,
+    })),
   };
 
   const result = generatePaper(input, blocks, genPattern);
@@ -269,6 +366,7 @@ async function buildDraft(req: PaperRequest, kind: "preview" | "save"): Promise<
         reason: result.reason,
         shortfall: result.shortfall,
         suggestions: result.suggestions,
+        availability,
       },
     };
   }
@@ -293,16 +391,18 @@ async function buildDraft(req: PaperRequest, kind: "preview" | "save"): Promise<
   // option order the answer key cannot resolve — and a wrong key marks correct
   // answers wrong (C7 item 2). `options` is readable; correct_option is not.
   const placedIds = paper.sections.flatMap((s) => s.blocks.flatMap((pb) => pb.block.questions.map((q) => q.id)));
-  const { data: optionRows } = await supabase
-    .from("questions")
-    .select("id, options")
-    .in("id", placedIds.length > 0 ? placedIds : ["00000000-0000-0000-0000-000000000000"]);
+  const [{ data: optionRows }, batchSize] = await Promise.all([
+    supabase
+      .from("questions")
+      .select("id, options")
+      .in("id", placedIds.length > 0 ? placedIds : ["00000000-0000-0000-0000-000000000000"]),
+    batchSize_(req.batchId, instituteId),
+  ]);
   const optionKeysById = new Map(
     (optionRows ?? []).map((r) => [r.id, parseOptions(r.options).map((o) => o.key)]),
   );
 
   const setCount = Math.max(1, Math.min(4, req.setCount));
-  const batchSize = await batchSize_(req.batchId, instituteId);
   const sets = buildSets(
     {
       sections: paper.sections.map((s) => ({
@@ -327,22 +427,18 @@ async function buildDraft(req: PaperRequest, kind: "preview" | "save"): Promise<
     req.seed,
   );
 
-  const { data: chapters } = await supabase
-    .from("chapters")
-    .select("id, name")
-    .eq("class_subject_id", req.classSubjectId);
-
   return {
     ok: true,
     session,
     instituteId,
-    pattern,
+    layout,
     paper,
     pool: new Map(rows.map((r) => [r.id, r])),
     poolSize: rows.length,
-    chapterNames: new Map((chapters ?? []).map((c) => [c.id, c.name])),
+    chapterNames: new Map((chaptersResult.data ?? []).map((c) => [c.id, c.name])),
     sets,
     unappliedSwaps,
+    availability,
   };
 }
 
@@ -392,14 +488,15 @@ export async function previewPaper(req: PaperRequest): Promise<PreviewResponse> 
     ok: true,
     seed: req.seed,
     totalMarks: draft.paper.totalMarks,
-    durationMin: draft.pattern.durationMin,
+    durationMin: draft.layout.durationMin,
+    generalInstructions: draft.layout.generalInstructions,
     difficultyActual: draft.paper.difficultyActual,
     forcedTopicRepeats: draft.paper.forcedTopicRepeats,
     poolSize: draft.poolSize,
     sections: draft.paper.sections.map((s, i) => ({
       label: s.label,
-      marksEach: s.blocks[0]?.positionMarks ?? draft.pattern.sections[i]?.marksEach ?? 0,
-      instructions: null,
+      marksEach: s.blocks[0]?.positionMarks ?? draft.layout.sections[i]?.marksEach ?? 0,
+      instructions: draft.layout.sections[i]?.instructions ?? null,
       blocks: s.blocks.map((pb) => ({
         key: pb.block.key,
         marks: pb.positionMarks,
@@ -416,6 +513,7 @@ export async function previewPaper(req: PaperRequest): Promise<PreviewResponse> 
     warnings: draft.sets.warnings.map((w) => ({ section: w.section, blocks: w.blocks })),
     overlap: draft.sets.pairwiseOverlap,
     unappliedSwaps: draft.unappliedSwaps,
+    availability: draft.availability,
   };
 }
 
@@ -423,8 +521,8 @@ export async function savePaper(req: PaperRequest): Promise<SaveResponse> {
   const draft = await buildDraft(req, "save");
   if (!draft.ok) return { ok: false, reason: draft.response.reason };
 
-  const title = req.title.trim().slice(0, 120) || draft.pattern.name;
-  const { instituteId, session, paper, sets, pattern } = draft;
+  const { instituteId, session, paper, sets, layout } = draft;
+  const title = req.title.trim().slice(0, 120) || layout.name;
   const supabase = await createServerSupabaseClient();
 
   // A batch, when given, must belong to this institute and this class-subject.
@@ -439,6 +537,36 @@ export async function savePaper(req: PaperRequest): Promise<SaveResponse> {
     if (!batch) return { ok: false, reason: "That batch does not belong to this subject." };
   }
 
+  // A template or custom layout is stored first, so the paper points at the
+  // exact layout it was built from (and practice eligibility per section).
+  let stored = layout.stored;
+  if (!stored) {
+    const { data: patternId, error: layoutErr } = await supabase.rpc("create_paper_layout", {
+      p_institute_id: instituteId,
+      p_class_subject_id: req.classSubjectId,
+      p_name: layout.name,
+      ...(layout.durationMin != null ? { p_duration_min: layout.durationMin } : {}),
+      p_general_instructions: layout.generalInstructions,
+      p_sections: layout.sections.map((s) => ({
+        question_count: s.questionCount,
+        marks_each: s.marksEach,
+        question_types: s.questionTypes,
+        allow_choice: s.allowChoice,
+        practice_eligible: s.practiceEligible,
+        requires_stimulus: s.requiresStimulus,
+        instructions: s.instructions,
+      })),
+      p_listed: layout.saveAsTemplate,
+    });
+    if (layoutErr || !patternId) return { ok: false, reason: layoutErr?.message ?? "Could not save the paper layout." };
+    const { data: secRows } = await supabase
+      .from("pattern_sections")
+      .select("id, sort_order")
+      .eq("pattern_id", patternId)
+      .order("sort_order");
+    stored = { patternId, sectionIds: (secRows ?? []).map((s) => s.id) };
+  }
+
   const { data: saved, error: paperErr } = await supabase
     .from("papers")
     .insert({
@@ -446,126 +574,146 @@ export async function savePaper(req: PaperRequest): Promise<SaveResponse> {
       teacher_id: session.userId,
       batch_id: req.batchId,
       class_subject_id: req.classSubjectId,
-      pattern_id: pattern.id,
+      pattern_id: stored.patternId,
       title,
       total_marks: paper.totalMarks,
-      duration_min: pattern.durationMin,
+      duration_min: layout.durationMin,
+      instructions: layout.generalInstructions || null,
       status: "generated",
       seed: req.seed,
       generated_at: new Date().toISOString(),
     })
-    .select("id")
+    .select("id, code")
     .single();
   if (paperErr || !saved) {
     return { ok: false, reason: paperErr?.message ?? "Could not save the paper." };
   }
   const paperId = saved.id;
 
-  const blockIds = new Map<string, string>();
-  /** question_id -> paper_questions.id, for the option-order rows */
-  const paperQuestionIds = new Map<string, string>();
-  let canonical = 0;
-
-  for (const [index, section] of paper.sections.entries()) {
-    const { data: sec, error: secErr } = await supabase
-      .from("paper_sections")
-      .insert({
+  // Rows go in a handful of bulk inserts, not one round trip per question: a
+  // 100-question paper must save as fast as a 10-question one.
+  const { data: secRows, error: secErr } = await supabase
+    .from("paper_sections")
+    .insert(
+      paper.sections.map((section, index) => ({
         institute_id: instituteId,
         paper_id: paperId,
         // which pattern section this came from: practice eligibility lives there
-        pattern_section_id: pattern.sectionIds[index] ?? null,
+        pattern_section_id: stored.sectionIds[index] ?? null,
         label: section.label,
         sort_order: index,
-      })
-      .select("id")
-      .single();
-    if (secErr || !sec) return { ok: false, reason: secErr?.message ?? "Could not save a section." };
+      })),
+    )
+    .select("id, sort_order");
+  if (secErr || !secRows) return { ok: false, reason: secErr?.message ?? "Could not save the sections." };
+  const sectionIdByIndex = new Map(secRows.map((s) => [s.sort_order, s.id]));
 
-    for (const placed of section.blocks) {
-      canonical += 1;
-      const { data: blk, error: blkErr } = await supabase
-        .from("paper_blocks")
-        .insert({
-          institute_id: instituteId,
-          paper_id: paperId,
-          section_id: sec.id,
-          canonical_position: canonical,
-          stimulus_id: placed.block.stimulusId,
-          locked: req.lockedBlockKeys.includes(placed.block.key),
-        })
-        .select("id")
-        .single();
-      if (blkErr || !blk) return { ok: false, reason: blkErr?.message ?? "Could not save a block." };
-      blockIds.set(placed.block.key, blk.id);
+  const placedBlocks = paper.sections.flatMap((section, index) =>
+    section.blocks.map((placed) => ({ placed, sectionId: sectionIdByIndex.get(index)! })),
+  );
+  const { data: blkRows, error: blkErr } = await supabase
+    .from("paper_blocks")
+    .insert(
+      placedBlocks.map(({ placed, sectionId }, i) => ({
+        institute_id: instituteId,
+        paper_id: paperId,
+        section_id: sectionId,
+        canonical_position: i + 1,
+        stimulus_id: placed.block.stimulusId,
+        locked: req.lockedBlockKeys.includes(placed.block.key),
+      })),
+    )
+    .select("id, canonical_position");
+  if (blkErr || !blkRows) return { ok: false, reason: blkErr?.message ?? "Could not save the questions." };
+  const blockIdByPosition = new Map(blkRows.map((b) => [b.canonical_position, b.id]));
+  const blockIds = new Map(placedBlocks.map(({ placed }, i) => [placed.block.key, blockIdByPosition.get(i + 1)!]));
 
-      const rows = [
-        ...placed.block.questions.map((qq, i) => ({
-          institute_id: instituteId,
-          paper_id: paperId,
-          block_id: blk.id,
-          question_id: qq.id,
-          within_block_order: i,
-          marks: qq.marks,
-          is_choice_alternative: false,
-        })),
-        ...(placed.choiceAlternative?.questions ?? []).map((qq, i) => ({
-          institute_id: instituteId,
-          paper_id: paperId,
-          block_id: blk.id,
-          question_id: qq.id,
-          within_block_order: 100 + i,
-          marks: qq.marks,
-          is_choice_alternative: true,
-        })),
-      ];
-      const { data: pqRows, error: pqErr } = await supabase
-        .from("paper_questions")
-        .insert(rows)
-        .select("id, question_id, is_choice_alternative");
-      if (pqErr) return { ok: false, reason: pqErr.message };
-      for (const r of pqRows ?? []) {
-        if (!r.is_choice_alternative) paperQuestionIds.set(r.question_id, r.id);
-      }
-    }
+  const pqInsert = placedBlocks.flatMap(({ placed }) => {
+    const blockId = blockIds.get(placed.block.key)!;
+    return [
+      ...placed.block.questions.map((qq, i) => ({
+        institute_id: instituteId,
+        paper_id: paperId,
+        block_id: blockId,
+        question_id: qq.id,
+        within_block_order: i,
+        marks: qq.marks,
+        is_choice_alternative: false,
+      })),
+      ...(placed.choiceAlternative?.questions ?? []).map((qq, i) => ({
+        institute_id: instituteId,
+        paper_id: paperId,
+        block_id: blockId,
+        question_id: qq.id,
+        within_block_order: 100 + i,
+        marks: qq.marks,
+        is_choice_alternative: true,
+      })),
+    ];
+  });
+  const { data: pqRows, error: pqErr } = await supabase
+    .from("paper_questions")
+    .insert(pqInsert)
+    .select("id, question_id, is_choice_alternative");
+  if (pqErr) return { ok: false, reason: pqErr.message };
+  /** question_id -> paper_questions.id, for the option-order rows */
+  const paperQuestionIds = new Map<string, string>();
+  for (const r of pqRows ?? []) {
+    if (!r.is_choice_alternative) paperQuestionIds.set(r.question_id, r.id);
   }
 
-  for (const set of sets.sets) {
-    const { data: ps, error: psErr } = await supabase
-      .from("paper_sets")
-      .insert({
+  const { data: setRows, error: psErr } = await supabase
+    .from("paper_sets")
+    .insert(
+      sets.sets.map((set) => ({
         institute_id: instituteId,
         paper_id: paperId,
         set_label: set.setLabel,
         copies_to_print: set.copiesToPrint,
-      })
-      .select("id")
-      .single();
-    if (psErr || !ps) return { ok: false, reason: psErr?.message ?? "Could not save a printed set." };
+      })),
+    )
+    .select("id, set_label");
+  if (psErr || !setRows) return { ok: false, reason: psErr?.message ?? "Could not save the printed sets." };
+  const setIdByLabel = new Map(setRows.map((s) => [s.set_label, s.id]));
 
-    const items = set.items.flatMap((it) => {
+  const items = sets.sets.flatMap((set) =>
+    set.items.flatMap((it) => {
       const blockId = blockIds.get(it.blockKey);
       return blockId
-        ? [{ institute_id: instituteId, paper_set_id: ps.id, paper_block_id: blockId, display_position: it.displayPosition }]
+        ? [{ institute_id: instituteId, paper_set_id: setIdByLabel.get(set.setLabel)!, paper_block_id: blockId, display_position: it.displayPosition }]
         : [];
-    });
-    // marks-per-position is re-checked by a database trigger on every insert
-    const { error: itErr } = await supabase.from("paper_set_items").insert(items);
-    if (itErr) return { ok: false, reason: itErr.message };
+    }),
+  );
+  // marks-per-position is re-checked by a database trigger on every insert
+  const { error: itErr } = await supabase.from("paper_set_items").insert(items);
+  if (itErr) return { ok: false, reason: itErr.message };
 
-    // Stored as rows, never re-derived from the seed: reprinting Set B months
-    // later must be byte-identical even if a library changes (BUILD-PLAN 3.1).
-    const optionRows = set.options.flatMap((o) => {
+  // Stored as rows, never re-derived from the seed: reprinting Set B months
+  // later must be byte-identical even if a library changes (BUILD-PLAN 3.1).
+  const optionRows = sets.sets.flatMap((set) =>
+    set.options.flatMap((o) => {
       const pqId = paperQuestionIds.get(o.questionKey);
       return pqId
-        ? [{ institute_id: instituteId, paper_set_id: ps.id, paper_question_id: pqId, option_order: o.optionOrder }]
+        ? [{ institute_id: instituteId, paper_set_id: setIdByLabel.get(set.setLabel)!, paper_question_id: pqId, option_order: o.optionOrder }]
         : [];
-    });
-    if (optionRows.length > 0) {
-      const { error: optErr } = await supabase.from("paper_set_options").insert(optionRows);
-      if (optErr) return { ok: false, reason: optErr.message };
-    }
+    }),
+  );
+  if (optionRows.length > 0) {
+    const { error: optErr } = await supabase.from("paper_set_options").insert(optionRows);
+    if (optErr) return { ok: false, reason: optErr.message };
   }
 
   revalidatePath("/teacher/papers");
-  return { ok: true, paperId };
+  return { ok: true, paperId, code: saved.code };
+}
+
+/** Take a saved template off the institute's list (its creator or an admin). */
+export async function removeSavedLayout(patternId: string): Promise<{ ok: boolean; message?: string }> {
+  const session = await getSession();
+  if (!session?.instituteId) return { ok: false, message: "You are not signed in." };
+  const supabase = await createServerSupabaseClient();
+  const { error } = await supabase.rpc("unlist_paper_layout", { p_pattern_id: patternId });
+  if (error) return { ok: false, message: /not allowed/.test(error.message) ? "Only whoever saved it, or an institute admin, can remove it." : error.message };
+  revalidatePath("/teacher/generate");
+  return { ok: true };
 }

@@ -6,6 +6,7 @@ import { QuestionPaper } from "@/components/print/QuestionPaper";
 import { AnswerKey } from "@/components/print/AnswerKey";
 import { MappingSheet } from "@/components/print/MappingSheet";
 import { composeMapping, composeSetKey, composeSetPaper } from "@/lib/print/compose";
+import { pageCodeCss, type CodedDocument } from "@/lib/print/page-codes";
 import { getSession } from "@/server/session";
 import { loadPaper } from "@/server/data/papers";
 
@@ -51,10 +52,19 @@ export default async function PrintPaperPage({
   const show = (part: "papers" | "keys" | "mapping") => !only || only === part;
   const setCount = paper.sets.length;
 
+  // Every document gets a named page whose top margin repeats its code.
+  const docs: (CodedDocument & { kind: "paper" | "key" | "mapping"; setLabel?: string })[] = [
+    ...(show("papers") ? chosen.map((s) => ({ kind: "paper" as const, setLabel: s.setLabel, text: setCount > 1 ? `${paper.code} · Set ${s.setLabel}` : paper.code })) : []),
+    ...(show("keys") ? chosen.map((s) => ({ kind: "key" as const, setLabel: s.setLabel, text: `${paper.code} · Answer key${setCount > 1 ? ` · Set ${s.setLabel}` : ""}` })) : []),
+    ...(show("mapping") && setCount > 1 && !set ? [{ kind: "mapping" as const, text: `${paper.code} · Mapping sheet` }] : []),
+  ].map((d, i) => ({ ...d, pageName: `pf-doc-${i}` }));
+  const pageOf = (kind: string, setLabel?: string) => docs.find((d) => d.kind === kind && d.setLabel === setLabel)?.pageName;
+
   return (
     <main>
+      <style dangerouslySetInnerHTML={{ __html: pageCodeCss(docs) }} />
       <div className="pf-no-print" style={{ padding: "14px 16px", fontFamily: "system-ui", fontSize: 14, lineHeight: 1.6, borderBottom: "1px solid #ddd" }}>
-        <strong>{paper.title}</strong> · {paper.classSubjectLabel} · {setCount} set{setCount === 1 ? "" : "s"}.
+        <strong>{paper.title}</strong> · <span style={{ fontFamily: "ui-monospace, Consolas, monospace" }}>{paper.code}</span> · {paper.classSubjectLabel} · {setCount} set{setCount === 1 ? "" : "s"}.
         Each document below starts on its own page. Use your browser&apos;s Print (Ctrl+P), A4, margins
         &ldquo;Default&rdquo;, headers and footers off.
         <div style={{ marginTop: 6, display: "flex", gap: 12, flexWrap: "wrap" }}>
@@ -72,12 +82,12 @@ export default async function PrintPaperPage({
       </div>
 
       {show("papers") && chosen.map((s) => (
-        <QuestionPaper key={`p-${s.setLabel}`} model={composeSetPaper(paper.canon, s, setCount)} />
+        <QuestionPaper key={`p-${s.setLabel}`} model={composeSetPaper(paper.canon, s, setCount)} pageName={pageOf("paper", s.setLabel)} />
       ))}
       {show("keys") && chosen.map((s) => (
-        <AnswerKey key={`k-${s.setLabel}`} model={composeSetKey(paper.canon, s)} />
+        <AnswerKey key={`k-${s.setLabel}`} model={composeSetKey(paper.canon, s)} pageName={pageOf("key", s.setLabel)} />
       ))}
-      {show("mapping") && setCount > 1 && !set && <MappingSheet model={composeMapping(paper.canon, paper.sets)} />}
+      {show("mapping") && setCount > 1 && !set && <MappingSheet model={composeMapping(paper.canon, paper.sets)} pageName={pageOf("mapping")} />}
     </main>
   );
 }

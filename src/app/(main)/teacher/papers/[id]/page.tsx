@@ -46,7 +46,8 @@ export default async function PaperDetailPage({ params }: { params: Promise<{ id
       <div className="pagehead">
         <h1>{paper.title}</h1>
         <span>
-          {paper.classSubjectLabel} · {paper.batchName ?? "No batch"} · saved {when.format(new Date(paper.createdAt))}
+          <span className="mono">{paper.code}</span> · {paper.classSubjectLabel} · {paper.batchName ?? "No batch"} · saved{" "}
+          {when.format(new Date(paper.createdAt))}
         </span>
       </div>
       <div className="cards c4" style={{ marginBottom: 20 }}>

@@ -68,6 +68,19 @@ export function buildBlocks(questions: readonly GenQuestion[]): Block[] {
   return blocks;
 }
 
+/**
+ * A block fits a section when every question in it is of a type the section
+ * allows (an empty list allows any type). Marks alone are not enough: a
+ * 1-mark "MCQ only" section must never pick a 1-mark short answer.
+ */
+export function blockFitsTypes(b: Block, types: readonly string[]): boolean {
+  return types.length === 0 || b.questions.every((q) => types.includes(q.questionType));
+}
+
+function typeSignature(b: Block): string {
+  return [...new Set(b.questions.map((q) => q.questionType))].sort().join(",");
+}
+
 function representativeDifficulty(qs: readonly GenQuestion[]): Difficulty {
   const counts: Record<Difficulty, number> = { easy: 0, medium: 0, hard: 0 };
   for (const q of qs) counts[q.difficulty]++;
@@ -118,7 +131,10 @@ function fill(
 
   for (const section of pattern.sections) {
     const base = available.filter(
-      (b) => b.totalMarks === section.marksEach && b.isStimulus === section.requiresStimulus,
+      (b) =>
+        b.totalMarks === section.marksEach &&
+        b.isStimulus === section.requiresStimulus &&
+        blockFitsTypes(b, section.questionTypes),
     );
     const placed: PlacedBlock[] = [];
 
@@ -328,7 +344,8 @@ function buildSuggestions(
 
 /**
  * Replace one block with an equivalent: identical total marks, same chapter,
- * same difficulty, same stimulus-ness, not already in the paper, not locked
+ * same difficulty, same stimulus-ness, same question type(s), not already in
+ * the paper, not locked
  * (BUILD-PLAN C5 item 10). Locked blocks are never touched.
  */
 export function swapBlock(
@@ -362,7 +379,9 @@ export function swapBlock(
       b.totalMarks === current.totalMarks &&
       b.chapterId === current.chapterId &&
       b.difficulty === current.difficulty &&
-      b.isStimulus === current.isStimulus,
+      b.isStimulus === current.isStimulus &&
+      // an MCQ is swapped for an MCQ, never for a short answer of the same marks
+      typeSignature(b) === typeSignature(current),
   );
   const pick = shuffle(candidates, makeRng(input.seed))[0];
   if (!pick) return { ok: false, reason: "no eligible replacement block" };

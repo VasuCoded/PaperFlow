@@ -84,7 +84,19 @@ async function main() {
            where id = $1`,
           [patternId, p.total_marks, p.duration_min ?? null, p.origin, p.is_default ?? false],
         );
-        await client.query(`delete from pattern_sections where pattern_id = $1`, [patternId]);
+        // Sections are updated in place, matched by label, never deleted and
+        // recreated: saved papers point at their pattern sections, so a delete
+        // would fail (or orphan practice eligibility) once any paper exists.
+        const labels = p.sections.map((s) => s.label);
+        const { rows: gone } = await client.query<{ id: string; label: string }>(
+          `select id, label from pattern_sections where pattern_id = $1 and not (label = any ($2::text[]))`,
+          [patternId, labels],
+        );
+        for (const g of gone) {
+          const { rowCount } = await client.query(`select 1 from paper_sections where pattern_section_id = $1 limit 1`, [g.id]);
+          if (rowCount) console.warn(`warn ${file}: section ${g.label} is no longer in the file but saved papers use it; left in place`);
+          else await client.query(`delete from pattern_sections where id = $1`, [g.id]);
+        }
       } else {
         const { rows } = await client.query<{ id: string }>(
           `insert into paper_patterns
@@ -103,7 +115,12 @@ async function main() {
              (pattern_id, owner_institute_id, label, sort_order, instructions,
               question_count, marks_each, question_types, allow_choice,
               practice_eligible, requires_stimulus)
-           values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+           values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+           on conflict (pattern_id, label) do update set
+             sort_order = excluded.sort_order, instructions = excluded.instructions,
+             question_count = excluded.question_count, marks_each = excluded.marks_each,
+             question_types = excluded.question_types, allow_choice = excluded.allow_choice,
+             practice_eligible = excluded.practice_eligible, requires_stimulus = excluded.requires_stimulus`,
           [
             patternId, PLATFORM_ID, s.label, order++, s.instructions ?? null,
             s.question_count, s.marks_each, s.question_types ?? [],

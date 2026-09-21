@@ -207,10 +207,12 @@ function patternSql(): string[] {
       on conflict (id) do nothing`);
     out.push(`insert into public.pattern_sections (id, pattern_id, owner_institute_id, label, sort_order, instructions, question_count, marks_each, question_types, practice_eligible)
       values
-        ('${stagingId(`pattern:${cs}:A`)}', '${pid}', public.platform_institute_id(), 'A', 0, 'Objective (1 mark each).', 10, 1, '{mcq,vsa}', true),
-        ('${stagingId(`pattern:${cs}:B`)}', '${pid}', public.platform_institute_id(), 'B', 1, 'Short answer (2 marks each).', 5, 2, '{sa}', true),
+        ('${stagingId(`pattern:${cs}:A`)}', '${pid}', public.platform_institute_id(), 'A', 0, 'Objective (1 mark each).', 10, 1, '{mcq,assertion_reason,vsa}', true),
+        ('${stagingId(`pattern:${cs}:B`)}', '${pid}', public.platform_institute_id(), 'B', 1, 'Short answer (2 marks each).', 5, 2, '{vsa,sa}', true),
         ('${stagingId(`pattern:${cs}:C`)}', '${pid}', public.platform_institute_id(), 'C', 2, 'Long answer (5 marks).', 1, 5, '{la}', true)
-      on conflict (id) do nothing`);
+      -- types are corrected on existing rows: sections now select by type as well as marks
+      on conflict (id) do update set question_types = excluded.question_types
+      where pattern_sections.question_types is distinct from excluded.question_types`);
   }
   return out;
 }

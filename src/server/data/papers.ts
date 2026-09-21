@@ -9,6 +9,8 @@ import type { Script } from "@/lib/print/model";
 
 export interface PaperListRow {
   id: string;
+  /** printed on every page, e.g. SSA-10SCI-260922-03 */
+  code: string;
   title: string;
   classSubjectId: string;
   classSubjectLabel: string;
@@ -25,6 +27,7 @@ export interface PaperListRow {
 
 type ListRow = {
   id: string;
+  code: string;
   title: string;
   total_marks: number | null;
   created_at: string;
@@ -49,7 +52,7 @@ export async function listPapers(session: Session): Promise<PaperListRow[]> {
   let q = supabase
     .from("papers")
     .select(
-      `id, title, total_marks, created_at, class_subject_id, batch_id, teacher_id,
+      `id, code, title, total_marks, created_at, class_subject_id, batch_id, teacher_id,
        paper_questions ( questions ( chapters ( name ) ) ),
        class_subjects ( classes ( name ), subjects ( name ) ),
        batches ( name, enrolments ( count ) ),
@@ -65,6 +68,7 @@ export async function listPapers(session: Session): Promise<PaperListRow[]> {
   const { data } = await q.returns<ListRow[]>();
   return (data ?? []).map((p) => ({
     id: p.id,
+    code: p.code,
     title: p.title,
     classSubjectId: p.class_subject_id,
     classSubjectLabel: `Class ${p.class_subjects?.classes?.name ?? "?"} · ${p.class_subjects?.subjects?.name ?? "?"}`,
@@ -81,6 +85,7 @@ export async function listPapers(session: Session): Promise<PaperListRow[]> {
 
 export interface LoadedPaper {
   id: string;
+  code: string;
   title: string;
   instituteId: string;
   classSubjectId: string;
@@ -120,7 +125,7 @@ export async function loadPaper(
   const { data: paper } = await supabase
     .from("papers")
     .select(
-      `id, title, institute_id, class_subject_id, batch_id, created_at, total_marks, duration_min,
+      `id, code, title, instructions, institute_id, class_subject_id, batch_id, created_at, total_marks, duration_min,
        institutes ( name ),
        class_subjects ( classes ( name ), subjects ( name, script ) ),
        batches ( name )`,
@@ -130,7 +135,9 @@ export async function loadPaper(
     .maybeSingle()
     .returns<{
       id: string;
+      code: string;
       title: string;
+      instructions: string | null;
       institute_id: string;
       class_subject_id: string;
       batch_id: string | null;
@@ -144,7 +151,7 @@ export async function loadPaper(
   if (!paper) return null;
 
   const [sectionsRes, blocksRes, pqRes, setsRes] = await Promise.all([
-    supabase.from("paper_sections").select("id, label, sort_order").eq("paper_id", paperId).eq("institute_id", instituteId),
+    supabase.from("paper_sections").select("id, label, sort_order, pattern_sections ( instructions )").eq("paper_id", paperId).eq("institute_id", instituteId),
     supabase.from("paper_blocks").select("id, section_id, canonical_position, stimulus_id, locked").eq("paper_id", paperId).eq("institute_id", instituteId),
     supabase.from("paper_questions").select("id, block_id, question_id, within_block_order, marks, is_choice_alternative").eq("paper_id", paperId).eq("institute_id", instituteId),
     supabase.from("paper_sets").select("id, set_label, copies_to_print").eq("paper_id", paperId).eq("institute_id", instituteId).order("set_label"),
@@ -228,7 +235,13 @@ export async function loadPaper(
     title: paper.title,
     totalMarks: paper.total_marks ?? 0,
     durationMin: paper.duration_min ?? undefined,
-    sections: sections.map((s) => ({ label: s.label, blocks: canonBlocksBySection.get(s.id) ?? [] })),
+    code: paper.code,
+    generalInstructions: paper.instructions ?? undefined,
+    sections: sections.map((s) => ({
+      label: s.label,
+      instructions: s.pattern_sections?.instructions ?? undefined,
+      blocks: canonBlocksBySection.get(s.id) ?? [],
+    })),
   };
 
   // --- stored sets -----------------------------------------------------------
@@ -264,6 +277,7 @@ export async function loadPaper(
 
   return {
     id: paper.id,
+    code: paper.code,
     title: paper.title,
     instituteId: paper.institute_id,
     classSubjectId: paper.class_subject_id,

@@ -72,6 +72,8 @@ export interface CanonPaper {
   title: string;
   totalMarks: number;
   durationMin?: number;
+  code?: string;
+  generalInstructions?: string;
   sections: CanonSection[];
 }
 
@@ -202,6 +204,8 @@ export function composeSetPaper(
     durationMin: canon.durationMin,
     setLabel: set.setLabel,
     setCount,
+    code: canon.code,
+    generalInstructions: canon.generalInstructions,
     sections,
   };
 }
@@ -230,6 +234,7 @@ export function composeSetKey(canon: CanonPaper, set: BuiltSet): AnswerKeyModel 
   return {
     instituteName: canon.instituteName,
     title: canon.title,
+    code: canon.code,
     setLabel: set.setLabel,
     entries,
   };
@@ -279,6 +284,7 @@ export function composeMapping(canon: CanonPaper, sets: BuiltSet[]): MappingShee
   return {
     instituteName: canon.instituteName,
     title: canon.title,
+    code: canon.code,
     setLabels: sets.map((s) => s.setLabel),
     rows,
     copies,

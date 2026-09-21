@@ -642,3 +642,46 @@ a.chip:hover { border-color: var(--pen); color: var(--pen); }
   background: #fbfaf9;
 }
 .m-banner.offline { border-color: var(--pen); background: var(--pen-soft); color: var(--ink); }
+
+/* ---- paper layouts (templates + custom editor) ------------------------- */
+.laysum {
+  margin-top: 8px; padding: 8px 10px; border: 1px solid var(--hair); border-radius: 4px;
+  background: var(--white); font-size: 12px; line-height: 1.55; color: var(--ink);
+}
+.laysum .mono { display: inline-block; width: 14px; color: var(--graphite); }
+.laysum .mk { color: var(--graphite); }
+.laysum-total { margin-top: 4px; padding-top: 4px; border-top: 1px dashed var(--hair); font-weight: 600; }
+
+.layouted {
+  margin: 16px 0 4px; padding: 16px; border: 1px solid var(--hair); border-radius: 6px; background: #fdfdfc;
+}
+.layouted-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 10px; }
+.layouted-sub { margin: 4px 0 0; font-size: 12.5px; color: var(--graphite); }
+.layouted-meta { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 0 12px; }
+.layouted-table td { vertical-align: top; }
+.layouted-table .sel { min-width: 180px; }
+.layouted-table td.num .inp { width: 64px; text-align: right; }
+.layouted-table td .inp { padding: 5px 7px; font-size: 12.5px; }
+.layouted-table .rowacts { white-space: nowrap; }
+.layouted-table .rowacts .iconbtn { width: 26px; height: 26px; }
+.markpicks { display: flex; gap: 3px; justify-content: flex-end; margin-top: 4px; flex-wrap: wrap; }
+.markpick {
+  border: 1px solid var(--hair); background: var(--white); border-radius: 3px;
+  font: 10.5px var(--mono); padding: 1px 5px; cursor: pointer; color: var(--graphite);
+}
+.markpick.on { border-color: var(--ink); color: var(--ink); }
+.avail { font-family: var(--mono); font-size: 12px; white-space: nowrap; }
+.avail.ok { color: var(--ink); }
+.avail.short { color: var(--pen); font-weight: 600; }
+.pvgeneral { font-size: 12.5px; font-style: italic; color: var(--graphite); margin: 0 0 10px; }
+.qsec-ins { font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--graphite); }
+@media (max-width: 720px) {
+  .layouted-meta { grid-template-columns: minmax(0, 1fr); }
+}
+
+.codesearch { margin: 0 0 16px; }
+.codesearch label { display: block; font-size: 12px; color: var(--graphite); margin-bottom: 4px; }
+.codesearch .inp { max-width: 260px; text-transform: uppercase; }
+.mixedit { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.mixin { display: flex; flex-direction: column; gap: 3px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--graphite); margin: 0; }
+.mixin .inp { width: 100%; min-width: 0; padding: 5px 6px; text-align: right; }

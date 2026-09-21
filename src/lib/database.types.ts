@@ -672,6 +672,7 @@ export type Database = {
           contact_email: string | null
           created_at: string
           created_by: string | null
+          code: string
         }
         Insert: {
           id?: string
@@ -682,6 +683,7 @@ export type Database = {
           contact_email?: string | null
           created_at?: string
           created_by?: string | null
+          code?: string
         }
         Update: {
           id?: string
@@ -692,6 +694,7 @@ export type Database = {
           contact_email?: string | null
           created_at?: string
           created_by?: string | null
+          code?: string
         }
         Relationships: [
           {
@@ -766,6 +769,9 @@ export type Database = {
           origin: string
           is_default: boolean
           created_at: string
+          listed: boolean
+          created_by: string | null
+          general_instructions: string | null
         }
         Insert: {
           id?: string
@@ -777,6 +783,9 @@ export type Database = {
           origin: string
           is_default?: boolean
           created_at?: string
+          listed?: boolean
+          created_by?: string | null
+          general_instructions?: string | null
         }
         Update: {
           id?: string
@@ -788,6 +797,9 @@ export type Database = {
           origin?: string
           is_default?: boolean
           created_at?: string
+          listed?: boolean
+          created_by?: string | null
+          general_instructions?: string | null
         }
         Relationships: [
           {
@@ -795,6 +807,13 @@ export type Database = {
             columns: ["class_subject_id"]
             isOneToOne: false
             referencedRelation: "class_subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "paper_patterns_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
@@ -1031,6 +1050,8 @@ export type Database = {
           seed: number | null
           generated_at: string | null
           created_at: string
+          code: string
+          instructions: string | null
         }
         Insert: {
           id?: string
@@ -1046,6 +1067,8 @@ export type Database = {
           seed?: number | null
           generated_at?: string | null
           created_at?: string
+          code?: string
+          instructions?: string | null
         }
         Update: {
           id?: string
@@ -1061,6 +1084,8 @@ export type Database = {
           seed?: number | null
           generated_at?: string | null
           created_at?: string
+          code?: string
+          instructions?: string | null
         }
         Relationships: [
           {
@@ -1944,6 +1969,18 @@ export type Database = {
         }
         Returns: string
       }
+      create_paper_layout: {
+        Args: {
+          p_institute_id: string
+          p_class_subject_id: string
+          p_name: string
+          p_general_instructions: string
+          p_sections: Json
+          p_listed: boolean
+          p_duration_min?: number
+        }
+        Returns: string
+      }
       decide_access_request: {
         Args: {
           p_request_id: string
@@ -2023,6 +2060,12 @@ export type Database = {
           created_at: string
         }[]
       }
+      institute_code_base: {
+        Args: {
+          p_name: string
+        }
+        Returns: string
+      }
       institute_subject_overview: {
         Args: {
           p_institute_id: string
@@ -2039,6 +2082,10 @@ export type Database = {
           last_decline_reason: string
           last_declined_at: string
         }[]
+      }
+      institutes_assign_code: {
+        Args: Record<string, never>
+        Returns: unknown
       }
       is_platform_owner: {
         Args: Record<string, never>
@@ -2105,6 +2152,21 @@ export type Database = {
           role: string
         }[]
       }
+      next_institute_code: {
+        Args: {
+          p_name: string
+          p_id: string
+        }
+        Returns: string
+      }
+      next_paper_code: {
+        Args: {
+          p_institute_id: string
+          p_class_subject_id: string
+          p_at: string
+        }
+        Returns: string
+      }
       note_generation: {
         Args: {
           p_institute_id: string
@@ -2119,6 +2181,10 @@ export type Database = {
         Returns: string
       }
       paper_set_items_marks_guard: {
+        Args: Record<string, never>
+        Returns: unknown
+      }
+      papers_assign_code: {
         Args: Record<string, never>
         Returns: unknown
       }
@@ -2447,6 +2513,12 @@ export type Database = {
           p_class_subject_id: string
         }
         Returns: boolean
+      }
+      unlist_paper_layout: {
+        Args: {
+          p_pattern_id: string
+        }
+        Returns: undefined
       }
       withdraw_access_request: {
         Args: {

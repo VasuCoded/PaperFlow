@@ -14,6 +14,7 @@ import {
 import { LP_CASES, LP_QUESTIONS, LP_SOURCE } from "../../scripts/staging/life-processes";
 import { LP_PATTERN_NAME } from "../../scripts/staging/life-processes-sql";
 import { gateStatus } from "@/lib/gate";
+import { QUICK_TEMPLATES } from "@/lib/paper-layout";
 import { buildBlocks, generatePaper } from "@/server/generator";
 import type { GenQuestion } from "@/server/generator/types";
 
@@ -276,6 +277,54 @@ describe("staging seed", () => {
     await actAsOwner(db);
     expect(all.some((r) => r.role === "institute_admin")).toBe(true);
     expect(own.map((r) => r.role)).toEqual(["teacher"]);
+  });
+
+  it("builds every quick template, even 100 MCQs, from Life Processes alone", async () => {
+    const teacher = stagingPeople("sunrise").find((p) => p.username === "sunrise.teacher2")!;
+    const iid = instituteId("sunrise");
+    const cs = (await db.query<{ id: string }>(
+      `select cs.id from class_subjects cs join classes c on c.id = cs.class_id join subjects s on s.id = cs.subject_id where c.name = '10' and s.name = 'Science'`,
+    )).rows[0]!.id;
+    const chapter = (await db.query<{ id: string }>(`select id from chapters where class_subject_id = '${cs}' and ncert_number = '5'`)).rows[0]!.id;
+    await actAs(db, teacher.id);
+    const pool = (await db.query<{
+      id: string; owner_institute_id: string; class_subject_id: string; chapter_id: string | null; topic_id: string | null;
+      strand_id: string | null; stimulus_id: string | null; parent_question_id: string | null; difficulty: string; marks: number;
+      question_type: string; options_shufflable: boolean; position_locked: boolean;
+    }>(`select * from eligible_questions('${iid}', '${cs}', array['${chapter}']::uuid[])`)).rows;
+    await actAsOwner(db);
+    const blocks = buildBlocks([...pool].sort((a, b) => a.id.localeCompare(b.id)).map((q, i) => ({
+      id: q.id, ownerInstituteId: q.owner_institute_id, classSubjectId: q.class_subject_id, chapterId: q.chapter_id ?? "",
+      topicId: q.topic_id, strandId: q.strand_id, stimulusId: q.stimulus_id, parentQuestionId: q.parent_question_id,
+      withinBlockOrder: i, difficulty: q.difficulty as GenQuestion["difficulty"], marks: q.marks, questionType: q.question_type,
+      optionsShufflable: q.options_shufflable, positionLocked: q.position_locked,
+    })));
+
+    const outcome: Record<string, string> = {};
+    for (const t of QUICK_TEMPLATES) {
+      const r = generatePaper(
+        { instituteId: iid, classSubjectId: cs, allowedOwnerIds: ["11111111-1111-1111-1111-111111111111", iid], difficultySplit: { easy: 0.3, medium: 0.5, hard: 0.2 }, seed: 4, relax: { difficulty: true } },
+        blocks,
+        {
+          id: t.key, name: t.name, totalMarks: 0,
+          sections: t.layout.sections.map((s, i) => ({
+            label: String.fromCharCode(65 + i), questionCount: s.questionCount, marksEach: s.marksEach, questionTypes: s.questionTypes,
+            allowChoice: s.allowChoice, practiceEligible: s.practiceEligible, requiresStimulus: s.requiresStimulus,
+          })),
+        },
+      );
+      outcome[t.key] = r.ok ? `ok ${r.totalMarks}` : `short ${r.shortfall.map((s) => `${s.section}:${s.available}/${s.needed}`).join(",")}`;
+    }
+    expect(outcome).toEqual({
+      "quiz-15": "ok 10",
+      "mcq-25": "ok 25",
+      "mcq-50": "ok 50",
+      "mcq-100": "ok 100",
+      "class-test-20": "ok 20",
+      "unit-test-25": "ok 25",
+      "chapter-test-40": "ok 40",
+      "term-80": "ok 80",
+    });
   });
 
   it("is idempotent: running it again changes nothing", async () => {

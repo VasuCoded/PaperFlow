@@ -11,18 +11,34 @@ const dateFmt = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short
 export default async function PapersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ subject?: string; batch?: string }>;
+  searchParams: Promise<{ subject?: string; batch?: string; code?: string }>;
 }) {
-  const { subject, batch } = await searchParams;
+  const { subject, batch, code } = await searchParams;
+  // a code typed from a sheet of paper, however it was typed
+  const codeQuery = (code ?? "").toUpperCase().replace(/[^A-Z0-9-]/g, "");
   const session = await getSession();
   const all = session ? await listPapers(session) : [];
 
   const subjects = Array.from(new Map(all.map((p) => [p.classSubjectId, p.classSubjectLabel])).entries());
-  const papers = all.filter((p) => (!subject || p.classSubjectId === subject) && (!batch || p.batchId === batch));
+  const papers = all.filter(
+    (p) =>
+      (!subject || p.classSubjectId === subject) &&
+      (!batch || p.batchId === batch) &&
+      (!codeQuery || p.code.includes(codeQuery)),
+  );
   const batchName = batch ? all.find((p) => p.batchId === batch)?.batchName ?? null : null;
 
   return (
     <AppShell area="teacher" pathname="/teacher/papers">
+      <form className="codesearch" action="/teacher/papers" method="get">
+        <label htmlFor="code">Find a paper by the code printed on it</label>
+        <div className="btnrow">
+          <input id="code" name="code" className="inp mono" defaultValue={code ?? ""} placeholder="e.g. SSA-10SCI-260922-03" autoComplete="off" spellCheck={false} />
+          <button type="submit" className="btn sm solid">Find</button>
+          {codeQuery && <Link className="btn sm ghost" href="/teacher/papers">Clear</Link>}
+        </div>
+      </form>
+
       {subjects.length > 1 && (
         <div className="instbar">
           <h3 className="blk" style={{ margin: 0 }}>Filter by subject</h3>
@@ -51,7 +67,7 @@ export default async function PapersPage({
 
       {papers.length === 0 ? (
         <div>
-          <p className="lede">No papers yet.</p>
+          <p className="lede">{codeQuery ? `No paper matches ${codeQuery}.` : "No papers yet."}</p>
           <Link className="btn solid" href="/teacher/generate">Set your first paper</Link>
         </div>
       ) : (
@@ -76,7 +92,9 @@ export default async function PapersPage({
                   <tr key={p.id}>
                     <td>
                       <b>{p.title}</b>
-                      <span className="sub">{p.classSubjectLabel}</span>
+                      <span className="sub">
+                        <span className="mono">{p.code}</span> · {p.classSubjectLabel}
+                      </span>
                     </td>
                     <td>
                       {p.batchId ? <Link href={`/teacher/papers?batch=${p.batchId}`}>{p.batchName}</Link> : "—"}

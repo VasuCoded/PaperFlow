@@ -53,6 +53,10 @@ export interface PaperPrintModel {
   durationMin?: number;
   setLabel: string;
   setCount: number;
+  /** the paper's unique code, printed on every page (e.g. SSA-10SCI-260922-03) */
+  code?: string;
+  /** printed under the header, e.g. "All questions are compulsory." */
+  generalInstructions?: string;
   sections: PrintSection[];
 }
 
@@ -66,6 +70,7 @@ export interface AnswerKeyEntry {
 export interface AnswerKeyModel {
   instituteName: string;
   title: string;
+  code?: string;
   setLabel: string;
   entries: AnswerKeyEntry[];
 }
@@ -80,6 +85,7 @@ export interface MappingRow {
 export interface MappingSheetModel {
   instituteName: string;
   title: string;
+  code?: string;
   setLabels: string[];
   rows: MappingRow[];
   /** copies per set, e.g. { A: 14, B: 13, C: 13 } */
