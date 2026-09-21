@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PaperFlow — Tester's Guide</title>
+<style>
+  @page { size: A4; margin: 16mm 16mm 18mm; }
+  :root { --ink:#15181b; --graphite:#5b6168; --hair:#dcd8d2; --pen:#1f4fa3; --mark:#c2410c; --paper:#faf8f5; --ok:#166534; }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-family: "Segoe UI", system-ui, sans-serif; color: var(--ink); font-size: 10.5pt; line-height: 1.5; margin: 0; }
+  h1, h2, h3 { font-family: Georgia, "Times New Roman", serif; font-weight: 500; line-height: 1.15; }
+  h1 { font-size: 30pt; margin: 0 0 6pt; letter-spacing: -0.01em; }
+  h2 { font-size: 17pt; margin: 0 0 4pt; padding-top: 2pt; }
+  h3 { font-size: 12.5pt; margin: 11pt 0 3pt; }
+  p { margin: 0 0 7pt; }
+  .page { page-break-after: always; }
+  .page:last-child { page-break-after: auto; }
+  .eyebrow { font-family: Consolas, monospace; font-size: 8pt; letter-spacing: 0.16em; text-transform: uppercase; color: var(--pen); margin: 0 0 4pt; }
+  .lede { font-size: 12pt; color: var(--graphite); max-width: 150mm; }
+  .sub { color: var(--graphite); margin-bottom: 10pt; }
+  .cover { padding-top: 16mm; }
+  .cover .rule { height: 3px; width: 40mm; background: var(--pen); margin: 12pt 0 18pt; }
+  .box { border: 1px solid var(--hair); border-radius: 5px; padding: 9pt 11pt; margin: 8pt 0; background: #fff; break-inside: avoid; }
+  .box.tint { background: var(--paper); }
+  .box.warn { border-left: 3px solid var(--mark); }
+  .box.key { border-left: 3px solid var(--pen); }
+  .box b.t { display: block; margin-bottom: 3pt; }
+  table { border-collapse: collapse; width: 100%; margin: 6pt 0 8pt; font-size: 10pt; break-inside: avoid; }
+  th, td { text-align: left; vertical-align: top; padding: 5pt 7pt; border-bottom: 1px solid var(--hair); }
+  th { font-size: 8pt; font-family: Consolas, monospace; letter-spacing: 0.08em; text-transform: uppercase; color: var(--graphite); font-weight: 600; border-bottom: 1.5px solid var(--ink); }
+  code, .u { font-family: Consolas, monospace; font-size: 9.5pt; background: #f1eee9; padding: 0.5pt 4pt; border-radius: 3px; white-space: nowrap; }
+  .pw { font-family: Consolas, monospace; font-size: 15pt; background: #f1eee9; padding: 4pt 10pt; border-radius: 4px; display: inline-block; margin: 3pt 0; }
+  ul.check { list-style: none; padding: 0; margin: 4pt 0 6pt; }
+  ul.check li { position: relative; padding: 2pt 0 2pt 20pt; break-inside: avoid; }
+  ul.check li::before { content: ""; position: absolute; left: 0; top: 4.5pt; width: 10pt; height: 10pt; border: 1.3px solid var(--ink); border-radius: 2px; }
+  ul.check li .why { display: block; color: var(--graphite); font-size: 9.5pt; }
+  .section-head { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid var(--hair); padding-bottom: 5pt; margin-bottom: 8pt; }
+  .who { font-size: 9.5pt; color: var(--graphite); }
+  .who .u { font-size: 10pt; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8pt; }
+  .role { border: 1px solid var(--hair); border-radius: 5px; padding: 8pt 10pt; break-inside: avoid; }
+  .role b { font-family: Georgia, serif; font-weight: 500; font-size: 12pt; display: block; margin-bottom: 2pt; }
+  .role span { color: var(--graphite); font-size: 9.5pt; }
+  .step { counter-increment: step; }
+  ol { padding-left: 16pt; margin: 4pt 0 8pt; }
+  ol li { margin-bottom: 3pt; }
+  .fb td { height: 30pt; }
+  .fb td:first-child { width: 36%; }
+  .small { font-size: 9pt; color: var(--graphite); }
+  .flow { display: flex; gap: 4pt; align-items: stretch; margin: 8pt 0 10pt; }
+  .flow div { flex: 1; border: 1px solid var(--hair); border-radius: 5px; padding: 6pt 7pt; font-size: 9pt; background: var(--paper); }
+  .flow div b { display: block; font-size: 9.5pt; margin-bottom: 1pt; }
+  .flow i { align-self: center; font-style: normal; color: var(--pen); }
+</style>
+</head>
+<body>
+
+<!-- ============================== COVER ============================== -->
+<section class="page cover">
+  <p class="eyebrow">Tester's guide · Class 10 Mathematics</p>
+  <h1>PaperFlow</h1>
+  <p class="lede">Question papers that set themselves, and practice that comes from each student's own mistakes.</p>
+  <div class="rule"></div>
+
+  <p>Thank you for testing PaperFlow. This guide walks you through the whole website as the four kinds of people who use it: a <b>teacher</b>, a <b>student</b>, the <b>institute's owner</b>, and <b>us</b> (the people who run PaperFlow and look after the question bank).</p>
+  <p>For each part it tells you <b>what to try</b> and <b>why that feature exists</b>. What we most want is your honest opinion: what is useful, what is confusing, what is missing, and what your teachers and students would actually use.</p>
+
+  <div class="box key" style="margin-top:14pt">
+    <b class="t">You will need</b>
+    <ul style="margin:2pt 0 0; padding-left:14pt">
+      <li>The <b>website link</b> that Sanskar sent you with this guide.</li>
+      <li>A computer, for the teacher and owner parts.</li>
+      <li>A phone, for the student part. A computer works too, but students will use phones.</li>
+      <li>About <b>60–90 minutes</b>. You can stop and come back whenever you like.</li>
+    </ul>
+  </div>
+
+  <div class="box warn">
+    <b class="t">Everything here is practice data. You cannot break anything.</b>
+    The three coaching institutes, the teachers, the students and their marks are all made up. Click freely, create things, delete things, and try to confuse it. If something goes wrong, that is a useful finding, not a problem.
+  </div>
+
+  <h3>Contents</h3>
+  <table>
+    <tr><td style="width:10mm">1</td><td>What PaperFlow does, in one page</td></tr>
+    <tr><td>2</td><td>Signing in: the test accounts</td></tr>
+    <tr><td>3</td><td>As a <b>teacher</b>: set and print a paper</td></tr>
+    <tr><td>4</td><td>As a <b>student</b>: log a test, practise, see weak spots</td></tr>
+    <tr><td>5</td><td>As the <b>institute owner</b>: members, subjects, data</td></tr>
+    <tr><td>6</td><td>How a <b>new person</b> joins</td></tr>
+    <tr><td>7</td><td>As <b>PaperFlow</b> itself: reviewing questions (optional)</td></tr>
+    <tr><td>8</td><td>Your feedback</td></tr>
+  </table>
+</section>
+
+<!-- ============================== 1. WHAT IT DOES ============================== -->
+<section class="page">
+  <p class="eyebrow">Part 1</p>
+  <h2>What PaperFlow does</h2>
+  <p class="sub">The problem it solves, and the loop that runs every time a test is written.</p>
+
+  <p><b>For teachers:</b> setting a good test takes hours. PaperFlow makes a complete, balanced paper in seconds from a <b>checked question bank</b>. The teacher picks the chapters and the type of paper. The paper follows the marks pattern, spreads easy, medium and hard questions sensibly, and comes with answer keys. It can print <b>several versions (sets)</b> of the same paper so that neighbours cannot copy.</p>
+  <p><b>For students:</b> after a test, a student opens PaperFlow on their phone and taps the questions they got wrong. That takes under a minute. PaperFlow then gives them a <b>practice set</b>: fresh questions on exactly those topics, at a similar level, that they have not seen before. Over several tests it builds a picture of their <b>weak spots</b>.</p>
+
+  <p style="margin-top:10pt"><b>The loop:</b></p>
+  <div class="flow">
+    <div><b>1. Teacher sets a paper</b>Chooses chapters. Paper and answer keys are made in seconds.</div><i>→</i>
+    <div><b>2. Prints sets</b>Set A, Set B… same difficulty, different order and choices.</div><i>→</i>
+    <div><b>3. Students write it</b>On paper, in class, as normal.</div><i>→</i>
+    <div><b>4. Student logs mistakes</b>On their phone, in under a minute.</div><i>→</i>
+    <div><b>5. Practice appears</b>New questions on the same topics, with solutions.</div>
+  </div>
+
+  <h3>The four kinds of people</h3>
+  <div class="grid2">
+    <div class="role"><b>Teacher</b><span>Sets papers, prints them, makes batches (class groups), and sees who has logged each test.</span></div>
+    <div class="role"><b>Student</b><span>Joins a batch with a code, logs tests, practises, and sees their weak spots. Uses a phone.</span></div>
+    <div class="role"><b>Institute owner</b><span>Runs the coaching centre's account: who is a teacher or student, which subjects each teacher teaches, and which subjects the centre uses.</span></div>
+    <div class="role"><b>PaperFlow (us)</b><span>Look after the shared question bank. Every question is checked by a person before it can reach a paper.</span></div>
+  </div>
+
+  <div class="box tint" style="margin-top:12pt">
+    <b class="t">Two things worth knowing before you start</b>
+    <ul style="margin:2pt 0 0; padding-left:14pt">
+      <li><b>Each institute is private.</b> One coaching centre can never see another's students, papers or marks. You will see three pretend centres: <i>Sunrise</i>, <i>Riverside</i> and <i>Hilltop</i>.</li>
+      <li><b>The questions are samples.</b> The Class 10 Maths questions are real maths with correct answers, but they are machine-made examples to show how things work, not the final question bank. Judge the <i>website</i>, and tell us separately if the question style is off.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================== 2. SIGN IN ============================== -->
+<section class="page">
+  <p class="eyebrow">Part 2</p>
+  <h2>Signing in: the test accounts</h2>
+  <p class="sub">There is a ready-made account for every kind of person. They all use the same password.</p>
+
+  <p>Password for every test account:</p>
+  <p><span class="pw">staging-maths-2026</span></p>
+
+  <table>
+    <tr><th>Sign in as</th><th>Who this is</th><th>Used in</th></tr>
+    <tr><td><span class="u">sunrise.teacher1</span></td><td>Maths teacher at Sunrise Academy</td><td>Part 3</td></tr>
+    <tr><td><span class="u">sunrise.student7</span></td><td>Student with a test still to log</td><td>Part 4</td></tr>
+    <tr><td><span class="u">sunrise.student1</span></td><td>Student who has logged both tests</td><td>Part 4</td></tr>
+    <tr><td><span class="u">sunrise.admin</span></td><td>Owner of Sunrise Academy</td><td>Parts 5 and 6</td></tr>
+    <tr><td><span class="u">riverside.teacher1</span></td><td>Maths teacher at a <i>different</i> centre</td><td>Part 5 (privacy check)</td></tr>
+  </table>
+  <p class="small">There are more if you want them: <span class="u">sunrise.teacher2</span>, <span class="u">sunrise.teacher3</span> (teaches Class 12 Biology), <span class="u">sunrise.student1</span> to <span class="u">sunrise.student24</span>, and the same pattern for <span class="u">riverside.</span> and <span class="u">hilltop.</span></p>
+
+  <h3>How to sign in</h3>
+  <ol>
+    <li>Open the website link. You will see the sign-in page.</li>
+    <li>Type the <b>username</b> exactly as above, including the dot, and the password.</li>
+    <li>To switch person: at the bottom of the left-hand menu (or under <b>Me</b> on the student app), <b>Sign out</b>, then sign in as someone else.</li>
+  </ol>
+
+  <div class="box key">
+    <b class="t">Tip: be two people at once</b>
+    Open a <b>private / incognito window</b> (Chrome: <b>Ctrl + Shift + N</b>). A private window keeps a separate sign-in, so you can be the teacher in one window and the owner or a student in the other.
+  </div>
+
+  <div class="box warn">
+    <b class="t">Known issue: speed</b>
+    Pages can take a few seconds to open. This test site runs on a free server far away, and we are already working on speed. Please note it only if something feels <i>unusably</i> slow, or never finishes.
+  </div>
+</section>
+
+<!-- ============================== 3. TEACHER ============================== -->
+<section class="page">
+  <div class="section-head"><div><p class="eyebrow">Part 3</p><h2>As a teacher</h2></div><div class="who">Sign in as <span class="u">sunrise.teacher1</span></div></div>
+
+  <h3>3a. Set a paper <span class="small">(left menu → Set a paper)</span></h3>
+  <p class="small"><b>Why it exists:</b> this is the heart of PaperFlow, a whole balanced paper with answers in seconds instead of hours.</p>
+  <ul class="check">
+    <li>Under <b>Class and subject</b>, choose <b>Class 10 · Mathematics</b>.
+      <span class="why">A teacher only sees the subjects the institute has assigned to them.</span></li>
+    <li>Tick a few <b>Chapters to cover</b>, e.g. Real Numbers, Polynomials, Quadratic Equations.</li>
+    <li>For the <b>pattern</b> (the paper's marks structure), choose <b>Staging Unit Test (25 marks)</b>.
+      <span class="why">A pattern says how many questions of each kind: 1-mark, 2-mark, 5-mark and so on. Real CBSE board patterns will come with the real bank.</span></li>
+    <li>Try the <b>Difficulty mix</b> (how much is easy, medium or hard) and set <b>Printed sets</b> to <b>2</b>.</li>
+    <li>A full paper appears on the right. Check that the maths symbols (fractions, powers, √, π) <b>display properly</b>.</li>
+    <li><b>Swap</b> a question you don't like (the ⇄ button beside it).
+      <span class="why">It is replaced by another with the same marks, chapter and difficulty, so the paper stays balanced.</span></li>
+    <li><b>Lock</b> a question you like, then press <b>Generate a different paper</b>.
+      <span class="why">Locked questions stay; everything else changes. It's a quick way to keep the good bits.</span></li>
+    <li><b>Flag</b> any question as wrong or badly worded (the flag button), and write a short reason.
+      <span class="why">That question is pulled from everyone's papers until we have checked it. One teacher's report protects every centre. It then appears under <b>Flagged questions</b> in the menu, where it can be withdrawn.</span></li>
+    <li>Press <b>Save and print</b>. Give the paper a name and pick a batch.</li>
+    <li>On the print page, check you get each set on its own pages, <b>answer keys</b> for each set, and a sheet showing which question in Set A is which question in Set B.
+      <span class="why">Sets stop copying. The mapping sheet lets a teacher mark any set with one key in mind.</span></li>
+    <li>If a setting is impossible (for example too few chapters for the pattern), read the message you get. Does it tell you clearly what to change?</li>
+  </ul>
+
+  <h3>3b. My papers <span class="small">(left menu → My papers)</span></h3>
+  <p class="small"><b>Why it exists:</b> reprint any old paper exactly, and see which students have logged it.</p>
+  <ul class="check">
+    <li>Open <b>Staging Unit Test 1</b>. You see the marks, the sets, and <b>who logged, and which set they wrote</b>.</li>
+    <li>If a student chose the wrong set when logging, the teacher can correct it here and their practice rebuilds. Look for that control.</li>
+    <li><b>Print everything</b> again: it should be exactly the same paper as before.</li>
+  </ul>
+
+  <h3>3c. Batches <span class="small">(left menu → Batches)</span></h3>
+  <p class="small"><b>Why it exists:</b> a batch is a class group. Students join by typing a short code, with no lists to type in.</p>
+  <ul class="check">
+    <li>Find the 6-character <b>join code</b> of <b>10-Mathematics A</b>. <b>Write it down</b>: you need it in Part 6.</li>
+    <li>Create a new batch. It gets its own code straight away.</li>
+    <li>Try <b>rotating</b> a code, e.g. if it was shared too widely. The old code stops working.</li>
+  </ul>
+
+</section>
+
+<!-- ============================== 4. STUDENT ============================== -->
+<section class="page">
+  <div class="section-head"><div><p class="eyebrow">Part 4</p><h2>As a student</h2></div><div class="who">On your <b>phone</b>, sign in as <span class="u">sunrise.student7</span></div></div>
+  <p class="small"><b>Why it exists:</b> most students never look at a marked test again. PaperFlow turns each test into targeted practice while the mistakes are fresh.</p>
+
+  <h3>4a. Log a test</h3>
+  <ul class="check">
+    <li>The home screen lists the batch's tests. <b>Staging Unit Test 1</b> says it <b>needs logging</b>. Open it.</li>
+    <li><b>Which set did you write?</b> Pick one.
+      <span class="why">Each set has the questions in a different order, so the app must know which one the student had.</span></li>
+    <li>It asks <b>"Is this question 1 on your sheet?"</b> and shows it. Confirm.
+      <span class="why">A quick check that the student picked the right set, before they mark anything.</span></li>
+    <li>Tap three or four questions as <b>wrong</b>.</li>
+    <li>Press <b>Save and build my practice set</b>. Was it quick and obvious? Would a 15-year-old manage it without help?</li>
+  </ul>
+
+  <h3>4b. Practice <span class="small">(Practice tab)</span></h3>
+  <ul class="check">
+    <li>A practice set is waiting: new questions on the same topics, none seen before.</li>
+    <li>Try a question, then open its <b>solution</b>.
+      <span class="why">Solutions unlock as the student works, so they try first instead of reading the answer.</span></li>
+  </ul>
+
+  <h3>4c. Weak spots <span class="small">(Weak spots tab)</span></h3>
+  <ul class="check">
+    <li>For a fuller picture, sign out and sign in as <span class="u">sunrise.student1</span>, who has logged both tests. Weak spots lists the topics they keep getting wrong.
+      <span class="why">Deliberately no score, percentage or rank. It's a to-do list, not a report card. Do you agree with that choice?</span></li>
+  </ul>
+
+  <h3>4d. Me, and the app on the phone</h3>
+  <ul class="check">
+    <li><b>Me</b> shows the student's batches, a box to <b>enter a join code</b>, and <b>change password</b>.</li>
+    <li>On Android Chrome, open the site a second time: Chrome should offer to <b>Install PaperFlow</b>. Install it: it opens like a normal app.</li>
+    <li>Turn on <b>airplane mode</b> and open the app. Tests you've already opened should still show, and trying to log should say clearly that it needs internet, <b>without losing what you marked</b>.</li>
+  </ul>
+
+  <div class="box tint">
+    <b class="t">Questions to think about as a student</b>
+    Is anything written in words a student would not understand? Is there anything a student would want that isn't there, such as their marks, the teacher's comments or a reminder?
+  </div>
+</section>
+
+<!-- ============================== 5. INSTITUTE OWNER ============================== -->
+<section class="page">
+  <div class="section-head"><div><p class="eyebrow">Part 5</p><h2>As the institute owner</h2></div><div class="who">On the computer, sign in as <span class="u">sunrise.admin</span></div></div>
+  <p class="small"><b>Why it exists:</b> the coaching centre controls its own people and data. The owner cannot change the questions themselves, so the question bank stays trustworthy for everyone.</p>
+
+  <h3>5a. Overview</h3>
+  <ul class="check">
+    <li>A summary of teachers, students, batches and papers. Is this the information an owner wants first?</li>
+  </ul>
+
+  <h3>5b. Members</h3>
+  <ul class="check">
+    <li>Everyone at Sunrise is listed with their username and role. Try <b>Filter by role</b>.</li>
+    <li><b>Reset password</b> for a student. You get a new temporary password, shown once, to pass on.
+      <span class="why">Students forget passwords constantly. The owner can fix it without contacting us.</span></li>
+    <li>Change someone between <b>teacher</b> and <b>student</b>, then check <b>Recent role changes</b> records it.</li>
+    <li>Look at <b>Invite someone</b>: you invite a person by their username.</li>
+  </ul>
+
+  <h3>5c. Teacher subjects</h3>
+  <ul class="check">
+    <li>Tick or untick which teacher teaches which subject.
+      <span class="why">A teacher can only set papers and make batches for their own subjects.</span></li>
+  </ul>
+
+  <h3>5d. Subjects</h3>
+  <ul class="check">
+    <li>Every class and subject is listed, including ones Sunrise can't use yet, <b>with the reason</b> (for example, "being reviewed now").
+      <span class="why">A subject is only switched on once the shared bank has enough checked questions for every chapter. That way a teacher never gets a thin or lopsided paper.</span></li>
+    <li><b>Request</b> a subject that isn't active. We see the request on our side.</li>
+  </ul>
+
+  <h3>5e. Export data</h3>
+  <ul class="check">
+    <li>One click downloads everything the institute owns.
+      <span class="why">The centre's data is theirs. They can take it with them at any time.</span></li>
+  </ul>
+
+  <h3>5f. Privacy check</h3>
+  <ul class="check">
+    <li>In a private window, sign in as <span class="u">riverside.teacher1</span>. Confirm that <b>nothing</b> from Sunrise appears: no students, batches, papers or private questions.</li>
+  </ul>
+</section>
+
+<!-- ============================== 6. JOINING ============================== -->
+<section class="page">
+  <p class="eyebrow">Part 6</p>
+  <h2>How a new person joins</h2>
+  <p class="sub">Anyone can make an account, but a new account can't see anything until the institute lets them in.</p>
+
+  <div class="box tint">
+    <b class="t">Why it works this way</b>
+    Nobody can make themselves a teacher. A new account belongs to no institute, so a stranger with the link sees nothing. There are two ways in: a <b>student</b> types a batch's join code, or anyone <b>asks the institute</b> and the owner decides what role they get.
+  </div>
+
+  <h3>6a. A new teacher asks to join</h3>
+  <ul class="check">
+    <li>Sign out. On the sign-in page, choose <b>Create an account</b>. Use your own name and make up a username, e.g. <span class="u">aman.test</span>, and a password.</li>
+    <li>You land on a welcome page: you're signed in, but not in any institute yet. Is that page clear?</li>
+    <li>Ask <b>Staging Sunrise Academy</b> for access, with a note like <i>"Maths teacher, joining Monday"</i>.</li>
+    <li>In another window, sign in as <span class="u">sunrise.admin</span>. A notice says someone is asking to join. <b>Review</b> it, then <b>Approve as Teacher</b>.</li>
+    <li>Back in your new account, refresh: you're now in the teacher console.</li>
+  </ul>
+
+  <h3>6b. A new student joins with a code</h3>
+  <ul class="check">
+    <li>Create another account, e.g. <span class="u">aman.student</span>.</li>
+    <li>On the welcome page, type the <b>join code</b> you wrote down in 3c. You go straight into the student app, in that batch.</li>
+  </ul>
+
+  <h3>6c. Things to try to break</h3>
+  <ul class="check">
+    <li>A wrong join code, a username that's already taken, a password that's too short. Are the messages clear?</li>
+    <li>As <span class="u">sunrise.admin</span>, <b>decline</b> a request. What does the person see?</li>
+  </ul>
+</section>
+
+<!-- ============================== 7. PLATFORM ============================== -->
+<section class="page">
+  <p class="eyebrow">Part 7 · optional</p>
+  <h2>As PaperFlow itself</h2>
+  <p class="sub">The side only we use: looking after the shared question bank.</p>
+
+  <p>This part needs your own account to be given our access. <b>Send Sanskar the username you made in Part 6</b> (e.g. <span class="u">aman.test</span>) and he'll switch it on. Then sign in with it and choose <b>Platform console</b>.</p>
+
+  <ul class="check">
+    <li><b>Review queue:</b> new questions wait here. Each is checked, mainly <i>"does the answer match the question?"</i>, and approved or rejected.
+      <span class="why">No question reaches a paper without a person checking it. A wrong answer key in front of a parent is the worst thing that could happen.</span></li>
+    <li><b>Activation:</b> each subject shows whether the bank is thick enough to switch on. Class 10 Maths passes; Class 10 Science deliberately doesn't.</li>
+    <li><b>Institutes:</b> the three centres, with their size.</li>
+    <li><b>Access requests</b> and <b>Subject requests:</b> people asking to join, and centres asking for a subject. Riverside has asked for Science.</li>
+    <li><b>Support:</b> look up a person (e.g. <span class="u">sunrise.student1</span>) and reset their password.</li>
+    <li><b>Health</b> and <b>Audit log:</b> how full the free server is, and a record of every time we looked at an institute's data.
+      <span class="why">We can see institutes' data to help them, but every look is recorded.</span></li>
+  </ul>
+</section>
+
+<!-- ============================== 8. FEEDBACK ============================== -->
+<section class="page">
+  <p class="eyebrow">Part 8</p>
+  <h2>Your feedback</h2>
+  <p class="sub">Write in the boxes, send a voice note, or message screenshots, whatever is easiest for you.</p>
+
+  <div class="box key">
+    <b class="t">When something looks wrong, a screenshot plus one line is perfect</b>
+    For example: <i>"Logged in as sunrise.teacher1, Set a paper, pressed Save and print, nothing happened."</i> Please say <b>which account</b> you were using.
+  </div>
+
+  <table class="fb">
+    <tr><th>Part</th><th>Worked? · Confusing? · Missing?</th></tr>
+    <tr><td>3. Setting and printing a paper</td><td></td></tr>
+    <tr><td>3. Batches and join codes</td><td></td></tr>
+    <tr><td>4. Logging a test (student)</td><td></td></tr>
+    <tr><td>4. Practice and weak spots</td><td></td></tr>
+    <tr><td>5. Institute owner's pages</td><td></td></tr>
+    <tr><td>6. Joining (account, request, code)</td><td></td></tr>
+    <tr><td>7. Question review (if you tried it)</td><td></td></tr>
+  </table>
+
+  <h3>The bigger questions</h3>
+  <table class="fb">
+    <tr><td>Would your teachers use <b>Set a paper</b> instead of making papers by hand? What would stop them?</td><td></td></tr>
+    <tr><td>Would students actually <b>log their tests</b>? What would make them do it?</td><td></td></tr>
+    <tr><td>What is the <b>one thing missing</b> that you'd need before using this for real?</td><td></td></tr>
+    <tr><td>Anything that felt <b>unnecessary</b> or too complicated?</td><td></td></tr>
+    <tr><td>How do the <b>questions</b> look: style, difficulty, how the maths is shown?</td><td></td></tr>
+  </table>
+
+  <p class="small" style="margin-top:10pt">Thank you. Every note here goes straight into the next version.</p>
+</section>
+
+</body>
+</html>
