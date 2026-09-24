@@ -194,7 +194,7 @@ SIGN-IN IS USERNAME + PASSWORD (decided 21 Sep 2026; Google optional behind
 NEXT_PUBLIC_ENABLE_GOOGLE_SIGNIN=1). New accounts get nothing until a join
 code, an invite, or an approved access request (institute admin or platform
 approves and picks the role). Admins and the platform can reset passwords.
-The dev Supabase project (Sydney, ref hvctndzlaobbxrehuxgn) has all 19 applied
+The dev Supabase project (Sydney; project ref in .env.local, never in the repo) has all 19 applied
 and .env.local points at it.
 275 tests pass, including executable database suites that run the real
 migrations in PGlite. NOTHING has run against a live Supabase project or
