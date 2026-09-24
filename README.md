@@ -100,14 +100,32 @@ Working software, not yet a product in daily use.
 
 ## Screenshots
 
-<!-- SCREENSHOTS: add images here. Suggested shots, all from a local run:
-     1. /teacher/generate  or  /demo/teacher/generate   setting a paper, with the layout editor open
-     2. /print/sample                                   printed paper, answer key and mapping sheet
-     3. /demo/app  and  /demo/app/practice              student test list and a practice set
-     4. /demo/platform/bank                             the review queue with maths rendered
-     Save them under docs/screenshots/ and link them below. -->
+From the live site, signed in as accounts from the generated test data.
 
-_Screenshots go here._
+**Setting a paper.** Chapters with the number of questions behind each, the
+layout, the difficulty mix, and the paper being built on the right.
+
+![Setting a paper](docs/screenshots/teacher-generate.png)
+
+**Building a custom layout.** Sections with question kind, count, marks each and
+internal choice, and how many matching questions the ticked chapters hold.
+
+![The custom layout editor](docs/screenshots/teacher-layout-editor.png)
+
+**What gets printed.** Three shuffled sets of one paper, each with its own
+answer key, plus a mapping sheet.
+
+![Printed paper](docs/screenshots/print-sample.png)
+
+**The student app**, on a phone: the tests that still need logging, and the
+practice set built from the last paper's mistakes.
+
+<img src="docs/screenshots/student-tests.png" alt="Student test list" width="300"> <img src="docs/screenshots/student-practice.png" alt="Practice set" width="300">
+
+**Running an institute.** Members, invitations, access requests and role
+changes.
+
+![Institute members](docs/screenshots/institute-members.png)
 
 ---
 
