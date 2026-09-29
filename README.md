@@ -54,6 +54,8 @@ public sign-up into someone else's institute by design.
 - See which subjects are available, with the reason when one is not, and request
   one that is not active yet.
 - Export everything the institute owns as JSON.
+- An institute admin can also do everything a teacher can, without being
+  assigned any subject: set and print papers, create batches, flag questions.
 
 **The question bank and the platform side**
 - A shared bank owned by the platform, plus each institute's own private

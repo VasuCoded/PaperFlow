@@ -699,3 +699,10 @@ a.chip:hover { border-color: var(--pen); color: var(--pen); }
 .mixedit { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 .mixin { display: flex; flex-direction: column; gap: 3px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--graphite); margin: 0; }
 .mixin .inp { width: 100%; min-width: 0; padding: 5px 6px; text-align: right; }
+
+/* group headings in the console menu (an institute admin has two groups) */
+.navgroup {
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--graphite); padding: 14px 18px 5px;
+}
+.navgroup:first-of-type { padding-top: 4px; }

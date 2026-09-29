@@ -1,52 +1,20 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
+import { brandFor, isActive, navFor, type Area } from "@/lib/nav";
 import { canAccess, getSession, type Session } from "@/server/session";
 import { InstituteLinks, InstituteSwitcher } from "./InstituteSwitcher";
 import { PendingInvitesNotice } from "./PendingInvites";
 import { AccessRequestsNotice } from "./AccessRequestsNotice";
 import { SignOutButton } from "./SignOutButton";
 
-export type Area = "platform" | "institute" | "teacher";
+export type { Area };
 
 const ROLE_LABEL: Record<string, string> = {
   owner: "Platform owner",
   institute_admin: "Institute admin",
   teacher: "Teacher",
   student: "Student",
-};
-
-const NAV: Record<Area, { href: string; label: string }[]> = {
-  platform: [
-    { href: "/platform", label: "Overview" },
-    { href: "/platform/institutes", label: "Institutes" },
-    { href: "/platform/bank", label: "Review queue" },
-    { href: "/platform/activation", label: "Activation" },
-    { href: "/platform/accounts", label: "Access requests" },
-    { href: "/platform/requests", label: "Subject requests" },
-    { href: "/platform/support", label: "Support" },
-    { href: "/platform/health", label: "Health" },
-    { href: "/platform/audit", label: "Audit log" },
-  ],
-  institute: [
-    { href: "/institute", label: "Overview" },
-    { href: "/institute/members", label: "Members" },
-    { href: "/institute/teachers", label: "Teacher subjects" },
-    { href: "/institute/subjects", label: "Subjects" },
-    { href: "/institute/export", label: "Export data" },
-  ],
-  teacher: [
-    { href: "/teacher/generate", label: "Set a paper" },
-    { href: "/teacher/papers", label: "My papers" },
-    { href: "/teacher/batches", label: "Batches" },
-    { href: "/teacher/flagged", label: "Flagged questions" },
-  ],
-};
-
-const BRAND: Record<Area, string> = {
-  platform: "Platform console",
-  institute: "Institute console",
-  teacher: "Teacher console",
 };
 
 /**
@@ -81,16 +49,18 @@ export async function AppShell({
         <nav className="rail">
           <div className="brand">
             PaperFlow
-            <span>{BRAND[area]}</span>
+            <span>{brandFor(area, session.role)}</span>
           </div>
-          {NAV[area].map((n) => {
-            const on = pathname === n.href || (n.href !== `/${area}` && pathname.startsWith(`${n.href}/`));
-            return (
-              <Link key={n.href} href={n.href} className={`navitem${on ? " on" : ""}`}>
-                <span>{n.label}</span>
-              </Link>
-            );
-          })}
+          {navFor(area, session.role).map((group, gi) => (
+            <Fragment key={group.title ?? gi}>
+              {group.title && <div className="navgroup">{group.title}</div>}
+              {group.items.map((n) => (
+                <Link key={n.href} href={n.href} className={`navitem${isActive(pathname, n) ? " on" : ""}`}>
+                  <span>{n.label}</span>
+                </Link>
+              ))}
+            </Fragment>
+          ))}
           <RailFoot session={session} area={area} />
         </nav>
 
