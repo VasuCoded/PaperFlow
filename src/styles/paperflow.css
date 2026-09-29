@@ -78,7 +78,21 @@
 .masthead p { margin: 8px 0 0; font-size: 14px; color: var(--graphite); max-width: 60ch; }
 
 /* ---- app shell (teacher / institute / platform) ------------------------ */
-.wrap:has(> .appshell) { padding-top: 16px; }
+/* The console IS the page: no card, no margins, no shadow. The frame and the
+   empty bands around it belonged to the design presentation; a real app fills
+   the window. The shell takes whatever height is left under any banner. */
+.wrap:has(> .appshell) {
+  max-width: none; margin: 0; padding: 0;
+  min-height: 100vh; display: flex; flex-direction: column;
+}
+.wrap:has(> .appshell) > :not(.appshell) {
+  margin: 0; border-radius: 0; border-width: 0 0 1px 3px;
+  padding-left: 26px; padding-right: 26px;
+}
+.wrap:has(> .appshell) > .appshell {
+  flex: 1; border: 0; border-radius: 0; box-shadow: none;
+}
+.wrap:has(> .appshell) .content { min-height: 0; }
 /* a page's own title inside the console, where the page is one record (a paper) */
 .pagehead { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin: 0 0 16px; }
 .pagehead h1 { font-family: var(--serif); font-weight: 500; font-size: 24px; margin: 0; line-height: 1.15; }
