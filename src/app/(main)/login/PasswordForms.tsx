@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/db/client";
+import { loadBrowserClient } from "@/lib/db/client-lazy";
 import { loginToEmail, passwordProblem, usernameProblem } from "@/lib/identity";
 import { createAccount } from "@/server/actions/auth";
 
@@ -29,7 +29,7 @@ export function SignInForm({ next }: { next?: string }) {
         setBusy(true);
         setError(null);
         try {
-          const { error: err } = await createClient().auth.signInWithPassword({
+          const { error: err } = await (await loadBrowserClient()).auth.signInWithPassword({
             email: loginToEmail(login),
             password,
           });
@@ -117,7 +117,7 @@ export function SignUpForm() {
             setBusy(false);
             return;
           }
-          const { error: err } = await createClient().auth.signInWithPassword({ email: loginToEmail(username), password });
+          const { error: err } = await (await loadBrowserClient()).auth.signInWithPassword({ email: loginToEmail(username), password });
           if (err) {
             // The account exists; let them sign in by hand.
             router.replace("/login");

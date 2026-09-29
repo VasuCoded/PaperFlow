@@ -66,7 +66,7 @@ export default async function GeneratePage() {
   return (
     <AppShell
       area="teacher"
-      pathname="/teacher/generate"
+     
       split={bundles.length > 0}
     >
       {bundles.length === 0 ? (

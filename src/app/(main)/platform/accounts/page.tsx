@@ -15,7 +15,7 @@ export default async function AccountsPage() {
   const requests = data ?? [];
 
   return (
-    <AppShell area="platform" pathname="/platform/accounts">
+    <AppShell area="platform">
       <div className="notice warn">
         <b>Check who it is before approving.</b> An account is just a username and a name the person typed.
         The role you choose is what they get: an institute admin can invite and approve people, change roles

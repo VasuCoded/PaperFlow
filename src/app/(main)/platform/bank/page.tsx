@@ -30,7 +30,7 @@ export default async function ReviewQueuePage() {
   const privateCount = queue.filter((q) => q.is_private).length;
 
   return (
-    <AppShell area="platform" pathname="/platform/bank">
+    <AppShell area="platform">
       <div className="cards c4" style={{ marginBottom: 20 }}>
         <div className="card"><span className="big">{queue.length}{queue.length === LIMIT ? "+" : ""}</span><span className="cap">Staged, by subject</span></div>
         <div className="card"><span className="big">{flagged}</span><span className="cap">Flagged uncertain</span></div>

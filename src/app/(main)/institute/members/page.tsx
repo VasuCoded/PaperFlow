@@ -39,7 +39,7 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
   const count = (r: string) => members.filter((m) => m.role === r).length;
 
   return (
-    <AppShell area="institute" pathname="/institute/members">
+    <AppShell area="institute">
       <div className="cards c2" style={{ marginBottom: 22 }}>
         <div className="card">
           <h4>Invite someone</h4>

@@ -176,6 +176,8 @@ export async function correctAttemptSetAction(attemptId: string, correctSetId: s
     p_reason: reason.trim(),
   });
   if (error) return { ok: false, message: error.message };
+  // the change shows on other screens; drop this browser's cached copies (next.config staleTimes)
+  revalidatePath("/", "layout");
   return { ok: true };
 }
 
@@ -191,6 +193,8 @@ export async function moveStudentAction(instituteId: string, studentId: string, 
     p_reason: reason.trim(),
   });
   if (error) return { ok: false, message: error.message };
+  // the change shows on other screens; drop this browser's cached copies (next.config staleTimes)
+  revalidatePath("/", "layout");
   return { ok: true };
 }
 
@@ -238,6 +242,8 @@ export async function platformInviteAction(
   if (!supabase) return DENIED;
   const { error } = await supabase.rpc("platform_invite", { p_institute_id: instituteId, p_email: loginToEmail(email), p_role: role });
   if (error) return { ok: false, message: error.message };
+  // the change shows on other screens; drop this browser's cached copies (next.config staleTimes)
+  revalidatePath("/", "layout");
   return { ok: true };
 }
 
@@ -246,6 +252,8 @@ export async function platformRevokeInviteAction(inviteId: string): Promise<Acti
   if (!supabase) return DENIED;
   const { error } = await supabase.rpc("platform_revoke_invite", { p_invite_id: inviteId });
   if (error) return { ok: false, message: error.message };
+  // the change shows on other screens; drop this browser's cached copies (next.config staleTimes)
+  revalidatePath("/", "layout");
   return { ok: true };
 }
 

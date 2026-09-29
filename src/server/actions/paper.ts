@@ -139,7 +139,6 @@ type PoolRow = {
   stimulus_id: string | null;
   parent_question_id: string | null;
   part_label: string | null;
-  body: string;
   question_type: string;
   marks: number;
   difficulty: string;
@@ -147,6 +146,14 @@ type PoolRow = {
   options_shufflable: boolean;
   position_locked: boolean;
 };
+
+/**
+ * What selection needs from the pool: everything except the question text.
+ * The pool is every eligible question in the chosen chapters (hundreds), but a
+ * paper places a few dozen, so the text is fetched afterwards for those only.
+ */
+const POOL_COLUMNS =
+  "id, owner_institute_id, class_subject_id, chapter_id, topic_id, strand_id, stimulus_id, parent_question_id, part_label, question_type, marks, difficulty, source, options_shufflable, position_locked";
 
 /** The layout a paper is built from, however it was chosen. */
 interface ResolvedLayout {
@@ -167,6 +174,10 @@ type Draft =
       layout: ResolvedLayout;
       paper: GeneratedPaper;
       pool: Map<string, PoolRow>;
+      /** question text, for the placed questions and their alternatives only */
+      bodies: Map<string, string>;
+      /** rendered passages of the placed blocks (preview only; empty when saving) */
+      stimulusHtml: Map<string, string>;
       poolSize: number;
       chapterNames: Map<string, string>;
       sets: BuildSetsResult;
@@ -235,21 +246,25 @@ async function buildDraft(req: PaperRequest, kind: "preview" | "save"): Promise<
   // A teacher generates only for an assigned class-subject. RLS enforces this
   // on write as well; checking here gives a readable message instead of a
   // policy violation halfway through a save.
-  if (session.role === "teacher") {
-    const { count } = await supabase
-      .from("teacher_subjects")
-      .select("class_subject_id", { count: "exact", head: true })
-      .eq("institute_id", instituteId)
-      .eq("teacher_id", session.userId)
-      .eq("class_subject_id", req.classSubjectId);
-    if (!count) return fail("You are not assigned to that class and subject.");
-  } else if (session.role !== "institute_admin") {
+  if (session.role !== "teacher" && session.role !== "institute_admin") {
     return fail("Only a teacher or an institute admin can set a paper.");
   }
 
   // Rate limit before any expensive work (C12 item 6). Counted in the database,
   // per person and per institute, because serverless instances share no memory.
-  const { error: limitError } = await supabase.rpc("note_generation", { p_institute_id: instituteId, p_kind: kind });
+  // Both checks are small and independent, so they run together.
+  const [assignment, { error: limitError }] = await Promise.all([
+    session.role === "teacher"
+      ? supabase
+          .from("teacher_subjects")
+          .select("class_subject_id", { count: "exact", head: true })
+          .eq("institute_id", instituteId)
+          .eq("teacher_id", session.userId)
+          .eq("class_subject_id", req.classSubjectId)
+      : Promise.resolve({ count: 1 }),
+    supabase.rpc("note_generation", { p_institute_id: instituteId, p_kind: kind }),
+  ]);
+  if (!assignment.count) return fail("You are not assigned to that class and subject.");
   if (limitError) {
     return fail(
       /rate limit: your institute/.test(limitError.message)
@@ -290,7 +305,7 @@ async function buildDraft(req: PaperRequest, kind: "preview" | "save"): Promise<
       p_chapter_ids: req.chapterIds.length > 0 ? req.chapterIds : undefined,
       p_teacher_id: session.userId,
       p_exclude_recent_papers: Math.max(0, Math.min(10, req.excludeRecentPapers)),
-    }),
+    }).select(POOL_COLUMNS),
     supabase.from("chapters").select("id, name").eq("class_subject_id", req.classSubjectId),
   ]);
   if (poolResult.error) return fail(poolResult.error.message);
@@ -391,15 +406,24 @@ async function buildDraft(req: PaperRequest, kind: "preview" | "save"): Promise<
   // option order the answer key cannot resolve — and a wrong key marks correct
   // answers wrong (C7 item 2). `options` is readable; correct_option is not.
   const placedIds = paper.sections.flatMap((s) => s.blocks.flatMap((pb) => pb.block.questions.map((q) => q.id)));
-  const [{ data: optionRows }, batchSize] = await Promise.all([
+  // the either/or alternatives are printed too, so their text is needed as well
+  const alternativeIds = paper.sections.flatMap((s) => s.blocks.flatMap((pb) => pb.choiceAlternative?.questions.map((q) => q.id) ?? []));
+  const stimulusIds = [...new Set(paper.sections.flatMap((s) => s.blocks.map((pb) => pb.block.stimulusId).filter((x): x is string => !!x)))];
+  const none = ["00000000-0000-0000-0000-000000000000"];
+  // One round trip for everything the placed questions still need. Passages are
+  // only shown in the preview; saving stores references, not text.
+  const [{ data: placedRows }, batchSize, { data: stimulusRows }] = await Promise.all([
     supabase
       .from("questions")
-      .select("id, options")
-      .in("id", placedIds.length > 0 ? placedIds : ["00000000-0000-0000-0000-000000000000"]),
+      .select("id, options, body")
+      .in("id", [...placedIds, ...alternativeIds].length > 0 ? [...placedIds, ...alternativeIds] : none),
     batchSize_(req.batchId, instituteId),
+    kind === "preview" && stimulusIds.length > 0
+      ? supabase.from("stimuli").select("id, body").in("id", stimulusIds)
+      : Promise.resolve({ data: [] as { id: string; body: string | null }[] }),
   ]);
   const optionKeysById = new Map(
-    (optionRows ?? []).map((r) => [r.id, parseOptions(r.options).map((o) => o.key)]),
+    (placedRows ?? []).map((r) => [r.id, parseOptions(r.options).map((o) => o.key)]),
   );
 
   const setCount = Math.max(1, Math.min(4, req.setCount));
@@ -434,6 +458,8 @@ async function buildDraft(req: PaperRequest, kind: "preview" | "save"): Promise<
     layout,
     paper,
     pool: new Map(rows.map((r) => [r.id, r])),
+    bodies: new Map((placedRows ?? []).map((r) => [r.id, r.body])),
+    stimulusHtml: new Map((stimulusRows ?? []).filter((s) => s.body).map((s) => [s.id, renderRich(s.body!)])),
     poolSize: rows.length,
     chapterNames: new Map((chaptersResult.data ?? []).map((c) => [c.id, c.name])),
     sets,
@@ -461,24 +487,17 @@ export async function previewPaper(req: PaperRequest): Promise<PreviewResponse> 
   const draft = await buildDraft(req, "preview");
   if (!draft.ok) return draft.response;
 
-  // Passages for the stimulus blocks actually placed, read under RLS (shared
-  // bank plus this institute's own).
-  const stimulusIds = [
-    ...new Set(draft.paper.sections.flatMap((s) => s.blocks.map((pb) => pb.block.stimulusId).filter((x): x is string => !!x))),
-  ];
-  const stimulusHtml = new Map<string, string>();
-  if (stimulusIds.length > 0) {
-    const supabase = await createServerSupabaseClient();
-    const { data: stimuli } = await supabase.from("stimuli").select("id, body").in("id", stimulusIds);
-    for (const st of stimuli ?? []) if (st.body) stimulusHtml.set(st.id, renderRich(st.body));
-  }
+  // Passages were read with the placed questions, under RLS (shared bank plus
+  // this institute's own), in buildDraft.
+  const { stimulusHtml } = draft;
 
   const q = (id: string): PreviewQuestion => {
     const row = draft.pool.get(id);
+    const body = draft.bodies.get(id) ?? "";
     return {
       id,
-      body: row?.body ?? "",
-      html: renderRich(row?.body ?? ""),
+      body,
+      html: renderRich(body),
       source: row?.source ?? null,
       marks: row?.marks ?? 0,
     };

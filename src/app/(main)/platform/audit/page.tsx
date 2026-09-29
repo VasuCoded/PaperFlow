@@ -53,7 +53,7 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
   };
 
   return (
-    <AppShell area="platform" pathname="/platform/audit">
+    <AppShell area="platform">
       <form method="get" className="btnrow" style={{ marginBottom: 14, alignItems: "flex-end", flexWrap: "wrap" }}>
         <div>
           <label htmlFor="audit-inst" style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 5 }}>Institute</label>

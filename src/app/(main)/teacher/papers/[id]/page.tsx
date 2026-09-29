@@ -42,7 +42,7 @@ export default async function PaperDetailPage({ params }: { params: Promise<{ id
   const placedMarks = paper.canon.sections.reduce((n, s) => n + s.blocks.reduce((m, b) => m + blockMarks(b), 0), 0);
 
   return (
-    <AppShell area="teacher" pathname="/teacher/papers">
+    <AppShell area="teacher">
       <div className="pagehead">
         <h1>{paper.title}</h1>
         <span>

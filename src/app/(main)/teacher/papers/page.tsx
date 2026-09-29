@@ -29,7 +29,7 @@ export default async function PapersPage({
   const batchName = batch ? all.find((p) => p.batchId === batch)?.batchName ?? null : null;
 
   return (
-    <AppShell area="teacher" pathname="/teacher/papers">
+    <AppShell area="teacher">
       <form className="codesearch" action="/teacher/papers" method="get">
         <label htmlFor="code">Find a paper by the code printed on it</label>
         <div className="btnrow">

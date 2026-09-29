@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/db/client";
+import { loadBrowserClient } from "@/lib/db/client-lazy";
 
 function GoogleMark() {
   return (
@@ -26,7 +26,7 @@ export function GoogleButton({ next }: { next?: string }) {
     setBusy(true);
     setError(null);
     try {
-      const supabase = createClient();
+      const supabase = await loadBrowserClient();
       const redirectTo = `${window.location.origin}/auth/callback${
         next ? `?next=${encodeURIComponent(next)}` : ""
       }`;

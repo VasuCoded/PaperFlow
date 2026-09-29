@@ -39,7 +39,7 @@ export default async function ExportPage() {
   ];
 
   return (
-    <AppShell area="institute" pathname="/institute/export">
+    <AppShell area="institute">
       <div className="cards c2">
         <div className="card">
           <h4>What&rsquo;s included</h4>

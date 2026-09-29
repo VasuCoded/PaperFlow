@@ -25,7 +25,7 @@ export default async function SupportPage() {
   const institutes = (institutesRes.data ?? []).map((i) => ({ id: i.id, name: i.name }));
 
   return (
-    <AppShell area="platform" pathname="/platform/support">
+    <AppShell area="platform">
       <h2 className="sect">Find a person</h2>
       <div className="card" style={{ marginBottom: 22 }}>
         <PersonLookup />

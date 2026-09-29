@@ -29,7 +29,7 @@ export default async function ActivationPage() {
   );
 
   return (
-    <AppShell area="platform" pathname="/platform/activation">
+    <AppShell area="platform">
       <div className="notice warn">
         <b>The gate.</b> Never activate thin: no chapter under {GATE.minPerChapter} approved questions, no topic under{" "}
         {GATE.minPerTopic}, every pattern section type at 3× its required count, and a teacher confirming the

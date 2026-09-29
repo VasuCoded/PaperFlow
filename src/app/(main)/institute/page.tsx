@@ -30,7 +30,7 @@ export default async function InstituteOverview() {
   const batches = batchesRes.data ?? [];
 
   return (
-    <AppShell area="institute" pathname="/institute">
+    <AppShell area="institute">
       <div className="cards c4">
         <div className="card"><span className="big">{roles.filter((r) => r === "teacher").length}</span><span className="cap">Teachers</span></div>
         <div className="card"><span className="big">{roles.filter((r) => r === "student").length}</span><span className="cap">Students</span></div>

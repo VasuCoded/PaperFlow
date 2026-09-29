@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/db/client";
+import { loadBrowserClient } from "@/lib/db/client-lazy";
 import { passwordProblem } from "@/lib/identity";
 
 /** Change your own password (username accounts). Runs in the browser against the signed-in session. */
@@ -22,7 +22,7 @@ export function ChangePassword() {
           return;
         }
         setBusy(true);
-        const { error } = await createClient().auth.updateUser({ password });
+        const { error } = await (await loadBrowserClient()).auth.updateUser({ password });
         setBusy(false);
         if (error) setMessage({ ok: false, text: error.message });
         else {

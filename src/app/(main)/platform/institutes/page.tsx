@@ -18,7 +18,7 @@ export default async function InstitutesPage() {
   const institutes = data ?? [];
 
   return (
-    <AppShell area="platform" pathname="/platform/institutes">
+    <AppShell area="platform">
       {institutes.length === 0 ? (
         <p className="lede">No institutes yet. Create the first one below.</p>
       ) : (

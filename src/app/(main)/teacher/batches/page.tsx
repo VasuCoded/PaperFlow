@@ -46,7 +46,7 @@ export default async function BatchesPage() {
   const nameById = new Map((profiles ?? []).map((p) => [p.id, p.full_name ?? p.email]));
 
   return (
-    <AppShell area="teacher" pathname="/teacher/batches">
+    <AppShell area="teacher">
       {batches.length === 0 ? (
         <p className="lede">No batches yet. Create one below and hand its code to your students.</p>
       ) : (

@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { createServerSupabaseClient } from "@/lib/db/server";
 import { ownMemberships, type Membership, type MembershipRow, type Role } from "@/lib/memberships";
@@ -36,8 +37,15 @@ export interface Session {
 /**
  * Resolve the caller. Returns null when there is no authenticated user.
  * Never throws for an unauthenticated request — callers decide what to do.
+ *
+ * Resolved once per request: a page, its shell and its banners all ask, and
+ * each ask used to cost an auth round trip plus two queries. React's cache()
+ * scopes the result to the one server request, so it can never leak between
+ * users or requests.
  */
-export async function getSession(): Promise<Session | null> {
+export const getSession = cache(resolveSession);
+
+async function resolveSession(): Promise<Session | null> {
   // Before Supabase is configured there is no one to be signed in as. Degrade
   // to "not signed in" rather than throwing, so /login can explain itself.
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
@@ -53,20 +61,18 @@ export async function getSession(): Promise<Session | null> {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("email, full_name")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  // Only the caller's own rows: RLS also lets a member read their fellow
-  // members, and the first of THOSE could be the institute admin (see
-  // src/lib/memberships.ts).
-  const { data: rows } = await supabase
-    .from("institute_members")
-    .select("user_id, institute_id, role, institutes(id, name, slug, kind, status)")
-    .eq("user_id", user.id)
-    .returns<MembershipRow[]>();
+  // Independent reads, so in parallel: one round trip instead of two.
+  const [{ data: profile }, { data: rows }] = await Promise.all([
+    supabase.from("profiles").select("email, full_name").eq("id", user.id).maybeSingle(),
+    // Only the caller's own rows: RLS also lets a member read their fellow
+    // members, and the first of THOSE could be the institute admin (see
+    // src/lib/memberships.ts).
+    supabase
+      .from("institute_members")
+      .select("user_id, institute_id, role, institutes(id, name, slug, kind, status)")
+      .eq("user_id", user.id)
+      .returns<MembershipRow[]>(),
+  ]);
 
   const memberships = ownMemberships(rows ?? [], user.id);
 

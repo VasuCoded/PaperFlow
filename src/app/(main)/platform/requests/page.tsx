@@ -23,7 +23,7 @@ export default async function RequestsPage() {
   const decided = rows.filter((r) => r.status !== "pending").sort((a, b) => (b.decided_at ?? "").localeCompare(a.decided_at ?? ""));
 
   return (
-    <AppShell area="platform" pathname="/platform/requests">
+    <AppShell area="platform">
       <h2 className="sect">Pending — {pending.length}</h2>
       {pending.length === 0 && <p className="lede">Nothing waiting.</p>}
       {pending.map((r) => {

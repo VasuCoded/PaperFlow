@@ -27,7 +27,7 @@ export default async function SubjectsPage() {
   const declined = rows.filter((r) => r.last_decline_reason && r.status !== "active" && !r.pending_request);
 
   return (
-    <AppShell area="institute" pathname="/institute/subjects">
+    <AppShell area="institute">
       {declined.length > 0 && (
         <div className="notice warn">
           <b>Declined requests.</b>

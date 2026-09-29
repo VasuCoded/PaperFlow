@@ -15,6 +15,15 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: false,
   },
+  experimental: {
+    // Signed-in pages are dynamic, and by default (0) the browser throws them
+    // away the moment you leave, so going back to a page you saw five seconds
+    // ago waits on the server again. Keep them for 30 seconds. Anything that
+    // changes data calls revalidatePath, which clears this at once, and
+    // signing in or out reloads the whole page, so nobody sees another
+    // account's cached page.
+    staleTimes: { dynamic: 30 },
+  },
 };
 
 export default nextConfig;

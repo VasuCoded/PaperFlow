@@ -134,7 +134,8 @@
 .railfoot .role { font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; }
 
 .content { padding: 22px 26px 30px; background: var(--white); min-height: 720px; }
-.content.split { display: grid; grid-template-columns: 352px minmax(0, 1fr); padding: 0; }
+.split-root { display: grid; grid-template-columns: 352px minmax(0, 1fr); min-height: 100%; }
+.content:has(> .split-root) { padding: 0; }
 .controls { border-right: 1px solid var(--hair); padding: 20px; background: #fdfdfc; }
 .preview { padding: 20px 24px; background: var(--white); }
 
@@ -587,7 +588,7 @@ a.chip:hover { border-color: var(--pen); color: var(--pen); }
 
 /* ---- responsive -------------------------------------------------------- */
 @media (max-width: 1240px) {
-  .content.split { grid-template-columns: minmax(0, 1fr); }
+  .split-root { grid-template-columns: minmax(0, 1fr); }
   .controls { border-right: 0; border-bottom: 1px solid var(--hair); }
   .phonestage { grid-template-columns: minmax(0, 1fr); }
   .phone-col { position: static; }
@@ -706,3 +707,22 @@ a.chip:hover { border-color: var(--pen); color: var(--pen); }
   color: var(--graphite); padding: 14px 18px 5px;
 }
 .navgroup:first-of-type { padding-top: 4px; }
+
+/* ---- loading skeletons (loading.tsx): shown the instant a page is clicked ---- */
+.pf-loading .sk {
+  background: linear-gradient(90deg, #f1efec 0%, #f7f6f4 40%, #f1efec 80%);
+  background-size: 300% 100%;
+  animation: pf-shimmer 1.2s ease-in-out infinite;
+  border-radius: 4px;
+}
+.pf-loading .sk-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 26px; }
+.pf-loading .sk-card { height: 84px; }
+.pf-loading .sk-card.tall { height: 96px; margin-top: 12px; }
+.pf-loading .sk-title { height: 22px; width: 220px; margin-bottom: 14px; }
+.pf-loading .sk-line { height: 12px; width: 60%; margin-bottom: 10px; }
+.pf-loading .sk-line.short { width: 35%; }
+.pf-loading .sk-block { height: 220px; margin-top: 20px; }
+.m-loading-pad { padding: 22px 18px; }
+@keyframes pf-shimmer { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
+@media (max-width: 860px) { .pf-loading .sk-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (prefers-reduced-motion: reduce) { .pf-loading .sk { animation: none; } }

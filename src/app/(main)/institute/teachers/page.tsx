@@ -28,7 +28,7 @@ export default async function TeacherSubjectsPage() {
   const assigned = new Set((assignedRes.data ?? []).map((a) => `${a.teacher_id}:${a.class_subject_id}`));
 
   return (
-    <AppShell area="institute" pathname="/institute/teachers">
+    <AppShell area="institute">
       {subjects.length === 0 ? (
         <div className="notice warn">
           <b>No subjects are active for your institute yet,</b> so there is nothing to assign.{" "}
