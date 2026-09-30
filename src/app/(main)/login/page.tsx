@@ -92,6 +92,11 @@ export default async function LoginPage({
             <li><Icon name="check" size={17} /> Up to four shuffled sets per paper</li>
             <li><Icon name="check" size={17} /> Practice built from each student&rsquo;s own mistakes</li>
           </ul>
+          <div className="lp-facts">
+            <div><b>1 min</b><span>to set a balanced paper</span></div>
+            <div><b>4 sets</b><span>of every paper, to stop copying</span></div>
+            <div><b>9–12</b><span>classes, board patterns built in</span></div>
+          </div>
         </div>
 
         <div className="lp-panel" id="signin">
@@ -137,8 +142,13 @@ export default async function LoginPage({
       </section>
 
       <section className="lp-sec" id="how">
-        <p className="eyebrow">How it works</p>
-        <h2>Four steps, and only one of them is new.</h2>
+        <div className="lp-sechead">
+          <div>
+            <p className="eyebrow">How it works</p>
+            <h2>Four steps, and only one of them is new.</h2>
+          </div>
+          <p>Tests stay on paper and marking stays by hand. PaperFlow takes the effort out of setting the paper, and turns the marked paper into practice.</p>
+        </div>
         <ol className="lp-steps">
           {STEPS.map((s, i) => (
             <li key={s.title}>
@@ -190,8 +200,13 @@ export default async function LoginPage({
       </section>
 
       <section className="lp-sec" id="features">
-        <p className="eyebrow">Features</p>
-        <h2>Everything a test needs, nothing it doesn&rsquo;t.</h2>
+        <div className="lp-sechead">
+          <div>
+            <p className="eyebrow">Features</p>
+            <h2>Everything a test needs, nothing it doesn&rsquo;t.</h2>
+          </div>
+          <p>Built with teachers who set papers every week: fast to use, simple to learn, and nothing to install.</p>
+        </div>
         <div className="lp-feats">
           {FEATURES.map((f) => (
             <div key={f.title} className="lp-feat">
@@ -204,8 +219,13 @@ export default async function LoginPage({
       </section>
 
       <section className="lp-sec" id="roles">
-        <p className="eyebrow">Who it&rsquo;s for</p>
-        <h2>One place for the whole institute.</h2>
+        <div className="lp-sechead">
+          <div>
+            <p className="eyebrow">Who it&rsquo;s for</p>
+            <h2>One place for the whole institute.</h2>
+          </div>
+          <p>Each person sees only what they need: teachers their papers and batches, students their tests, admins the whole institute.</p>
+        </div>
         <div className="lp-roles">
           {ROLES.map((r) => (
             <div key={r.who} className="lp-role">
@@ -221,11 +241,13 @@ export default async function LoginPage({
       </section>
 
       <section className="lp-cta">
-        <h2>Ready when you are.</h2>
-        <p>Sign in above, or create an account and join your institute with a batch code.</p>
-        <div className="btnrow" style={{ justifyContent: "center" }}>
+        <div>
+          <h2>Ready when you are.</h2>
+          <p>Sign in, or create an account and join your institute with a batch code.</p>
+        </div>
+        <div className="btnrow">
           <a className="btn solid" href="#signin">Sign in</a>
-          <Link className="btn" href="/signup">Create an account</Link>
+          <Link className="btn lp-ctaghost" href="/signup">Create an account</Link>
         </div>
       </section>
 

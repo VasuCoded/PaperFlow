@@ -98,3 +98,34 @@ export async function withdrawFlag(flagId: string): Promise<ActionResult> {
   revalidatePath("/teacher/flagged");
   return { ok: true };
 }
+
+/**
+ * Show a paper to its students, or hide it again. A paper is saved hidden
+ * (released_at null) because it is usually set days before the test; the
+ * teacher releases it once the test has been conducted. can_access_paper()
+ * enforces it for students; the papers_write policy decides who may change it.
+ * Hiding is refused once anyone has logged the paper.
+ */
+export async function setPaperReleased(paperId: string, released: boolean): Promise<ActionResult> {
+  const session = await getSession();
+  if (!session?.instituteId || !deskRole(session.role)) return { ok: false, message: "Not allowed." };
+  const supabase = await createServerSupabaseClient();
+  if (!released) {
+    const { count } = await supabase
+      .from("attempts")
+      .select("id", { count: "exact", head: true })
+      .eq("institute_id", session.instituteId)
+      .eq("paper_id", paperId);
+    if ((count ?? 0) > 0) return { ok: false, message: "Students have already logged this paper, so it stays visible." };
+  }
+  const { data, error } = await supabase
+    .from("papers")
+    .update({ released_at: released ? new Date().toISOString() : null })
+    .eq("id", paperId)
+    .eq("institute_id", session.instituteId)
+    .select("id");
+  if (error) return { ok: false, message: error.message };
+  if (!data?.length) return { ok: false, message: "Paper not found, or not yours to change." };
+  revalidatePath("/", "layout");
+  return { ok: true };
+}

@@ -55,7 +55,7 @@ type BatchRow = {
   join_code: string;
   active: boolean;
   enrolments: { student_id: string }[];
-  papers: { created_at: string }[];
+  papers: { created_at: string; released_at: string | null }[];
 };
 type AttemptRow = {
   id: string;
@@ -74,7 +74,7 @@ export async function getResultBatches(session: Session): Promise<(ResultsBatch 
   const supabase = await createServerSupabaseClient();
   const { data } = await supabase
     .from("batches")
-    .select("id, name, class_subject_id, join_code, active, enrolments ( student_id ), papers ( created_at )")
+    .select("id, name, class_subject_id, join_code, active, enrolments ( student_id ), papers ( created_at, released_at )")
     .eq("institute_id", session.instituteId)
     .in("class_subject_id", [...label.keys()])
     .order("active", { ascending: false })
@@ -87,7 +87,7 @@ export async function getResultBatches(session: Session): Promise<(ResultsBatch 
     joinCode: b.join_code,
     active: b.active,
     students: b.enrolments.length,
-    lastPaperAt: b.papers.reduce<string | null>((m, p) => (!m || p.created_at > m ? p.created_at : m), null),
+    lastPaperAt: b.papers.filter((p) => p.released_at).reduce<string | null>((m, p) => (!m || p.created_at > m ? p.created_at : m), null),
     studentIds: b.enrolments.map((e) => e.student_id),
   }));
 }
@@ -103,6 +103,8 @@ export async function getBatchResults(
       .select("id, title, created_at")
       .eq("institute_id", session.instituteId!)
       .eq("batch_id", batch.id)
+      // a paper students cannot see yet cannot be logged: leave it out
+      .not("released_at", "is", null)
       .order("created_at", { ascending: false })
       .limit(PAPER_WINDOW),
     batch.studentIds.length

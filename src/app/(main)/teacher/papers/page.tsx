@@ -3,6 +3,8 @@ import Link from "next/link";
 import { AppShell } from "../../_components/AppShell";
 import { getSession } from "@/server/session";
 import { listPapers } from "@/server/data/papers";
+import { ActionButton } from "../../_components/ActionButton";
+import { setPaperReleased } from "@/server/actions/teacher";
 
 export const metadata: Metadata = { title: "My papers · PaperFlow" };
 
@@ -108,6 +110,10 @@ export default async function PapersPage({
                     <td className="num">{p.totalMarks}</td>
                     <td className="num">{p.setCount}</td>
                     <td className="num">
+                      {!p.releasedAt ? (
+                        <span className="pill seeding" title="Students cannot see it until you mark it as conducted">Not given yet</span>
+                      ) : (
+                      <>
                       {p.loggedCount}
                       {p.batchStudents > 0 ? `/${p.batchStudents}` : ""}
                       {pct !== null && (
@@ -115,9 +121,14 @@ export default async function PapersPage({
                           {pct}% logged
                         </span>
                       )}
+                      </>
+                      )}
                     </td>
                     <td>
                       <div className="btnrow">
+                        {!p.releasedAt && (
+                          <ActionButton action={setPaperReleased.bind(null, p.id, true)} label="Mark as conducted" className="btn sm solid" />
+                        )}
                         <Link className="btn sm" href={`/print/paper/${p.id}`} target="_blank">Print</Link>
                         <Link className="btn sm ghost" href={`/teacher/papers/${p.id}`}>Open</Link>
                       </div>

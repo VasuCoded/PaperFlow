@@ -1043,6 +1043,7 @@ export type Database = {
           batch_id: string | null
           class_subject_id: string
           pattern_id: string | null
+          released_at: string | null
           title: string
           total_marks: number | null
           duration_min: number | null
@@ -1060,6 +1061,7 @@ export type Database = {
           batch_id?: string | null
           class_subject_id: string
           pattern_id?: string | null
+          released_at?: string | null
           title: string
           total_marks?: number | null
           duration_min?: number | null
@@ -1077,6 +1079,7 @@ export type Database = {
           batch_id?: string | null
           class_subject_id?: string
           pattern_id?: string | null
+          released_at?: string | null
           title?: string
           total_marks?: number | null
           duration_min?: number | null

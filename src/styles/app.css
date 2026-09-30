@@ -19,10 +19,19 @@ a:has(> .logo) { text-decoration: none; }
 
 /* ---- console frame ------------------------------------------------------ */
 .navshell { grid-template-columns: 244px minmax(0, 1fr); background: var(--paper); }
+/* The page scrolls; the sidebar does not. The old frame's overflow: hidden made
+   the shell a scroll container, which stopped the sidebar sticking. */
+.navshell { overflow: visible; }
 .navshell .rail {
-  position: sticky; top: 0; align-self: start; height: 100vh; height: 100dvh; overflow-y: auto;
-  display: flex; flex-direction: column; padding: 16px 12px 14px; background: var(--white);
-  border-right: 1px solid var(--hair); scrollbar-width: thin;
+  position: fixed; top: 0; left: 0; width: 244px; height: 100vh; height: 100dvh; overflow: hidden; z-index: 20;
+  display: flex; flex-direction: column; padding: 16px 12px 12px; background: var(--white);
+  border-right: 1px solid var(--hair);
+}
+/* only the menu scrolls, and only if the window is too short for it; the logo
+   and the account footer always stay in view */
+.navshell .navlist {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; scrollbar-width: thin;
+  margin: 0 -6px; padding: 0 6px 8px;
 }
 .navshell .railbrand {
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
@@ -53,8 +62,19 @@ a:has(> .logo) { text-decoration: none; }
 }
 .navshell .navgroup:first-of-type { padding-top: 18px; }
 .navshell .railfoot {
-  margin-top: auto; padding: 14px 4px 0; border-top: 1px solid var(--hair);
+  flex: 0 0 auto; padding: 12px 4px 0; border-top: 1px solid var(--hair);
   display: flex; flex-direction: column; gap: 10px; font-size: 12px;
+}
+.footrow { display: flex; gap: 6px; }
+.footrow > * { flex: 1 1 0; justify-content: center; }
+/* short windows (a laptop at 125% zoom): a tighter menu */
+@media (min-width: 861px) and (max-height: 820px) {
+  .navshell .railbrand { padding-bottom: 10px; }
+  .navshell .navitem { padding: 6px 10px; }
+  .navshell .navgroup { padding: 12px 10px 4px; }
+  .navshell .navgroup:first-of-type { padding-top: 12px; }
+  .navshell .railfoot { gap: 8px; padding-top: 10px; }
+  .whoav { width: 30px; height: 30px; font-size: 11px; }
 }
 .whocard { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .whoav {
@@ -77,8 +97,10 @@ a:has(> .logo) { text-decoration: none; }
 .signout { justify-content: center; }
 .navshell .railfoot .sel { margin-top: 0 !important; font-size: 12px !important; padding: 6px 8px !important; }
 
-.navshell .content { padding: 26px 32px 56px; background: var(--paper); min-width: 0; }
-.ctitle { display: flex; align-items: center; gap: 10px; margin: 0 0 20px; color: var(--graphite); }
+/* the sidebar is pinned (fixed), so the content sits in the second column */
+.navshell .content { grid-column: 2; padding: 22px 32px 28px; background: var(--paper); min-width: 0; }
+.navshell .content > :last-child { margin-bottom: 0; }
+.ctitle { display: flex; align-items: center; gap: 10px; margin: 0 0 16px; color: var(--graphite); }
 .ctitle h1 {
   font-family: var(--serif); font-size: 27px; font-weight: 600; margin: 0; color: var(--ink);
   letter-spacing: -0.01em; line-height: 1.15;
@@ -118,6 +140,9 @@ a:has(> .logo) { text-decoration: none; }
     padding: 8px 12px; background: rgba(255, 255, 255, 0.97); border-bottom: 1px solid var(--hair);
   }
   .navshell .mtopbtn { display: grid; }
+  .navshell .content { grid-column: 1; }
+  .tabbarx { flex-wrap: wrap; overflow: visible; }
+  .tabbtn { padding: 9px 10px; }
   .navshell .rail {
     position: fixed; top: 0; left: 0; bottom: 0; width: min(300px, 86vw); z-index: 50;
     transform: translateX(-104%); transition: transform 0.22s ease; border-bottom: 0;
@@ -154,8 +179,8 @@ a:has(> .logo) { text-decoration: none; }
 .lp-links a { color: var(--graphite); text-decoration: none; font-size: 13.5px; font-weight: 500; }
 .lp-links a:hover { color: var(--ink); }
 .lp-hero {
-  max-width: 1180px; margin: 0 auto; padding: 64px 24px 72px;
-  display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 64px; align-items: center;
+  max-width: 1180px; margin: 0 auto; padding: 44px 24px 52px;
+  display: grid; grid-template-columns: minmax(0, 1fr) 410px; gap: 56px; align-items: center;
 }
 .lp-copy h1 {
   font-family: var(--serif); font-weight: 500; font-size: clamp(34px, 4.6vw, 56px); line-height: 1.02;
@@ -181,7 +206,7 @@ a:has(> .logo) { text-decoration: none; }
 }
 .lp-access .icon { margin-top: 2px; }
 .lp-sec {
-  max-width: 1180px; margin: 0 auto; padding: 72px 24px; border-top: 1px solid var(--hair);
+  max-width: 1180px; margin: 0 auto; padding: 52px 24px; border-top: 1px solid var(--hair);
   scroll-margin-top: 70px;
 }
 .lp-sec > h2, .lp-showtext h2, .lp-cta h2 {
@@ -237,9 +262,26 @@ a:has(> .logo) { text-decoration: none; }
 .lp-role li::before {
   content: ""; position: absolute; left: 0; top: 8px; width: 7px; height: 7px; border-radius: 50%; background: var(--pen);
 }
-.lp-cta { max-width: 1180px; margin: 0 auto; padding: 72px 24px; text-align: center; border-top: 1px solid var(--hair); }
-.lp-cta h2 { margin: 0 auto 10px; }
-.lp-cta p { color: var(--graphite); margin: 0 0 22px; font-size: 15px; }
+.lp-cta {
+  max-width: 1132px; margin: 8px auto 52px; padding: 30px 36px; border-radius: 16px; background: var(--ink); color: var(--paper);
+  display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap;
+}
+.lp-cta h2 { margin: 0 0 4px; color: var(--paper); font-size: clamp(24px, 2.6vw, 30px); }
+.lp-cta p { color: #c9c6c0; margin: 0; font-size: 14.5px; }
+.lp-ctaghost { background: transparent; color: var(--paper); border-color: #5a6169; }
+.lp-ctaghost:hover { background: var(--paper); color: var(--ink); border-color: var(--paper); }
+.lp-sechead {
+  display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 20px 48px; align-items: end; margin-bottom: 26px;
+}
+.lp-sechead h2 {
+  font-family: var(--serif); font-size: clamp(26px, 3.2vw, 38px); font-weight: 500;
+  letter-spacing: -0.015em; line-height: 1.1; margin: 0;
+}
+.lp-sechead > p { margin: 0; font-size: 15px; color: var(--graphite); line-height: 1.55; max-width: 52ch; }
+.lp-facts { display: flex; gap: 28px; margin-top: 28px; padding-top: 22px; border-top: 1px solid var(--hair); flex-wrap: wrap; }
+.lp-facts div { display: flex; flex-direction: column; }
+.lp-facts b { font-size: 24px; font-weight: 650; letter-spacing: -0.02em; }
+.lp-facts span { font-size: 12.5px; color: var(--graphite); }
 .lp-foot {
   display: flex; align-items: center; gap: 18px; flex-wrap: wrap; justify-content: space-between;
   padding: 26px max(24px, calc((100vw - 1180px) / 2)); border-top: 1px solid var(--hair);
@@ -267,7 +309,9 @@ a:has(> .logo) { text-decoration: none; }
   .lp-show { grid-template-columns: minmax(0, 1fr); gap: 40px; }
   .lp-sheet { transform: none; }
   .lp-links { display: none; }
-  .lp-sec, .lp-cta { padding: 52px 20px; }
+  .lp-sec { padding: 40px 20px; }
+  .lp-cta { margin: 0 16px 40px; padding: 24px; }
+  .lp-sechead { grid-template-columns: minmax(0, 1fr); gap: 10px; }
   .authgrid { grid-template-columns: minmax(0, 1fr); gap: 32px; padding: 24px 16px 56px; }
   .authside { padding-top: 0; }
 }
@@ -300,8 +344,9 @@ a:has(> .logo) { text-decoration: none; }
     align-items: start; min-height: 100vh;
   }
   .m-side {
-    display: flex; flex-direction: column; grid-row: 1 / span 2; grid-column: 1; position: sticky; top: 0;
-    height: 100vh; background: var(--white); border-right: 1px solid var(--hair); padding: 18px 14px 16px;
+    display: flex; flex-direction: column; position: fixed; left: 0; top: 0; width: 256px; z-index: 20;
+    height: 100vh; height: 100dvh; overflow-y: auto; background: var(--white); border-right: 1px solid var(--hair);
+    padding: 18px 14px 16px;
   }
   .m-sidebrand { padding: 2px 6px 22px; text-decoration: none; }
   .m-sidenav { display: flex; flex-direction: column; gap: 3px; }
@@ -553,3 +598,16 @@ a:has(> .logo) { text-decoration: none; }
   .quickcard .icon { margin-bottom: 4px; }
   .rowlink.static { flex-wrap: wrap; }
 }
+
+/* the paper preview scrolls with the page (one scrollbar, not two); its title
+   and Save button stay in view while you read down the paper */
+.navshell .paper { max-height: none; overflow: visible; padding-right: 0; }
+.navshell .preview .pvhead {
+  position: sticky; top: 0; z-index: 3; background: var(--white);
+  padding-top: 14px; margin-top: -14px;
+}
+.navshell .content:has(> .split-root) > .notice { margin: 0; border-radius: 0; border-width: 0 0 1px 3px; }
+@media (max-width: 860px) {
+  .navshell .preview .pvhead { top: 57px; }
+}
+.releasebar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }

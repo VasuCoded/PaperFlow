@@ -599,6 +599,8 @@ export async function savePaper(req: PaperRequest): Promise<SaveResponse> {
       duration_min: layout.durationMin,
       instructions: layout.generalInstructions || null,
       status: "generated",
+      // hidden from students until the teacher marks the test as conducted
+      released_at: null,
       seed: req.seed,
       generated_at: new Date().toISOString(),
     })

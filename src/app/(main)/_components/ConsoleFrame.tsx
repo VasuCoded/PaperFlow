@@ -60,14 +60,6 @@ export async function ConsoleFrame({ area, children }: { area: Area; children: R
 
   return (
     <div className="wrap">
-      {/* rarely shown: never make the page wait for them */}
-      <Suspense fallback={null}>
-        <PendingInvitesNotice />
-      </Suspense>
-      <Suspense fallback={null}>
-        <AccessRequestsNotice session={session} area={area} />
-      </Suspense>
-
       <div className="appshell navshell">
         <MobileBar>
           <Logo size={26} />
@@ -83,6 +75,14 @@ export async function ConsoleFrame({ area, children }: { area: Area; children: R
         </nav>
 
         <div className="content">
+          {/* rarely shown: never make the page wait for them. Inside the content
+              area, so a banner never makes the whole window scroll. */}
+          <Suspense fallback={null}>
+            <PendingInvitesNotice />
+          </Suspense>
+          <Suspense fallback={null}>
+            <AccessRequestsNotice session={session} area={area} />
+          </Suspense>
           <PageTitle groups={groups} />
           {children}
         </div>
@@ -96,38 +96,38 @@ function RailFoot({ session, area }: { session: Session; area: Area }) {
   const name = session.fullName ?? session.email;
   const role = area === "platform" ? ROLE_LABEL.owner! : (ROLE_LABEL[session.role ?? ""] ?? "");
   const tenants = session.memberships.filter((m) => m.kind === "institute");
+  const single = area !== "platform" && current && tenants.length <= 1;
   return (
     <div className="railfoot">
       <div className="whocard">
         <span className="whoav" aria-hidden="true">{initialsOf(name)}</span>
         <span className="whotext">
           <b>{name}</b>
-          <span className="role">{role}</span>
+          <span className="role">
+            {role}
+            {single ? ` · ${current.instituteName}` : ""}
+          </span>
         </span>
       </div>
 
-      {area !== "platform" && current && (
-        tenants.length > 1 ? (
-          <InstituteSwitcher memberships={session.memberships} current={current.instituteId} />
-        ) : (
-          <div className="whoinst">
-            <Icon name="building" size={14} /> {current.instituteName}
-          </div>
-        )
+      {area !== "platform" && current && tenants.length > 1 && (
+        <InstituteSwitcher memberships={session.memberships} current={current.instituteId} />
       )}
       {area === "platform" && <InstituteLinks memberships={session.memberships} />}
-
-      <div className="footlinks">
-        {area !== "platform" && session.isPlatformOwner && (
+      {area !== "platform" && session.isPlatformOwner && (
+        <div className="footlinks">
           <Link href="/platform">
             <Icon name="shield" size={15} /> Platform console
           </Link>
-        )}
-        <Link href="/app/me#password">
-          <Icon name="lock" size={15} /> Change password
+        </div>
+      )}
+
+      <div className="footrow">
+        <Link href="/app/me#password" className="btn sm ghost">
+          <Icon name="lock" size={14} /> Password
         </Link>
+        <SignOutButton className="btn sm ghost" />
       </div>
-      <SignOutButton className="btn sm ghost signout" block />
     </div>
   );
 }

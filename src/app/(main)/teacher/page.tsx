@@ -7,6 +7,8 @@ import { getResultBatches } from "@/server/data/results";
 import { Icon } from "@/components/ui/Icon";
 import { Stat } from "@/components/ui/Stat";
 import { CopyButton } from "@/components/ui/CopyButton";
+import { ActionButton } from "../_components/ActionButton";
+import { setPaperReleased } from "@/server/actions/teacher";
 
 export const metadata: Metadata = { title: "Home · PaperFlow" };
 
@@ -29,7 +31,7 @@ export default async function TeacherHome() {
   const recent = mine.slice(0, 6);
   const open = batches.filter((b) => b.active);
   const students = new Set(open.flatMap((b) => b.studentIds)).size;
-  const withBatch = recent.filter((p) => p.batchStudents > 0);
+  const withBatch = recent.filter((p) => p.batchStudents > 0 && p.releasedAt);
   const rate = withBatch.length
     ? Math.round((withBatch.reduce((n, p) => n + p.loggedCount / p.batchStudents, 0) / withBatch.length) * 100)
     : null;
@@ -125,10 +127,14 @@ export default async function TeacherHome() {
                       <Link href={`/teacher/papers/${p.id}`} className="rowtitle">{p.title}</Link>
                       <span>
                         {dateFmt.format(new Date(p.createdAt))} · {p.batchName ?? "no batch"}
-                        {pct !== null ? ` · logged by ${p.loggedCount} of ${p.batchStudents}` : ""}
+                        {!p.releasedAt ? " · not given yet" : pct !== null ? ` · logged by ${p.loggedCount} of ${p.batchStudents}` : ""}
                       </span>
                     </span>
-                    {pct !== null && <span className={`pill ${pct >= 60 ? "active" : "suspended"}`}>{pct}%</span>}
+                    {!p.releasedAt ? (
+                      <ActionButton action={setPaperReleased.bind(null, p.id, true)} label="Mark as conducted" className="btn sm solid" />
+                    ) : (
+                      pct !== null && <span className={`pill ${pct >= 60 ? "active" : "suspended"}`}>{pct}%</span>
+                    )}
                     <Link className="btn sm ghost" href={`/print/paper/${p.id}`} target="_blank">
                       <Icon name="printer" size={14} /> Print
                     </Link>

@@ -23,6 +23,8 @@ export interface PaperListRow {
   loggedCount: number;
   /** distinct chapters the paper draws from, in first-appearance order */
   chapters: string[];
+  /** when students were allowed to see it; null = not yet (see setPaperReleased) */
+  releasedAt: string | null;
 }
 
 type ListRow = {
@@ -31,6 +33,7 @@ type ListRow = {
   title: string;
   total_marks: number | null;
   created_at: string;
+  released_at: string | null;
   class_subject_id: string;
   batch_id: string | null;
   teacher_id: string | null;
@@ -52,7 +55,7 @@ export async function listPapers(session: Session): Promise<PaperListRow[]> {
   let q = supabase
     .from("papers")
     .select(
-      `id, code, title, total_marks, created_at, class_subject_id, batch_id, teacher_id,
+      `id, code, title, total_marks, created_at, released_at, class_subject_id, batch_id, teacher_id,
        paper_questions ( questions ( chapters ( name ) ) ),
        class_subjects ( classes ( name ), subjects ( name ) ),
        batches ( name, enrolments ( count ) ),
@@ -80,6 +83,7 @@ export async function listPapers(session: Session): Promise<PaperListRow[]> {
     setCount: p.paper_sets[0]?.count ?? 0,
     loggedCount: p.attempts[0]?.count ?? 0,
     chapters: [...new Set(p.paper_questions.map((pq) => pq.questions?.chapters?.name).filter((n): n is string => !!n))],
+    releasedAt: p.released_at,
   }));
 }
 

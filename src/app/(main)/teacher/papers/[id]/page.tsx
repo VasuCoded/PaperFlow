@@ -7,6 +7,8 @@ import { loadPaper } from "@/server/data/papers";
 import { createServerSupabaseClient } from "@/lib/db/server";
 import { blockMarks } from "@/lib/print/compose";
 import { CorrectSetControl } from "./CorrectSetControl";
+import { ActionButton } from "../../../_components/ActionButton";
+import { setPaperReleased } from "@/server/actions/teacher";
 
 export const metadata: Metadata = { title: "Paper · PaperFlow" };
 
@@ -19,6 +21,8 @@ export default async function PaperDetailPage({ params }: { params: Promise<{ id
   if (!paper) notFound();
 
   const supabase = await createServerSupabaseClient();
+  const { data: releaseRow } = await supabase.from("papers").select("released_at").eq("id", paper.id).maybeSingle();
+  const releasedAt = releaseRow?.released_at ?? null;
   const { data: attempts } = await supabase
     .from("attempts")
     .select("id, student_id, paper_set_id, logged_at, attempt_items ( is_correct )")
@@ -50,6 +54,29 @@ export default async function PaperDetailPage({ params }: { params: Promise<{ id
           {when.format(new Date(paper.createdAt))}
         </span>
       </div>
+      {releasedAt ? (
+        <div className="notice releasebar">
+          <span>
+            <b>Students can see this paper</b> and log it, since {when.format(new Date(releasedAt))}.
+          </span>
+          {(attempts ?? []).length === 0 && (
+            <ActionButton
+              action={setPaperReleased.bind(null, paper.id, false)}
+              label="Hide from students"
+              confirm="Hide this paper from students again? Nobody has logged it yet."
+              confirmLabel="Hide"
+            />
+          )}
+        </div>
+      ) : (
+        <div className="notice warn releasebar">
+          <span>
+            <b>Students can&rsquo;t see this paper yet.</b> Once the test has been conducted, mark it so they can
+            log what they got wrong.
+          </span>
+          <ActionButton action={setPaperReleased.bind(null, paper.id, true)} label="Mark as conducted" className="btn sm solid" />
+        </div>
+      )}
       <div className="cards c4" style={{ marginBottom: 20 }}>
         <div className="card"><span className="big">{placedMarks}</span><span className="cap">Marks</span></div>
         <div className="card"><span className="big">{positions}</span><span className="cap">Numbered questions</span></div>
