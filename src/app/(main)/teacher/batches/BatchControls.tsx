@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   addStudentsToBatch,
   createBatch,
+  deleteBatch,
   removeStudentFromBatch,
   rotateJoinCode,
   setBatchActive,
@@ -132,6 +133,8 @@ export function EditBatch({
   subjects,
   selected,
   editable,
+  students,
+  papers,
 }: {
   batchId: string;
   name: string;
@@ -140,6 +143,8 @@ export function EditBatch({
   selected: string[];
   /** subjects this person may add or remove */
   editable: string[];
+  students: number;
+  papers: number;
 }) {
   const router = useRouter();
   const [n, setN] = useState(name);
@@ -190,7 +195,49 @@ export function EditBatch({
         <p className="hint">Papers already set for a subject you remove stay, and students keep what they logged.</p>
       </div>
       {msg && <p className="hint" style={{ color: msg.ok ? "var(--ledger)" : "var(--pen)" }}>{msg.text}</p>}
+      <DeleteBatch batchId={batchId} name={name} students={students} papers={papers} />
     </div>
+  );
+}
+
+function DeleteBatch({ batchId, name, students, papers }: { batchId: string; name: string; students: number; papers: number }) {
+  const router = useRouter();
+  const [asking, setAsking] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+  return (
+    <section className="danger compact">
+      <div>
+        <h3>Delete this batch</h3>
+        <p>
+          {students} student{students === 1 ? "" : "s"} leave the batch (their accounts stay).
+          {papers > 0 ? ` Its ${papers} paper${papers === 1 ? " is" : "s are"} kept under Papers but hidden from students; anyone who already logged one keeps it.` : ""}
+        </p>
+      </div>
+      {!asking ? (
+        <button type="button" className="btn danger-btn" onClick={() => setAsking(true)}>Delete batch</button>
+      ) : (
+        <span className="btnrow">
+          <button
+            type="button"
+            className="btn solid"
+            disabled={pending}
+            onClick={() =>
+              start(async () => {
+                setError(null);
+                const res = await deleteBatch(batchId);
+                if (res.ok) router.refresh();
+                else setError(res.message ?? "Could not delete it.");
+              })
+            }
+          >
+            {pending ? "Deleting…" : `Delete ${name}`}
+          </button>
+          <button type="button" className="btn ghost" disabled={pending} onClick={() => setAsking(false)}>Cancel</button>
+          {error && <span className="hint" style={{ margin: 0, color: "var(--pen)" }}>{error}</span>}
+        </span>
+      )}
+    </section>
   );
 }
 

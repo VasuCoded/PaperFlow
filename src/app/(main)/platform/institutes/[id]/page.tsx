@@ -7,7 +7,7 @@ import { getSession } from "@/server/session";
 import { platformRemoveMemberAction, setActivationAction, setInstituteStatusAction } from "@/server/actions/platform";
 import { ActionButton } from "../../../_components/ActionButton";
 import { RoleControl } from "./RoleControl";
-import { EditInstituteForm, InvitesPanel, PlatformInviteForm } from "./InstituteControls";
+import { DeleteInstitute, EditInstituteForm, InvitesPanel, PlatformInviteForm } from "./InstituteControls";
 import { PlatformReset } from "../../support/PersonLookup";
 import { displayIdentity } from "@/lib/identity";
 import { Icon } from "@/components/ui/Icon";
@@ -47,7 +47,11 @@ export default async function ManageInstitutePage({ params }: { params: Promise<
       supabase.rpc("platform_inspect_institute", { p_institute_id: id }),
       supabase.rpc("platform_bank_coverage"),
     ]);
-    if (error) throw new Error(error.message);
+    // a deleted (or never existing) institute is a 404, not a server error
+    if (error) {
+      if (/not found|does not exist|foreign key/i.test(error.message)) notFound();
+      throw new Error(error.message);
+    }
     inspection = data as unknown as Inspection;
     coverage = (cov ?? []).sort((a, b) => a.label.localeCompare(b.label, "en", { numeric: true }));
     if (!inspection?.institute) notFound();
@@ -257,6 +261,7 @@ export default async function ManageInstitutePage({ params }: { params: Promise<
         <div>{inst && <InvitesPanel instituteId={inst.id} />}</div>
 
         {/* settings */}
+        <div>
         <div className="cards c2">
           <div className="card">
             <h4>Details</h4>
@@ -274,6 +279,8 @@ export default async function ManageInstitutePage({ params }: { params: Promise<
               The institute&rsquo;s admins can see that you looked.
             </p>
           </div>
+        </div>
+        {inst && <DeleteInstitute instituteId={inst.id} name={inst.name} slug={inst.slug} suspended={inst.status !== "active"} />}
         </div>
       </Tabs>
     </AppShell>

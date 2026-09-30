@@ -422,3 +422,22 @@ export async function removeFigureAction(assetId: string): Promise<ActionResult>
   revalidatePath("/platform/questions");
   return { ok: true };
 }
+
+/**
+ * Delete an institute for good: platform owner, suspended institute, slug
+ * typed (platform_delete_institute checks all three). Its private question
+ * figures are removed from storage afterwards; paths are read first, pinned
+ * to this institute, because the rows go with it.
+ */
+export async function deleteInstituteAction(instituteId: string, typedSlug: string): Promise<ActionResult> {
+  const supabase = await ownerClient();
+  if (!supabase) return DENIED;
+  const admin = createAdminClient();
+  const { data: assets } = await admin.from("question_assets").select("storage_path").eq("owner_institute_id", instituteId);
+  const { error } = await supabase.rpc("platform_delete_institute", { p_institute_id: instituteId, p_confirm_slug: typedSlug });
+  if (error) return { ok: false, message: error.message };
+  const paths = (assets ?? []).map((a) => a.storage_path);
+  if (paths.length) await admin.storage.from("question-assets").remove(paths);
+  revalidatePath("/", "layout");
+  return { ok: true };
+}

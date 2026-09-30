@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
+  deleteInstituteAction,
   listInvitesAction,
   platformInviteAction,
   platformRevokeInviteAction,
@@ -160,5 +161,56 @@ export function InvitesPanel({ instituteId }: { instituteId: string }) {
       </table>
       {error && <p className="hint" style={{ color: "var(--pen)", padding: "0 14px" }}>{error}</p>}
     </div>
+  );
+}
+
+/**
+ * Delete an institute for good. Only once it is suspended, and only with its
+ * slug typed; platform_delete_institute checks both again.
+ */
+export function DeleteInstitute({ instituteId, name, slug, suspended }: { instituteId: string; name: string; slug: string; suspended: boolean }) {
+  const router = useRouter();
+  const [typed, setTyped] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+  return (
+    <section className="danger">
+      <div>
+        <h3>Delete this institute</h3>
+        <p>
+          Removes {name} and everything it owns: batches, papers, students&rsquo; logs, practice, its own questions and
+          figures, invitations and requests. People&rsquo;s accounts stay; they only lose this institute. This cannot be undone.
+        </p>
+        {!suspended && <p className="hint" style={{ color: "var(--pen)" }}>Suspend it first (top of this page). Only a suspended institute can be deleted.</p>}
+      </div>
+      {suspended && (
+        <div className="dangerconfirm">
+          <input
+            className="inp"
+            value={typed}
+            onChange={(e) => setTyped(e.target.value)}
+            placeholder={`Type ${slug} to confirm`}
+            aria-label="Type the institute's slug to confirm"
+            autoComplete="off"
+          />
+          <button
+            type="button"
+            className="btn solid"
+            disabled={pending || typed.trim().toLowerCase() !== slug.toLowerCase()}
+            onClick={() =>
+              start(async () => {
+                setError(null);
+                const res = await deleteInstituteAction(instituteId, typed);
+                if (res.ok) router.replace("/platform/institutes");
+                else setError(res.message ?? "Could not delete it.");
+              })
+            }
+          >
+            {pending ? "Deleting…" : "Delete institute for good"}
+          </button>
+          {error && <p className="hint" style={{ color: "var(--pen)" }}>{error}</p>}
+        </div>
+      )}
+    </section>
   );
 }

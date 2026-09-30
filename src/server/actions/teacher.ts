@@ -224,3 +224,32 @@ export async function setPaperReleased(paperId: string, released: boolean): Prom
   revalidatePath("/", "layout");
   return { ok: true };
 }
+
+/**
+ * Delete a batch (an admin, or a teacher who runs it). Its students leave it;
+ * its papers are kept for the record but taken out of students' view (see
+ * delete_batch). Returns how many papers were kept.
+ */
+export async function deleteBatch(batchId: string): Promise<ActionResult> {
+  const session = await getSession();
+  if (!session?.instituteId || !deskRole(session.role)) return { ok: false, message: "Not allowed." };
+  const supabase = await createServerSupabaseClient();
+  const { error } = await supabase.rpc("delete_batch", { p_batch_id: batchId });
+  if (error) return { ok: false, message: error.message };
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+/**
+ * Delete a paper (an admin, or the teacher who set it). Once students have
+ * logged it their logs go too, so the paper's printed code must be typed.
+ */
+export async function deletePaper(paperId: string, confirmCode?: string): Promise<ActionResult> {
+  const session = await getSession();
+  if (!session?.instituteId || !deskRole(session.role)) return { ok: false, message: "Not allowed." };
+  const supabase = await createServerSupabaseClient();
+  const { error } = await supabase.rpc("delete_paper", { p_paper_id: paperId, p_confirm_code: confirmCode ?? undefined });
+  if (error) return { ok: false, message: error.message };
+  revalidatePath("/", "layout");
+  return { ok: true };
+}

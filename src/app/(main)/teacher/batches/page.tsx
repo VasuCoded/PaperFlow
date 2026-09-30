@@ -185,6 +185,8 @@ export default async function BatchesPage() {
                       subjects={subjectOptions}
                       selected={b.batch_subjects.map((x) => x.class_subject_id)}
                       editable={editable}
+                      students={b.enrolments.length}
+                      papers={paperCount}
                     />
                   </div>
                 </details>

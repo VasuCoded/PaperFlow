@@ -9,6 +9,7 @@ import { blockMarks } from "@/lib/print/compose";
 import { CorrectSetControl } from "./CorrectSetControl";
 import { ActionButton } from "../../../_components/ActionButton";
 import { setPaperReleased } from "@/server/actions/teacher";
+import { DeletePaper } from "./DeletePaper";
 
 export const metadata: Metadata = { title: "Paper · PaperFlow" };
 
@@ -21,8 +22,10 @@ export default async function PaperDetailPage({ params }: { params: Promise<{ id
   if (!paper) notFound();
 
   const supabase = await createServerSupabaseClient();
-  const { data: releaseRow } = await supabase.from("papers").select("released_at").eq("id", paper.id).maybeSingle();
+  const { data: releaseRow } = await supabase.from("papers").select("released_at, teacher_id").eq("id", paper.id).maybeSingle();
   const releasedAt = releaseRow?.released_at ?? null;
+  // the teacher who set it, or an admin (delete_paper checks the same)
+  const canDelete = session!.role === "institute_admin" || releaseRow?.teacher_id === session!.userId;
   const { data: attempts } = await supabase
     .from("attempts")
     .select("id, student_id, paper_set_id, logged_at, attempt_items ( is_correct )")
@@ -162,6 +165,7 @@ export default async function PaperDetailPage({ params }: { params: Promise<{ id
           </table>
         </div>
       )}
+      {canDelete && <DeletePaper paperId={paper.id} code={paper.code} logged={(attempts ?? []).length} />}
     </AppShell>
   );
 }

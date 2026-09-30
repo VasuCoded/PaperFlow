@@ -1989,6 +1989,19 @@ export type Database = {
         }
         Returns: undefined
       }
+      delete_batch: {
+        Args: {
+          p_batch_id: string
+        }
+        Returns: number
+      }
+      delete_paper: {
+        Args: {
+          p_paper_id: string
+          p_confirm_code?: string
+        }
+        Returns: undefined
+      }
       can_access_paper: {
         Args: {
           p_paper_id: string
@@ -2334,6 +2347,13 @@ export type Database = {
           p_attempt_id: string
           p_correct_set_id: string
           p_reason: string
+        }
+        Returns: undefined
+      }
+      platform_delete_institute: {
+        Args: {
+          p_institute_id: string
+          p_confirm_slug: string
         }
         Returns: undefined
       }
