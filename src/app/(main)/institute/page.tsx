@@ -4,97 +4,131 @@ import { AppShell } from "../_components/AppShell";
 import { createServerSupabaseClient } from "@/lib/db/server";
 import { getSession } from "@/server/session";
 import { getActiveSubjects, getPendingInvites } from "@/server/data/institute";
+import { Icon } from "@/components/ui/Icon";
+import { Stat, TodoRow } from "@/components/ui/Stat";
 
 export const metadata: Metadata = { title: "Institute · PaperFlow" };
 
-const dateFmt = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short" });
-
-export default async function InstituteOverview() {
+/**
+ * An institute admin's front page. The everyday jobs are the big tiles at the
+ * top; the numbers and anything that needs a decision come after.
+ */
+export default async function InstituteHome() {
   const session = await getSession();
   const inst = session?.role === "institute_admin" ? session.instituteId : null;
   const supabase = await createServerSupabaseClient();
 
-  const [membersRes, batchesRes, papersRes, attemptsRes, subjects, invites, requestsRes] = inst && session
+  const [membersRes, assignedRes, batchesRes, papersRes, attemptsRes, subjects, invites, requestsRes, joinRes] = inst && session
     ? await Promise.all([
-        supabase.from("institute_members").select("role").eq("institute_id", inst),
-        supabase.from("batches").select("id, class_subject_id, active").eq("institute_id", inst),
+        supabase.from("institute_members").select("user_id, role").eq("institute_id", inst),
+        supabase.from("teacher_subjects").select("teacher_id, class_subject_id").eq("institute_id", inst),
+        supabase.from("batches").select("id, class_subject_id, active, enrolments(count)").eq("institute_id", inst),
         supabase.from("papers").select("id", { count: "exact", head: true }).eq("institute_id", inst),
         supabase.from("attempts").select("id", { count: "exact", head: true }).eq("institute_id", inst),
         getActiveSubjects(session),
         getPendingInvites(session),
-        supabase.from("activation_requests").select("id, status").eq("institute_id", inst).eq("status", "pending"),
+        supabase.from("activation_requests").select("id").eq("institute_id", inst).eq("status", "pending"),
+        supabase.from("access_requests").select("id", { count: "exact", head: true }).eq("institute_id", inst).eq("status", "pending"),
       ])
-    : [{ data: [] }, { data: [] }, { count: 0 }, { count: 0 }, [], [], { data: [] }];
+    : [{ data: [] }, { data: [] }, { data: [] }, { count: 0 }, { count: 0 }, [], [], { data: [] }, { count: 0 }];
 
-  const roles = (membersRes.data ?? []).map((m) => m.role);
-  const batches = batchesRes.data ?? [];
+  const batches = (batchesRes.data ?? []) as { id: string; class_subject_id: string; active: boolean; enrolments: { count: number }[] }[];
+  const open = batches.filter((b) => b.active);
+  const members = membersRes.data ?? [];
+  const assigned = assignedRes.data ?? [];
+  const teachers = members.filter((m) => m.role === "teacher");
+  const teaching = new Set(assigned.map((a) => a.teacher_id));
+  const idleTeachers = teachers.filter((t) => !teaching.has(t.user_id)).length;
+  const emptyBatches = open.filter((b) => (b.enrolments[0]?.count ?? 0) === 0).length;
+  const instituteName = session?.memberships.find((m) => m.instituteId === inst)?.instituteName ?? "your institute";
 
   return (
     <AppShell area="institute">
-      <div className="cards c4">
-        <div className="card"><span className="big">{roles.filter((r) => r === "teacher").length}</span><span className="cap">Teachers</span></div>
-        <div className="card"><span className="big">{roles.filter((r) => r === "student").length}</span><span className="cap">Students</span></div>
-        <div className="card"><span className="big">{batches.filter((b) => b.active).length}</span><span className="cap">Open batches</span></div>
-        <div className="card"><span className="big">{papersRes.count ?? 0}</span><span className="cap">Papers set</span></div>
+      <div className="phead">
+        <p>Everything at {instituteName}, in one place.</p>
       </div>
 
-      <h2 className="sect">Active subjects</h2>
-      {subjects.length === 0 ? (
-        <div className="notice warn">
-          <b>Nothing is active yet.</b> Your teachers cannot set papers until the platform activates a subject for
-          you. <Link href="/institute/subjects">Request one →</Link>
-        </div>
-      ) : (
-        <div className="cards c3">
-          {subjects.map((s) => (
-            <div className="card" key={s.classSubjectId}>
-              <h4>
-                {s.label} <span className="pill active">Active</span>
-              </h4>
-              <p>{batches.filter((b) => b.class_subject_id === s.classSubjectId && b.active).length} open batch(es).</p>
-            </div>
-          ))}
-        </div>
-      )}
-      <p style={{ fontSize: 12.5, color: "var(--graphite)", marginTop: 10 }}>
-        Subjects appear for your teachers only once the platform activates them for you.{" "}
-        <Link href="/institute/subjects" style={{ color: "var(--pen)" }}>
-          {(requestsRes.data ?? []).length > 0 ? `${(requestsRes.data ?? []).length} request(s) pending →` : "Request another subject →"}
+      <div className="quick">
+        <Link href="/institute/members#invite" className="quickcard primary">
+          <Icon name="userPlus" size={26} />
+          <b>Invite a teacher or student</b>
+          <span>By their PaperFlow username. They see it when they sign in.</span>
         </Link>
-      </p>
+        <Link href="/teacher/generate" className="quickcard">
+          <Icon name="filePlus" size={24} />
+          <b>Set a paper</b>
+          <span>A balanced test with its answer key, in a minute.</span>
+        </Link>
+        <Link href="/teacher/batches" className="quickcard">
+          <Icon name="layers" size={24} />
+          <b>Batches and join codes</b>
+          <span>Group students by class and subject.</span>
+        </Link>
+        <Link href="/teacher/results" className="quickcard">
+          <Icon name="chart" size={24} />
+          <b>Results</b>
+          <span>Who is logging, and which topics need going over.</span>
+        </Link>
+      </div>
 
-      <h2 className="sect">Needs your attention</h2>
-      <div className="cards c2">
-        <div className="card">
-          <h4>Pending invitations</h4>
-          {invites.length === 0 ? (
-            <p>None outstanding.</p>
+      <div className="stats">
+        <Stat icon="idcard" value={teachers.length} label="Teachers" href="/institute/members?role=teacher" />
+        <Stat icon="users" value={members.filter((m) => m.role === "student").length} label="Students" href="/institute/members?role=student" />
+        <Stat icon="layers" value={open.length} label="Open batches" href="/teacher/batches" />
+        <Stat icon="file" value={papersRes.count ?? 0} label="Papers set" href="/teacher/papers" />
+        <Stat icon="pencil" value={attemptsRes.count ?? 0} label="Papers logged by students" />
+      </div>
+
+      <div className="dash2">
+        <section className="panel">
+          <div className="panelhead">
+            <h2>Needs your attention</h2>
+          </div>
+          <div className="todolist">
+            <TodoRow icon="userPlus" title="Asking to join" text="People waiting for you to let them in" count={joinRes.count ?? 0} href="/institute/members#requests" />
+            <TodoRow icon="mail" title="Invitations not yet accepted" text="They have not signed in since" count={invites.length} href="/institute/members#invites" />
+            <TodoRow icon="idcard" title="Teachers without a subject" text="They cannot set papers until you assign one" count={idleTeachers} href="/institute/teachers" />
+            <TodoRow icon="layers" title="Batches with no students" text="Share the join code with the class" count={emptyBatches} href="/teacher/batches" />
+          </div>
+        </section>
+
+        <section className="panel">
+          <div className="panelhead">
+            <h2>Subjects</h2>
+            <Link href="/institute/subjects" className="panellink">
+              {(requestsRes.data ?? []).length > 0 ? `${(requestsRes.data ?? []).length} requested →` : "Request another →"}
+            </Link>
+          </div>
+          {subjects.length === 0 ? (
+            <div className="empty">
+              <p>No subject is switched on yet. Your teachers cannot set papers until one is.</p>
+              <Link className="btn sm solid" href="/institute/subjects">Request a subject</Link>
+            </div>
           ) : (
-            <div style={{ marginTop: 8 }}>
-              {invites.slice(0, 6).map((i) => (
-                <div key={i.id} style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 13, padding: "6px 0", borderBottom: "1px solid var(--hair)" }}>
-                  <span style={{ overflowWrap: "anywhere" }}>{i.email}</span>
-                  <span className="cap">{i.role.toUpperCase()} · {dateFmt.format(new Date(i.createdAt))}</span>
-                </div>
-              ))}
-              {invites.length > 6 && <p style={{ marginTop: 8 }}>and {invites.length - 6} more.</p>}
+            <div className="rowlist">
+              {subjects.map((s) => {
+                const n = open.filter((b) => b.class_subject_id === s.classSubjectId).length;
+                const who = new Set(assigned.filter((a) => a.class_subject_id === s.classSubjectId).map((a) => a.teacher_id)).size;
+                return (
+                  <div key={s.classSubjectId} className="rowlink static">
+                    <span className="dot on" />
+                    <span className="rowmain">
+                      <b>{s.label}</b>
+                      <span>
+                        {n} open batch{n === 1 ? "" : "es"}
+                        {who ? ` · ${who} teacher${who === 1 ? "" : "s"}` : ""}
+                      </span>
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           )}
-          <div className="btnrow" style={{ marginTop: 12 }}>
-            <Link className="btn sm solid" href="/institute/members">Invite or manage members</Link>
-          </div>
-        </div>
-        <div className="card">
-          <h4>Mistake logging</h4>
-          <p>
-            <b>{attemptsRes.count ?? 0}</b> attempts logged across {papersRes.count ?? 0} papers. The loop is only
-            worth anything if students log within a couple of days of getting the paper back.
+          <p className="panelfoot">
+            Who teaches what is set under <Link href="/institute/teachers">Teacher subjects</Link>. Your data can be
+            downloaded any time from <Link href="/institute/export">Export data</Link>.
           </p>
-          <div className="btnrow" style={{ marginTop: 12 }}>
-            <Link className="btn sm ghost" href="/institute/teachers">Assign teacher subjects</Link>
-            <Link className="btn sm ghost" href="/institute/export">Export your data</Link>
-          </div>
-        </div>
+        </section>
       </div>
     </AppShell>
   );

@@ -162,10 +162,13 @@ export function LogFlow({
                     aria-pressed={isWrong}
                     aria-label={`Question ${p.number}: ${isWrong ? "marked wrong, tap to undo" : "tap if you got it wrong"}`}
                     onClick={() => {
-                      const next = new Set(wrong);
-                      if (next.has(p.position)) next.delete(p.position);
-                      else next.add(p.position);
-                      setWrong(next);
+                      // from the latest marks, not this render's: quick taps must not undo each other
+                      setWrong((cur) => {
+                        const next = new Set(cur);
+                        if (next.has(p.position)) next.delete(p.position);
+                        else next.add(p.position);
+                        return next;
+                      });
                       setResult(null);
                     }}
                   >

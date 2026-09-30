@@ -11,7 +11,7 @@ describe("console menu", () => {
       expect(groups.map((g) => g.title)).toEqual([undefined, "People", "Teaching", "Institute"]);
       expect(links(groups)).toEqual([
         "/institute", "/institute/members", "/institute/teachers",
-        "/teacher/generate", "/teacher/papers", "/teacher/batches", "/teacher/flagged",
+        "/teacher/generate", "/teacher/papers", "/teacher/batches", "/teacher/results", "/teacher/flagged",
         "/institute/subjects", "/institute/export",
       ]);
     }
@@ -21,7 +21,7 @@ describe("console menu", () => {
     const groups = navFor("teacher", "teacher");
     expect(groups).toHaveLength(1);
     expect(groups[0]!.title).toBeUndefined();
-    expect(labels(groups)).toEqual(["Set a paper", "My papers", "Batches", "Flagged questions"]);
+    expect(labels(groups)).toEqual(["Home", "Set a paper", "My papers", "Batches", "Results", "Flagged questions"]);
     expect(links(groups).some((h) => h.startsWith("/institute"))).toBe(false);
   });
 
@@ -66,7 +66,7 @@ describe("console menu", () => {
   });
 
   it("only one item is active at a time, on every page an admin or the owner can reach", () => {
-    for (const groups of [navFor("teacher", "institute_admin"), navFor("platform", "owner")]) {
+    for (const groups of [navFor("teacher", "institute_admin"), navFor("teacher", "teacher"), navFor("platform", "owner")]) {
       const all = groups.flatMap((g) => g.items);
       for (const page of [...all.map((i) => i.href), "/teacher/papers/some-id", "/platform/institutes/some-id"]) {
         if (!all.some((i) => page.startsWith(i.href))) continue;

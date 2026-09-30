@@ -60,6 +60,7 @@ const teaching = (admin: boolean): NavItem[] => [
   // an admin sees every paper of the institute, a teacher only their own
   { href: "/teacher/papers", label: admin ? "Papers" : "My papers", icon: "file" },
   { href: "/teacher/batches", label: "Batches", icon: "layers" },
+  { href: "/teacher/results", label: "Results", icon: "chart" },
   { href: "/teacher/flagged", label: "Flagged questions", icon: "flag" },
 ];
 
@@ -87,7 +88,7 @@ export function navFor(area: Area, role: string | null): NavGroup[] {
   // only an institute admin can be in the institute area; and an admin in the
   // teacher area still gets their institute's pages
   if (area === "institute" || role === "institute_admin") return ADMIN;
-  return [{ items: teaching(false) }];
+  return [{ items: [{ href: "/teacher", label: "Home", icon: "home", exact: true }, ...teaching(false)] }];
 }
 
 export function brandFor(area: Area, role: string | null): string {

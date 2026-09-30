@@ -81,7 +81,7 @@ describe("area access (the rule AppShell applies before rendering)", () => {
   it("sends each role to its own home", () => {
     expect(homePath(session("owner"))).toBe("/platform");
     expect(homePath(session("institute_admin"))).toBe("/institute");
-    expect(homePath(session("teacher"))).toBe("/teacher/generate");
+    expect(homePath(session("teacher"))).toBe("/teacher");
     expect(homePath(session("student"))).toBe("/app");
     expect(homePath({ ...session("student"), memberships: [], instituteId: null, role: null })).toBe("/welcome");
   });

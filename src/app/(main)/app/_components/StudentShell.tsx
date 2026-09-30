@@ -75,7 +75,7 @@ export function StudentShell({
   const consoleHref =
     session.isPlatformOwner ? "/platform"
     : session.role === "institute_admin" ? "/institute"
-    : session.role === "teacher" ? "/teacher/generate"
+    : session.role === "teacher" ? "/teacher"
     : null;
 
   const name = session.fullName ?? session.email;

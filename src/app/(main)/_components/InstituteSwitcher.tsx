@@ -8,7 +8,7 @@ import type { Membership } from "@/server/session";
 /** Where a role lands in an institute (mirrors homePath in session.ts). */
 function homeFor(role: Membership["role"]): string {
   if (role === "institute_admin") return "/institute";
-  if (role === "teacher") return "/teacher/generate";
+  if (role === "teacher") return "/teacher";
   return "/app";
 }
 

@@ -114,7 +114,7 @@ export function homePath(session: Session): string {
   if (session.memberships.length === 0) return "/welcome";
   if (session.isPlatformOwner) return "/platform";
   if (session.role === "institute_admin") return "/institute";
-  if (session.role === "teacher") return "/teacher/generate";
+  if (session.role === "teacher") return "/teacher";
   return "/app";
 }
 
