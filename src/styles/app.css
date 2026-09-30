@@ -611,3 +611,50 @@ a:has(> .logo) { text-decoration: none; }
   .navshell .preview .pvhead { top: 57px; }
 }
 .releasebar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+
+/* ---- paper builder: format controls across the top, then the paper with its
+   print panel beside it ---------------------------------------------------- */
+.navshell .content:has(> .split-root) { background: var(--paper); }
+.navshell .split-root { display: block; min-height: 0; }
+.bld-format { padding: 16px 24px 4px; background: var(--white); border-bottom: 1px solid var(--hair); }
+.bld-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0 24px; }
+.bld-cell { min-width: 0; }
+.bld-cell .field { margin-bottom: 14px; }
+.bld-chapters { border-top: 1px solid #efedea; padding-top: 12px; }
+.bld-chapters .checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 7px 22px; }
+.bld-chapters .check .cnt { margin-left: auto; padding-left: 8px; }
+.bld-labelrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+.bld-labelrow label { margin: 0 !important; }
+.bld-cell .laysum { font-size: 11.5px; }
+.bld-main {
+  display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start;
+  padding: 20px 24px 28px;
+}
+.bld-main .preview {
+  background: var(--white); border: 1px solid var(--hair); border-radius: 12px; padding: 18px 22px 22px; min-width: 0;
+}
+.navshell .bld-main .preview .pvhead { top: 0; margin-top: -18px; padding-top: 18px; border-radius: 12px 12px 0 0; }
+.bld-print {
+  position: sticky; top: 16px; background: var(--white); border: 1px solid var(--hair); border-radius: 12px;
+  padding: 16px 16px 14px; display: flex; flex-direction: column;
+}
+.bld-print .field { margin-bottom: 12px; }
+.bld-save { margin-top: 2px; }
+.bld-hint { font-size: 11.5px; color: var(--graphite); margin: 8px 0 12px; line-height: 1.45; }
+.bld-regen { width: 100%; }
+.bld-print .genmeta { margin-bottom: 0; }
+.bld-stats .statstrip { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 1240px) {
+  .bld-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 960px) {
+  .bld-main { grid-template-columns: minmax(0, 1fr); }
+  .bld-print { position: static; order: -1; }
+}
+@media (max-width: 860px) {
+  .bld-format { padding: 14px 16px 2px; }
+  .bld-grid { grid-template-columns: minmax(0, 1fr); }
+  .bld-main { padding: 14px 16px 24px; }
+  .bld-main .preview { padding: 14px; }
+  .navshell .bld-main .preview .pvhead { top: 57px; }
+}

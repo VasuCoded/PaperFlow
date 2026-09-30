@@ -290,10 +290,10 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
 
   return (
     <>
-      {/* ------------------------------ controls ------------------------------ */}
-      <section className="controls">
-        <h3 className="blk">Paper settings</h3>
-
+      {/* --------------------------- paper format (top) --------------------------- */}
+      <section className="bld-format" aria-label="Paper format">
+        <div className="bld-grid">
+          <div className="bld-cell">
         <div className="field">
           <label htmlFor="cls">Class and subject</label>
           <select className="sel" id="cls" value={bundle.classSubjectId} onChange={(e) => changeSubject(e.target.value)}>
@@ -310,34 +310,8 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
           <input className="inp" id="title" value={title} maxLength={120} placeholder={current?.name ?? "Unit test"} onChange={(e) => setTitle(e.target.value)} />
         </div>
 
-        <div className="field">
-          <label>Chapters to cover</label>
-          {bundle.chapters.length === 0 ? (
-            <p style={{ fontSize: 12, color: "var(--graphite)", margin: 0 }}>
-              No chapters are set up for this subject yet.
-            </p>
-          ) : (
-            <div className="checks">
-              {bundle.chapters.map((c) => (
-                <label className="check" key={c.chapterId}>
-                  <input
-                    type="checkbox"
-                    checked={chapterIds.includes(c.chapterId)}
-                    disabled={c.approved === 0}
-                    onChange={() => toggleChapter(c.chapterId)}
-                  />
-                  {c.name}
-                  <span className={`cnt${c.approved < THIN ? " thin" : ""}`}>{c.approved}</span>
-                </label>
-              ))}
-            </div>
-          )}
-          <p style={{ fontSize: 11, color: "var(--graphite)", margin: "8px 0 0" }}>
-            Each count is the pool you will actually draw from — the shared bank plus your
-            institute&rsquo;s own questions, minus anything flagged.
-          </p>
-        </div>
-
+          </div>
+          <div className="bld-cell">
         <div className="field">
           <label htmlFor="pat">Paper layout</label>
           <select className="sel" id="pat" value={layoutSel} onChange={(e) => chooseLayout(e.target.value)}>
@@ -407,6 +381,8 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
           </div>
         </div>
 
+          </div>
+          <div className="bld-cell">
         <div className="field">
           <label>Difficulty mix</label>
           <div className="mixrow">
@@ -501,49 +477,8 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
           </div>
         )}
 
-        <div className="field">
-          <label htmlFor="batch">For batch</label>
-          <select className="sel" id="batch" value={batchId ?? ""} onChange={(e) => setBatchId(e.target.value || null)}>
-            {bundle.batches.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.name} · {b.students} students
-              </option>
-            ))}
-            <option value="">No batch</option>
-          </select>
-        </div>
-
-        <div className="field">
-          <label htmlFor="sets">Printed sets</label>
-          <select className="sel" id="sets" value={setCount} onChange={(e) => setSetCount(Number(e.target.value))}>
-            {[1, 2, 3, 4].map((n) => (
-              <option key={n} value={n}>
-                {n} {n === 1 ? "set" : "sets"}
-              </option>
-            ))}
-          </select>
-          {setCount > 1 && preview?.ok && (
-            <div className="notice plain" style={{ marginTop: 8, marginBottom: 0 }}>
-              <b>{selectedBatch?.students ?? 40} students</b> ·{" "}
-              <span className="mono">
-                {preview.copies.map((c, i) => `${String.fromCharCode(65 + i)}=${c}`).join(" / ")}
-              </span>
-              <br />
-              Hand out in a repeating cycle along each row.
-            </div>
-          )}
-          {setCount > 1 && preview?.ok && preview.warnings.length > 0 && (
-            <div className="notice warn" style={{ marginTop: 8, marginBottom: 0 }}>
-              {preview.warnings.map((w) => (
-                <div key={w.section}>
-                  Section {w.section} has {w.blocks} question{w.blocks === 1 ? "" : "s"} — some sets
-                  will share its order.
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
+          </div>
+          <div className="bld-cell">
         <div className="field">
           <label>Rules</label>
           <label className="toggle">
@@ -566,15 +501,51 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
           )}
         </div>
 
-        <button type="button" className="gen" onClick={regenerate} disabled={loading || !layoutChoice}>
-          {loading ? "Building…" : "Generate a different paper"}
-        </button>
-        <p className="genmeta">
-          {preview?.ok ? `${preview.poolSize} QUESTIONS ELIGIBLE` : " "}
-          {locked.length > 0 ? ` · ${locked.length} LOCKED` : ""}
-        </p>
+          </div>
+        </div>
+        <div className="bld-cell bld-chapters">
+        <div className="field">
+          <div className="bld-labelrow">
+            <label>Chapters to cover · {chapterIds.length} of {bundle.chapters.filter((c) => c.approved > 0).length}</label>
+            <span className="btnrow">
+              <button type="button" className="btn sm ghost" onClick={() => setChapterIds(bundle.chapters.filter((c) => c.approved > 0).map((c) => c.chapterId))}>
+                Select all
+              </button>
+              <button type="button" className="btn sm ghost" onClick={() => setChapterIds([])}>
+                Clear
+              </button>
+            </span>
+          </div>
+          {bundle.chapters.length === 0 ? (
+            <p style={{ fontSize: 12, color: "var(--graphite)", margin: 0 }}>
+              No chapters are set up for this subject yet.
+            </p>
+          ) : (
+            <div className="checks">
+              {bundle.chapters.map((c) => (
+                <label className="check" key={c.chapterId}>
+                  <input
+                    type="checkbox"
+                    checked={chapterIds.includes(c.chapterId)}
+                    disabled={c.approved === 0}
+                    onChange={() => toggleChapter(c.chapterId)}
+                  />
+                  {c.name}
+                  <span className={`cnt${c.approved < THIN ? " thin" : ""}`}>{c.approved}</span>
+                </label>
+              ))}
+            </div>
+          )}
+          <p style={{ fontSize: 11, color: "var(--graphite)", margin: "8px 0 0" }}>
+            Each count is the pool you will actually draw from — the shared bank plus your
+            institute&rsquo;s own questions, minus anything flagged.
+          </p>
+        </div>
+
+        </div>
       </section>
 
+      <div className="bld-main">
       {/* ------------------------------ preview ------------------------------ */}
       <section className="preview">
         <div className="pvhead">
@@ -586,14 +557,8 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
               {setCount === 1 ? "" : "S"} · DRAFT
             </div>
           </div>
-          <div className="btnrow">
-            <button type="button" className="btn solid" onClick={save} disabled={saving || !preview?.ok}>
-              {saving ? "Saving…" : "Save and print"}
-            </button>
-          </div>
         </div>
 
-        {saveError && <div className="notice warn" style={{ marginTop: 12 }}>{saveError}</div>}
 
         {layoutSel === "custom" && custom && editorOpen && (
           <LayoutEditor
@@ -823,6 +788,70 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
               ))}
             </div>
 
+          </div>
+        )}
+      </section>
+
+      {/* ----------------------------- print (right) ----------------------------- */}
+      <aside className="bld-print" aria-label="Print settings">
+        <h3 className="blk">Print</h3>
+        <div className="field">
+          <label htmlFor="batch">For batch</label>
+          <select className="sel" id="batch" value={batchId ?? ""} onChange={(e) => setBatchId(e.target.value || null)}>
+            {bundle.batches.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.name} · {b.students} students
+              </option>
+            ))}
+            <option value="">No batch</option>
+          </select>
+        </div>
+
+        <div className="field">
+          <label htmlFor="sets">Printed sets</label>
+          <select className="sel" id="sets" value={setCount} onChange={(e) => setSetCount(Number(e.target.value))}>
+            {[1, 2, 3, 4].map((n) => (
+              <option key={n} value={n}>
+                {n} {n === 1 ? "set" : "sets"}
+              </option>
+            ))}
+          </select>
+          {setCount > 1 && preview?.ok && (
+            <div className="notice plain" style={{ marginTop: 8, marginBottom: 0 }}>
+              <b>{selectedBatch?.students ?? 40} students</b> ·{" "}
+              <span className="mono">
+                {preview.copies.map((c, i) => `${String.fromCharCode(65 + i)}=${c}`).join(" / ")}
+              </span>
+              <br />
+              Hand out in a repeating cycle along each row.
+            </div>
+          )}
+          {setCount > 1 && preview?.ok && preview.warnings.length > 0 && (
+            <div className="notice warn" style={{ marginTop: 8, marginBottom: 0 }}>
+              {preview.warnings.map((w) => (
+                <div key={w.section}>
+                  Section {w.section} has {w.blocks} question{w.blocks === 1 ? "" : "s"} — some sets
+                  will share its order.
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <button type="button" className="gen bld-save" onClick={save} disabled={saving || !preview?.ok}>
+          {saving ? "Saving…" : "Save and print"}
+        </button>
+        {saveError && <div className="notice warn" style={{ margin: "8px 0 0" }}>{saveError}</div>}
+        <p className="bld-hint">Saved papers stay hidden from students until you mark them as conducted.</p>
+        <button type="button" className="btn bld-regen" onClick={regenerate} disabled={loading || !layoutChoice}>
+          {loading ? "Building…" : "Generate a different paper"}
+        </button>
+        <p className="genmeta">
+          {preview?.ok ? `${preview.poolSize} QUESTIONS ELIGIBLE` : " "}
+          {locked.length > 0 ? ` · ${locked.length} LOCKED` : ""}
+        </p>
+        {preview?.ok && (
+          <div className="bld-stats">
             <div className="statstrip">
               <div className="stat">
                 <b>{preview.sections.reduce((a, s) => a + s.blocks.length, 0)}</b>
@@ -846,7 +875,8 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
             </div>
           </div>
         )}
-      </section>
+      </aside>
+      </div>
     </>
   );
 }
