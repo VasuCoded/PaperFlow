@@ -14,6 +14,9 @@ import { OfflineBanner } from "./OfflineBanner";
 import { PendingInvitesNotice } from "../../_components/PendingInvites";
 import { InstallPrompt, PwaRegistrar } from "./Pwa";
 import { hashUserId } from "@/lib/pwa/policy";
+import { Logo, LogoMark } from "@/components/brand/Logo";
+import { Icon, type IconName } from "@/components/ui/Icon";
+import { SignOutButton } from "../../_components/SignOutButton";
 
 export interface StudentContext {
   session: Session;
@@ -44,12 +47,12 @@ export async function getStudentContext(nextPath: string): Promise<StudentContex
   };
 }
 
-const TABS = [
-  { key: "tests", href: "/app", label: "Tests", ic: "▤" },
-  { key: "practice", href: "/app/practice", label: "Practice", ic: "▢" },
-  { key: "weak", href: "/app/weak", label: "Weak spots", ic: "▲" },
-  { key: "me", href: "/app/me", label: "Me", ic: "●" },
-] as const;
+const TABS: readonly { key: "tests" | "practice" | "weak" | "me"; href: string; label: string; icon: IconName }[] = [
+  { key: "tests", href: "/app", label: "Tests", icon: "clipboard" },
+  { key: "practice", href: "/app/practice", label: "Practice", icon: "pencil" },
+  { key: "weak", href: "/app/weak", label: "Weak spots", icon: "target" },
+  { key: "me", href: "/app/me", label: "Me", icon: "user" },
+];
 
 export function StudentShell({
   ctx,
@@ -75,21 +78,55 @@ export function StudentShell({
     : session.role === "teacher" ? "/teacher/generate"
     : null;
 
+  const name = session.fullName ?? session.email;
   return (
     <div className="m-app">
+      {/* desktop only: the same four places as the tab bar, as a sidebar */}
+      <aside className="m-side" aria-label="Student menu">
+        <Link href="/app" className="m-sidebrand">
+          <Logo size={30} sub="Student" />
+        </Link>
+        <nav className="m-sidenav">
+          {TABS.map((t) => (
+            <Link key={t.key} href={t.href} className={`m-sideitem${tab === t.key ? " on" : ""}`} aria-current={tab === t.key ? "page" : undefined}>
+              <Icon name={t.icon} size={19} />
+              {t.label}
+            </Link>
+          ))}
+        </nav>
+        <div className="m-sidefoot">
+          <div className="whocard">
+            <span className="whoav" aria-hidden="true">{initials || "•"}</span>
+            <span className="whotext">
+              <b>{name}</b>
+              <span className="role">{institute?.instituteName}</span>
+            </span>
+          </div>
+          {consoleHref && (
+            <Link href={consoleHref} className="m-sidelink">
+              <Icon name="arrowRight" size={15} /> Go to your console
+            </Link>
+          )}
+          <SignOutButton className="btn sm ghost signout" block />
+        </div>
+      </aside>
+
       <header className="appbar">
-        <div className="who">
-          {session.fullName ?? session.email}
-          <span>
-            {institute?.instituteName.toUpperCase()}
-            {subject ? ` · CLASS ${subject.className}` : ""}
-          </span>
+        <div className="appbar-l">
+          <LogoMark size={30} />
+          <div className="who">
+            {name}
+            <span>
+              {institute?.instituteName.toUpperCase()}
+              {subject ? ` · CLASS ${subject.className}` : ""}
+            </span>
+          </div>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           {subjects.length > 1 && ctx.subjectId && (
             <SubjectSwitcher subjects={subjects.map((s) => ({ id: s.classSubjectId, short: s.short }))} current={ctx.subjectId} />
           )}
-          <div className="avatar" aria-hidden="true">{initials || "•"}</div>
+          <Link href="/app/me" className="avatar" aria-label="Your account">{initials || "•"}</Link>
         </div>
       </header>
 
@@ -99,7 +136,7 @@ export function StudentShell({
         <PendingInvitesNotice variant="student" />
         {tab === "tests" && <InstallPrompt />}
         {consoleHref && (
-          <div className="m-banner">
+          <div className="m-banner m-consolelink">
             This is the student app. <Link href={consoleHref} style={{ color: "var(--pen)" }}>Go to your console →</Link>
           </div>
         )}
@@ -109,7 +146,7 @@ export function StudentShell({
       <nav className="tabbar" aria-label="Student">
         {TABS.map((t) => (
           <Link key={t.key} href={t.href} className={`tab${tab === t.key ? " on" : ""}`} aria-current={tab === t.key ? "page" : undefined}>
-            <span className="ic" aria-hidden="true">{t.ic}</span>
+            <span className="ic" aria-hidden="true"><Icon name={t.icon} size={22} /></span>
             {t.label}
           </Link>
         ))}

@@ -1,4 +1,5 @@
 import "@/styles/paperflow.css";
+import "@/styles/app.css";
 import { uiFontClass } from "@/lib/fonts";
 
 /**

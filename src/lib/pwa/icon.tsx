@@ -1,46 +1,26 @@
 /**
- * The app icon, drawn with plain boxes so next/og can render it to PNG at any
- * size without a font: a sheet of paper on the ink ground, three ruled lines,
- * and the red pen mark that is PaperFlow's accent.
+ * The app icon: the same drawing as the logo mark (src/components/brand/Logo.tsx),
+ * a printed sheet on the ink tile with the red pen tick. next/og renders the
+ * SVG to PNG at any size without a font.
  *
- * `maskable` keeps everything inside the central safe zone (80%), since
- * Android crops maskable icons to a circle or squircle.
+ * `maskable` keeps the sheet inside the central safe zone (80%), since Android
+ * crops maskable icons to a circle or squircle, and draws the tile full-bleed.
  */
 export function AppIcon({ px, maskable = false }: { px: number; maskable?: boolean }) {
-  const inset = maskable ? 0.2 : 0.14;
-  const sheetW = px * (1 - inset * 2) * 0.72;
-  const sheetH = px * (1 - inset * 2) * 0.9;
-  const line = Math.max(2, Math.round(px * 0.028));
+  const scale = maskable ? 0.72 : 1;
+  const off = (32 - 32 * scale) / 2;
   return (
-    <div
-      style={{
-        width: px,
-        height: px,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "#15181b",
-        borderRadius: maskable ? 0 : px * 0.18,
-      }}
-    >
-      <div
-        style={{
-          width: sheetW,
-          height: sheetH,
-          background: "#f7f6f4",
-          borderRadius: px * 0.03,
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          padding: `0 ${sheetW * 0.16}px`,
-          gap: sheetH * 0.1,
-        }}
-      >
-        <div style={{ height: line, width: "100%", background: "#9a958e", borderRadius: line }} />
-        <div style={{ height: line, width: "82%", background: "#9a958e", borderRadius: line }} />
-        <div style={{ height: line, width: "92%", background: "#9a958e", borderRadius: line }} />
-        <div style={{ height: line * 1.8, width: "46%", background: "#b3141c", borderRadius: line }} />
-      </div>
+    <div style={{ width: px, height: px, display: "flex", background: maskable ? "#15181b" : "transparent" }}>
+      <svg width={px} height={px} viewBox="0 0 32 32">
+        {!maskable && <rect width="32" height="32" rx="7" fill="#15181b" />}
+        <g transform={`translate(${off} ${off}) scale(${scale})`}>
+          <path d="M8.5 9.5h9l4.5 4.5v12.5h-13.5z" fill="#5a6169" transform="translate(-1.6 1.6)" />
+          <path d="M9.5 6.5h9.2l5.3 5.3v14.7h-14.5z" fill="#f7f6f4" />
+          <path d="M18.7 6.5v5.3h5.3z" fill="#d6d1c8" />
+          <path d="M12.3 13.2h6.4M12.3 16.6h8.6" stroke="#a39e96" strokeWidth="1.4" strokeLinecap="round" />
+          <path d="M12.4 21.1l2.5 2.4 5.6-6" stroke="#b3141c" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+        </g>
+      </svg>
     </div>
   );
 }

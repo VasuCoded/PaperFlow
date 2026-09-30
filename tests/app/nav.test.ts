@@ -8,15 +8,16 @@ describe("console menu", () => {
   it("gives an institute admin the institute pages AND the teaching pages, in both consoles", () => {
     for (const area of ["institute", "teacher"] as const) {
       const groups = navFor(area, "institute_admin");
-      expect(groups.map((g) => g.title)).toEqual(["Institute", "Teaching"]);
+      expect(groups.map((g) => g.title)).toEqual([undefined, "People", "Teaching", "Institute"]);
       expect(links(groups)).toEqual([
-        "/institute", "/institute/members", "/institute/teachers", "/institute/subjects", "/institute/export",
+        "/institute", "/institute/members", "/institute/teachers",
         "/teacher/generate", "/teacher/papers", "/teacher/batches", "/teacher/flagged",
+        "/institute/subjects", "/institute/export",
       ]);
     }
   });
 
-  it("leaves a teacher's menu exactly as it was, with no institute pages", () => {
+  it("gives a teacher the teaching pages only, with no institute pages", () => {
     const groups = navFor("teacher", "teacher");
     expect(groups).toHaveLength(1);
     expect(groups[0]!.title).toBeUndefined();
@@ -30,11 +31,11 @@ describe("console menu", () => {
     expect(labels(navFor("teacher", "teacher"))).toContain("My papers");
   });
 
-  it("leaves the platform menu alone, whoever looks", () => {
+  it("gives the platform menu the same nine pages, whoever looks", () => {
     for (const role of ["owner", "institute_admin", null]) {
       const groups = navFor("platform", role);
-      expect(groups).toHaveLength(1);
       expect(links(groups)).toHaveLength(9);
+      expect(new Set(links(groups)).size).toBe(9);
       expect(links(groups).every((h) => h.startsWith("/platform"))).toBe(true);
     }
   });
@@ -53,7 +54,7 @@ describe("console menu", () => {
   });
 
   it("marks the current page: front pages exactly, others by their sub-pages too", () => {
-    const overview = { href: "/institute", label: "Overview", exact: true };
+    const overview = { href: "/institute", label: "Home", exact: true };
     expect(isActive("/institute", overview)).toBe(true);
     expect(isActive("/institute/members", overview)).toBe(false);
 
@@ -64,11 +65,21 @@ describe("console menu", () => {
     expect(isActive("/teacher/generate", papers)).toBe(false);
   });
 
-  it("only one item is active at a time, on every page an admin can reach", () => {
-    const groups = navFor("teacher", "institute_admin");
-    const all = groups.flatMap((g) => g.items);
-    for (const page of [...all.map((i) => i.href), "/teacher/papers/some-id", "/institute/members"]) {
-      expect(all.filter((i) => isActive(page, i)).length, page).toBe(1);
+  it("only one item is active at a time, on every page an admin or the owner can reach", () => {
+    for (const groups of [navFor("teacher", "institute_admin"), navFor("platform", "owner")]) {
+      const all = groups.flatMap((g) => g.items);
+      for (const page of [...all.map((i) => i.href), "/teacher/papers/some-id", "/platform/institutes/some-id"]) {
+        if (!all.some((i) => page.startsWith(i.href))) continue;
+        expect(all.filter((i) => isActive(page, i)).length, page).toBe(1);
+      }
     }
+  });
+
+  it("gives every item an icon, and names each badge it counts", () => {
+    for (const groups of [navFor("platform", "owner"), navFor("institute", "institute_admin"), navFor("teacher", "teacher")]) {
+      for (const item of groups.flatMap((g) => g.items)) expect(item.icon, item.href).toBeTruthy();
+    }
+    const badges = navFor("platform", "owner").flatMap((g) => g.items).flatMap((i) => (i.badge ? [i.badge] : []));
+    expect(badges.sort()).toEqual(["access", "review", "subjects"]);
   });
 });

@@ -8,6 +8,7 @@ import { SignOutButton } from "../_components/SignOutButton";
 import { AcceptInvite } from "./AcceptInvite";
 import { JoinForm } from "./JoinForm";
 import { RequestAccessForm, WithdrawRequestButton } from "./RequestAccess";
+import { Logo } from "@/components/brand/Logo";
 
 export const metadata: Metadata = { title: "Welcome · PaperFlow" };
 
@@ -57,6 +58,13 @@ export default async function WelcomePage({
   const whoami = displayIdentity(session.email);
 
   return (
+    <div className="authpage">
+      <header className="lp-nav slim">
+        <Link href="/" aria-label="PaperFlow home">
+          <Logo size={30} />
+        </Link>
+        <SignOutButton className="btn sm ghost" />
+      </header>
     <div className="wrap narrow">
       <header className="masthead">
         <div>
@@ -76,7 +84,6 @@ export default async function WelcomePage({
             and the institute decides.
           </p>
         </div>
-        <SignOutButton className="btn" />
       </header>
 
       {suspended.length > 0 && (
@@ -164,6 +171,7 @@ export default async function WelcomePage({
           )}
         </>
       )}
+    </div>
     </div>
   );
 }
