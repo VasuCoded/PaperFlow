@@ -64,6 +64,40 @@ export async function setInstituteStatusAction(instituteId: string, status: "act
   return { ok: true };
 }
 
+/**
+ * Rename an institute or change its contact. The owner's update policy on
+ * institutes allows it (institutes_update_platform); the code printed on its
+ * papers never changes with the name.
+ */
+export async function updateInstituteAction(instituteId: string, name: string, contactEmail: string): Promise<ActionResult> {
+  const supabase = await ownerClient();
+  if (!supabase) return DENIED;
+  const clean = name.trim().replace(/\s+/g, " ");
+  const contact = contactEmail.trim();
+  if (clean.length < 2 || clean.length > 120) return { ok: false, message: "Give the institute a name (2 to 120 characters)." };
+  if (contact && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact)) return { ok: false, message: "That contact email does not look right." };
+  const { data, error } = await supabase
+    .from("institutes")
+    .update({ name: clean, contact_email: contact || null })
+    .eq("id", instituteId)
+    .eq("kind", "institute")
+    .select("id");
+  if (error) return { ok: false, message: error.message };
+  if (!data?.length) return { ok: false, message: "Institute not found." };
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+/** Remove someone from an institute (remove_member lets the owner remove anyone but an owner). */
+export async function platformRemoveMemberAction(instituteId: string, userId: string): Promise<ActionResult> {
+  const supabase = await ownerClient();
+  if (!supabase) return DENIED;
+  const { error } = await supabase.rpc("remove_member", { p_institute_id: instituteId, p_user_id: userId });
+  if (error) return { ok: false, message: error.message };
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
 export async function reviewQuestionAction(
   questionId: string,
   decision: "approve" | "reject" | "retire",
@@ -90,7 +124,8 @@ export async function setActivationAction(instituteId: string, classSubjectId: s
     p_active: active,
   });
   if (error) return { ok: false, message: error.message };
-  revalidatePath("/platform/activation");
+  // the activation page, the institute's own page, and the institute's consoles
+  revalidatePath("/", "layout");
   return { ok: true };
 }
 

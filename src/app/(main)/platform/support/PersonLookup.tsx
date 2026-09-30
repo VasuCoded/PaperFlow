@@ -324,7 +324,7 @@ export function RevokeButton({
 
 
 /** Platform: issue a temporary password for a username account (logged). */
-function PlatformReset({ email }: { email: string }) {
+export function PlatformReset({ email }: { email: string }) {
   const [asking, setAsking] = useState(false);
   const [typed, setTyped] = useState("");
   const [password, setPassword] = useState<string | null>(null);

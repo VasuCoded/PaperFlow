@@ -6,61 +6,134 @@ import { createServerSupabaseClient } from "@/lib/db/server";
 import { getSession } from "@/server/session";
 import { setInstituteStatusAction } from "@/server/actions/platform";
 import { CreateInstituteForm } from "./CreateInstituteForm";
+import { Icon } from "@/components/ui/Icon";
+import { TableSearch } from "@/components/ui/TableSearch";
+import { ago } from "@/components/ui/Stat";
 
 export const metadata: Metadata = { title: "Institutes · PaperFlow" };
 
 const dateFmt = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric" });
+const SORTS = { activity: "Recently active", name: "Name", students: "Most students" } as const;
+type Sort = keyof typeof SORTS;
 
-export default async function InstitutesPage() {
+export default async function InstitutesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string; sort?: string; new?: string }>;
+}) {
+  const sp = await searchParams;
+  const status = sp.status === "active" || sp.status === "suspended" ? sp.status : null;
+  const sort: Sort = sp.sort && sp.sort in SORTS ? (sp.sort as Sort) : "activity";
+
   const session = await getSession();
   const supabase = await createServerSupabaseClient();
   const { data } = session?.isPlatformOwner ? await supabase.rpc("platform_list_institutes") : { data: [] };
   const institutes = data ?? [];
 
+  const shown = institutes
+    .filter((i) => !status || i.status === status)
+    .sort((a, b) =>
+      sort === "name"
+        ? a.name.localeCompare(b.name)
+        : sort === "students"
+          ? b.students - a.students
+          : (b.last_activity ?? b.created_at).localeCompare(a.last_activity ?? a.created_at),
+    );
+  const href = (next: { status?: string | null; sort?: string }) => {
+    const q = new URLSearchParams();
+    const st = next.status === undefined ? status : next.status;
+    const so = next.sort ?? sort;
+    if (st) q.set("status", st);
+    if (so !== "activity") q.set("sort", so);
+    const s = q.toString();
+    return `/platform/institutes${s ? `?${s}` : ""}`;
+  };
+  const suspendedCount = institutes.filter((i) => i.status !== "active").length;
+  const openNew = sp.new === "1" || institutes.length === 0;
+
   return (
     <AppShell area="platform">
-      {institutes.length === 0 ? (
-        <p className="lede">No institutes yet. Create the first one below.</p>
+      <details className="drawer" id="new" open={openNew}>
+        <summary className="btn solid">
+          <Icon name="building" size={15} /> New institute
+        </summary>
+        <div className="drawerbody">
+          <div className="cards c2">
+            <div>
+              <h3 className="drawertitle">Create an institute</h3>
+              <p className="lede">
+                Creates the institute and invites its first admin, in one step. The admin then invites their own
+                teachers and students.
+              </p>
+              <CreateInstituteForm />
+            </div>
+            <div className="card tinted">
+              <h4>After you create it</h4>
+              <p>
+                Switch on its subjects from the institute&rsquo;s page (Subjects tab), so its teachers can set papers.
+                The admin sees the invitation the next time they sign in.
+              </p>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <div className="toolbar">
+        <TableSearch target="institutes" placeholder="Search institutes" />
+        <nav className="seg" aria-label="Filter by status">
+          <Link className={!status ? "on" : ""} href={href({ status: null })}>All · {institutes.length}</Link>
+          <Link className={status === "active" ? "on" : ""} href={href({ status: "active" })}>Active · {institutes.length - suspendedCount}</Link>
+          <Link className={status === "suspended" ? "on" : ""} href={href({ status: "suspended" })}>Suspended · {suspendedCount}</Link>
+        </nav>
+        <nav className="seg" aria-label="Sort">
+          {(Object.keys(SORTS) as Sort[]).map((s) => (
+            <Link key={s} className={sort === s ? "on" : ""} href={href({ sort: s })}>{SORTS[s]}</Link>
+          ))}
+        </nav>
+      </div>
+
+      {shown.length === 0 ? (
+        <div className="empty panel">
+          <p>{institutes.length === 0 ? "No institutes yet." : "No institute matches this filter."}</p>
+        </div>
       ) : (
         <div className="tablewrap">
-          <table className="lt">
+          <table className="lt stack" id="institutes">
             <thead>
               <tr>
                 <th>Institute</th>
-                <th className="num">Admins</th>
-                <th className="num">Teachers</th>
                 <th className="num">Students</th>
+                <th className="num">Staff</th>
                 <th className="num">Subjects</th>
                 <th className="num">Papers</th>
-                <th>Last activity</th>
+                <th>Last active</th>
                 <th>Status</th>
                 <th />
               </tr>
             </thead>
             <tbody>
-              {institutes.map((i) => (
-                <tr key={i.id}>
+              {shown.map((i) => (
+                <tr key={i.id} data-search={`${i.name} ${i.slug} ${i.contact_email ?? ""}`}>
                   <td>
-                    <b>{i.name}</b>
-                    <span className="sub" style={{ fontFamily: "var(--mono)" }}>{i.slug} · since {dateFmt.format(new Date(i.created_at))}</span>
+                    <Link href={`/platform/institutes/${i.id}`} className="rowtitle">{i.name}</Link>
+                    <span className="sub">{i.slug} · since {dateFmt.format(new Date(i.created_at))}</span>
                   </td>
-                  <td className="num">{i.admins}</td>
-                  <td className="num">{i.teachers}</td>
-                  <td className="num">{i.students}</td>
-                  <td className="num">{i.active_subjects}</td>
-                  <td className="num">{i.papers}</td>
-                  <td>{i.last_activity ? dateFmt.format(new Date(i.last_activity)) : "—"}</td>
+                  <td className="num" data-label="Students:">{i.students}</td>
+                  <td className="num" data-label="Staff:" title={`${i.admins} admin(s), ${i.teachers} teacher(s)`}>{i.admins + i.teachers}</td>
+                  <td className="num" data-label="Subjects:">{i.active_subjects}</td>
+                  <td className="num" data-label="Papers:">{i.papers}</td>
+                  <td style={{ whiteSpace: "nowrap" }} data-label="Last active:">{ago(i.last_activity ?? null)}</td>
                   <td>
                     <span className={`pill ${i.status === "active" ? "active" : "suspended"}`}>{i.status}</span>
                   </td>
                   <td>
-                    <div className="btnrow">
-                      <Link className="btn sm ghost" href={`/platform/institutes/${i.id}`}>Inspect</Link>
+                    <div className="btnrow" style={{ justifyContent: "flex-end", flexWrap: "nowrap" }}>
+                      <Link className="btn sm" href={`/platform/institutes/${i.id}`}>Manage</Link>
                       {i.status === "active" ? (
                         <ActionButton
                           action={setInstituteStatusAction.bind(null, i.id, "suspended")}
                           label="Suspend"
-                          confirm={`Suspend ${i.name}? Their teachers and students lose access until you reactivate.`}
+                          confirm={`Suspend ${i.name}? Its people lose access until you reactivate. Nothing is deleted.`}
                           confirmLabel="Suspend"
                         />
                       ) : (
@@ -75,29 +148,10 @@ export default async function InstitutesPage() {
         </div>
       )}
 
-      <div className="cards c2" style={{ marginTop: 20 }}>
-        <div className="card">
-          <h4>Create an institute</h4>
-          <p style={{ marginBottom: 12 }}>
-            One transaction creates the institute and the first admin&rsquo;s invite. The admin then invites
-            their own teachers and students.
-          </p>
-          <CreateInstituteForm />
-        </div>
-        <div className="card tinted">
-          <h4>What suspension does</h4>
-          <p>
-            A suspended institute keeps all its data. Its members stop resolving as members, so every
-            policy that asks &ldquo;is this person in this institute&rdquo; answers no. Reactivating restores
-            everything exactly as it was.
-          </p>
-          <h4 style={{ marginTop: 14 }}>No impersonation</h4>
-          <p>
-            There is no &ldquo;log in as&rdquo; button and there will not be one. When you need to see what an
-            institute sees, Inspect reads it through an audited function.
-          </p>
-        </div>
-      </div>
+      <p className="footnote-plain">
+        Suspending keeps every row; its members simply stop resolving as members until you reactivate. There is no
+        &ldquo;log in as&rdquo;: Manage reads an institute through an audited function, and the visit is logged.
+      </p>
     </AppShell>
   );
 }
