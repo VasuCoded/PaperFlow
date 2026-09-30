@@ -544,12 +544,12 @@ export async function savePaper(req: PaperRequest): Promise<SaveResponse> {
   const title = req.title.trim().slice(0, 120) || layout.name;
   const supabase = await createServerSupabaseClient();
 
-  // A batch, when given, must belong to this institute and this class-subject.
+  // A batch, when given, must belong to this institute and include this class-subject.
   if (req.batchId) {
     const { data: batch } = await supabase
-      .from("batches")
-      .select("id")
-      .eq("id", req.batchId)
+      .from("batch_subjects")
+      .select("batch_id")
+      .eq("batch_id", req.batchId)
       .eq("institute_id", instituteId)
       .eq("class_subject_id", req.classSubjectId)
       .maybeSingle();

@@ -22,7 +22,7 @@ export default async function InstituteHome() {
     ? await Promise.all([
         supabase.from("institute_members").select("user_id, role").eq("institute_id", inst),
         supabase.from("teacher_subjects").select("teacher_id, class_subject_id").eq("institute_id", inst),
-        supabase.from("batches").select("id, class_subject_id, active, enrolments(count)").eq("institute_id", inst),
+        supabase.from("batches").select("id, active, batch_subjects(class_subject_id), enrolments(count)").eq("institute_id", inst),
         supabase.from("papers").select("id", { count: "exact", head: true }).eq("institute_id", inst),
         supabase.from("attempts").select("id", { count: "exact", head: true }).eq("institute_id", inst),
         getActiveSubjects(session),
@@ -32,7 +32,7 @@ export default async function InstituteHome() {
       ])
     : [{ data: [] }, { data: [] }, { data: [] }, { count: 0 }, { count: 0 }, [], [], { data: [] }, { count: 0 }];
 
-  const batches = (batchesRes.data ?? []) as { id: string; class_subject_id: string; active: boolean; enrolments: { count: number }[] }[];
+  const batches = (batchesRes.data ?? []) as { id: string; active: boolean; batch_subjects: { class_subject_id: string }[]; enrolments: { count: number }[] }[];
   const open = batches.filter((b) => b.active);
   const members = membersRes.data ?? [];
   const assigned = assignedRes.data ?? [];
@@ -107,7 +107,7 @@ export default async function InstituteHome() {
           ) : (
             <div className="rowlist">
               {subjects.map((s) => {
-                const n = open.filter((b) => b.class_subject_id === s.classSubjectId).length;
+                const n = open.filter((b) => b.batch_subjects.some((x) => x.class_subject_id === s.classSubjectId)).length;
                 const who = new Set(assigned.filter((a) => a.class_subject_id === s.classSubjectId).map((a) => a.teacher_id)).size;
                 return (
                   <div key={s.classSubjectId} className="rowlink static">

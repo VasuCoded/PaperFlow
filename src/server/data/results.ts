@@ -51,9 +51,10 @@ export interface BatchResults {
 type BatchRow = {
   id: string;
   name: string;
-  class_subject_id: string;
+  teacher_id: string | null;
   join_code: string;
   active: boolean;
+  batch_subjects: { class_subject_id: string }[];
   enrolments: { student_id: string }[];
   papers: { created_at: string; released_at: string | null }[];
 };
@@ -65,31 +66,36 @@ type AttemptRow = {
   attempt_items: { questions: { topics: { name: string } | null; chapters: { name: string } | null } | null }[];
 };
 
-/** The batches this person can see results for, newest first (open ones first). */
+/**
+ * The batches this person can see results for, open ones first: every batch
+ * for an admin; for a teacher, the batches they created or that include a
+ * subject they teach. A batch's label lists all its subjects.
+ */
 export async function getResultBatches(session: Session): Promise<(ResultsBatch & { studentIds: string[] })[]> {
   if (!session.instituteId) return [];
   const subjects = await getTeachingSubjects(session);
-  if (subjects.length === 0) return [];
   const label = new Map(subjects.map((s) => [s.classSubjectId, `Class ${s.className} · ${s.subjectName}`]));
   const supabase = await createServerSupabaseClient();
   const { data } = await supabase
     .from("batches")
-    .select("id, name, class_subject_id, join_code, active, enrolments ( student_id ), papers ( created_at, released_at )")
+    .select("id, name, teacher_id, join_code, active, batch_subjects ( class_subject_id ), enrolments ( student_id ), papers ( created_at, released_at )")
     .eq("institute_id", session.instituteId)
-    .in("class_subject_id", [...label.keys()])
     .order("active", { ascending: false })
     .order("created_at", { ascending: false })
     .returns<BatchRow[]>();
-  return (data ?? []).map((b) => ({
-    id: b.id,
-    name: b.name,
-    label: label.get(b.class_subject_id) ?? "",
-    joinCode: b.join_code,
-    active: b.active,
-    students: b.enrolments.length,
-    lastPaperAt: b.papers.filter((p) => p.released_at).reduce<string | null>((m, p) => (!m || p.created_at > m ? p.created_at : m), null),
-    studentIds: b.enrolments.map((e) => e.student_id),
-  }));
+  const admin = session.role === "institute_admin";
+  return (data ?? [])
+    .filter((b) => admin || b.teacher_id === session.userId || b.batch_subjects.some((x) => label.has(x.class_subject_id)))
+    .map((b) => ({
+      id: b.id,
+      name: b.name,
+      label: b.batch_subjects.map((x) => label.get(x.class_subject_id)).filter(Boolean).join(", ") || "No subjects yet",
+      joinCode: b.join_code,
+      active: b.active,
+      students: b.enrolments.length,
+      lastPaperAt: b.papers.filter((p) => p.released_at).reduce<string | null>((m, p) => (!m || p.created_at > m ? p.created_at : m), null),
+      studentIds: b.enrolments.map((e) => e.student_id),
+    }));
 }
 
 export async function getBatchResults(

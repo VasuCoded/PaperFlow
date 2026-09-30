@@ -7,6 +7,7 @@ import { createAdminClient } from "@/lib/db/admin";
 import { getSession } from "@/server/session";
 import { renderRich } from "@/lib/print/math";
 import { FigureControls } from "./FigureControls";
+import { SubjectSelect } from "./SubjectSelect";
 
 export const metadata: Metadata = { title: "Questions · PaperFlow" };
 
@@ -64,7 +65,8 @@ export default async function QuestionsPage({
       )
       .eq("class_subject_id", cs)
       .neq("status", "retired");
-    if (sp.ch) query = query.eq("chapter_id", sp.ch);
+    // a chapter from another subject (the subject was just changed) is ignored
+    if (sp.ch && (chapters ?? []).some((c) => c.id === sp.ch)) query = query.eq("chapter_id", sp.ch);
     if (sp.src) query = query.eq("source", sp.src);
     if (sp.q?.trim()) query = query.ilike("body", `%${sp.q.trim().replace(/[%_]/g, "")}%`);
     if (sp.fig === "1") query = query.like("body", "%[[fig:%");
@@ -98,12 +100,8 @@ export default async function QuestionsPage({
   return (
     <AppShell area="platform">
       <form className="toolbar qfilters" action="/platform/questions" method="get">
-        <select name="cs" className="sel" defaultValue={cs ?? ""} aria-label="Subject">
-          {subjects.map((s) => (
-            <option key={s.class_subject_id} value={s.class_subject_id}>{s.label}</option>
-          ))}
-        </select>
-        <select name="ch" className="sel" defaultValue={sp.ch ?? ""} aria-label="Chapter">
+        <SubjectSelect key={cs ?? ""} value={cs ?? ""} options={subjects.map((s) => ({ id: s.class_subject_id, label: s.label }))} />
+        <select key={`ch-${cs}`} name="ch" className="sel" defaultValue={sp.ch ?? ""} aria-label="Chapter">
           <option value="">All chapters</option>
           {(chapters ?? []).map((c) => (
             <option key={c.id} value={c.id}>{c.name}</option>

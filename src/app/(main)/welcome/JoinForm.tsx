@@ -70,13 +70,13 @@ export function JoinForm() {
         <div className="notice" style={{ marginTop: 14, marginBottom: 0 }}>
           <b>{preview.instituteName}</b>
           <br />
-          {preview.batchName} · Class {preview.className} · {preview.subjectName}
+          {preview.batchName}
+          {preview.className ? ` · Class ${preview.className}` : ""} · {preview.subjectName}
           {preview.alreadyEnrolledBatch && (
             <>
               <br />
               <span style={{ color: "var(--pen)" }}>
-                You are already in <b>{preview.alreadyEnrolledBatch}</b> for this subject. A student
-                holds one batch per subject — ask your teacher to move you.
+                You are already in <b>{preview.alreadyEnrolledBatch}</b>. Nothing more to do.
               </span>
             </>
           )}

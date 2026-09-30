@@ -213,11 +213,11 @@ export function PersonLookup() {
               <div className="tablewrap">
                 <table className="lt">
                   <thead>
-                    <tr><th>Subject</th><th>Institute</th><th>Batch</th><th>Move to</th></tr>
+                    <tr><th>Subjects</th><th>Institute</th><th>Batch</th><th>Move to</th></tr>
                   </thead>
                   <tbody>
                     {result.enrolments.map((e) => (
-                      <tr key={`${e.institute_id}:${e.class_subject_id}`}>
+                      <tr key={`${e.institute_id}:${e.batch_id}`}>
                         <td><b>{e.label}</b></td>
                         <td>{e.institute_name}</td>
                         <td>{e.batch_name}</td>

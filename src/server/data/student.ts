@@ -21,25 +21,46 @@ type EnrolmentRow = {
   class_subjects: { classes: { name: string } | null; subjects: { name: string; short_name: string | null; script: string } | null } | null;
 };
 
-/** The class-subjects this student is enrolled in, at the current institute. */
+/**
+ * The class-subjects this student takes at the current institute: every subject
+ * of every batch they are in (a batch can hold several subjects). A subject in
+ * two of their batches appears once, naming both batches.
+ */
 export async function getStudentSubjects(session: Session): Promise<StudentSubject[]> {
   if (!session.instituteId) return [];
   const supabase = await createServerSupabaseClient();
-  const { data } = await supabase
+  const { data: enrolled } = await supabase
     .from("enrolments")
+    .select("batch_id")
+    .eq("institute_id", session.instituteId)
+    .eq("student_id", session.userId);
+  const batchIds = (enrolled ?? []).map((e) => e.batch_id);
+  if (batchIds.length === 0) return [];
+
+  const { data } = await supabase
+    .from("batch_subjects")
     .select("class_subject_id, batches ( name ), class_subjects ( classes ( name ), subjects ( name, short_name, script ) )")
     .eq("institute_id", session.instituteId)
-    .eq("student_id", session.userId)
+    .in("batch_id", batchIds)
     .returns<EnrolmentRow[]>();
 
-  return (data ?? []).map((e) => ({
-    classSubjectId: e.class_subject_id,
-    label: `Class ${e.class_subjects?.classes?.name ?? "?"} · ${e.class_subjects?.subjects?.name ?? "?"}`,
-    short: e.class_subjects?.subjects?.short_name ?? e.class_subjects?.subjects?.name?.slice(0, 3).toUpperCase() ?? "?",
-    className: e.class_subjects?.classes?.name ?? "",
-    script: e.class_subjects?.subjects?.script ?? "latin",
-    batchName: e.batches?.name ?? "",
-  }));
+  const bySubject = new Map<string, StudentSubject>();
+  for (const e of data ?? []) {
+    const prev = bySubject.get(e.class_subject_id);
+    if (prev) {
+      if (e.batches?.name && !prev.batchName.split(", ").includes(e.batches.name)) prev.batchName += `, ${e.batches.name}`;
+      continue;
+    }
+    bySubject.set(e.class_subject_id, {
+      classSubjectId: e.class_subject_id,
+      label: `Class ${e.class_subjects?.classes?.name ?? "?"} · ${e.class_subjects?.subjects?.name ?? "?"}`,
+      short: e.class_subjects?.subjects?.short_name ?? e.class_subjects?.subjects?.name?.slice(0, 3).toUpperCase() ?? "?",
+      className: e.class_subjects?.classes?.name ?? "",
+      script: e.class_subjects?.subjects?.script ?? "latin",
+      batchName: e.batches?.name ?? "",
+    });
+  }
+  return [...bySubject.values()].sort((a, b) => a.label.localeCompare(b.label, "en", { numeric: true }));
 }
 
 export interface StudentPaper {

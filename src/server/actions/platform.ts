@@ -168,7 +168,7 @@ export interface SupportLookup {
     institute_name: string;
     batch_id: string;
     batch_name: string;
-    class_subject_id: string;
+    class_subject_id: string | null;
     label: string;
     other_batches: { id: string; name: string }[];
   }[];

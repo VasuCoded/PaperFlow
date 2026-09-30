@@ -10,35 +10,130 @@ function deskRole(role: string | null): boolean {
 }
 
 /**
- * Create a batch. The class-subject must be one this person teaches (RLS on
- * batches enforces the same rule); the join code is generated in the database
- * so it is unique across every institute.
+ * Create a batch: a group of students with any number of subjects (a coaching
+ * batch usually studies several). A teacher may pick only subjects they teach;
+ * an admin any active subject. RLS on batches and batch_subjects enforces the
+ * same; the join code is generated in the database, unique everywhere.
  */
-export async function createBatch(name: string, classSubjectId: string): Promise<ActionResult> {
+export async function createBatch(input: { name: string; note: string; subjectIds: string[] }): Promise<ActionResult & { batchId?: string }> {
   const session = await getSession();
   if (!session?.instituteId || !deskRole(session.role)) return { ok: false, message: "Not allowed." };
 
-  const clean = name.trim().slice(0, 60);
+  const clean = input.name.trim().slice(0, 60);
   if (clean.length < 2) return { ok: false, message: "Give the batch a name." };
+  const subjectIds = [...new Set(input.subjectIds)];
+  if (subjectIds.length === 0) return { ok: false, message: "Choose at least one subject." };
 
   const supabase = await createServerSupabaseClient();
-  const { error } = await supabase.from("batches").insert({
-    institute_id: session.instituteId,
-    name: clean,
-    class_subject_id: classSubjectId,
-    teacher_id: session.userId,
-    join_code: "", // replaced by the batches_set_join_code trigger
-    active: true,
-  });
-  if (error) {
+  const { data: batch, error } = await supabase
+    .from("batches")
+    .insert({
+      institute_id: session.instituteId,
+      name: clean,
+      note: input.note.trim().slice(0, 120) || null,
+      teacher_id: session.userId,
+      join_code: "", // replaced by the batches_set_join_code trigger
+      active: true,
+    })
+    .select("id")
+    .single();
+  if (error || !batch) return { ok: false, message: error?.message ?? "Could not create the batch." };
+
+  const { error: subErr } = await supabase
+    .from("batch_subjects")
+    .insert(subjectIds.map((cs) => ({ institute_id: session.instituteId!, batch_id: batch.id, class_subject_id: cs })));
+  if (subErr) {
+    await supabase.from("batches").delete().eq("id", batch.id).eq("institute_id", session.instituteId);
     return {
       ok: false,
-      message: error.code === "42501"
-        ? "You can only create batches for subjects you are assigned."
-        : error.message,
+      message: subErr.code === "42501" ? "You can only add subjects you teach." : subErr.message,
     };
   }
+  revalidatePath("/", "layout");
+  return { ok: true, batchId: batch.id };
+}
+
+/** Rename a batch or change its note (timing, room, anything). */
+export async function updateBatch(batchId: string, name: string, note: string): Promise<ActionResult> {
+  const session = await getSession();
+  if (!session?.instituteId || !deskRole(session.role)) return { ok: false, message: "Not allowed." };
+  const clean = name.trim().slice(0, 60);
+  if (clean.length < 2) return { ok: false, message: "Give the batch a name." };
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("batches")
+    .update({ name: clean, note: note.trim().slice(0, 120) || null })
+    .eq("id", batchId)
+    .eq("institute_id", session.instituteId)
+    .select("id");
+  if (error) return { ok: false, message: error.message };
+  if (!data?.length) return { ok: false, message: "You can only change batches you run." };
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+/** Add a subject to a batch, or take one off (papers already set are kept). */
+export async function setBatchSubject(batchId: string, classSubjectId: string, on: boolean): Promise<ActionResult> {
+  const session = await getSession();
+  if (!session?.instituteId || !deskRole(session.role)) return { ok: false, message: "Not allowed." };
+  const supabase = await createServerSupabaseClient();
+  if (on) {
+    const { error } = await supabase
+      .from("batch_subjects")
+      .insert({ institute_id: session.instituteId, batch_id: batchId, class_subject_id: classSubjectId });
+    if (error && error.code !== "23505") {
+      return { ok: false, message: error.code === "42501" ? "You can only add subjects you teach, to batches you run." : error.message };
+    }
+  } else {
+    const { data, error } = await supabase
+      .from("batch_subjects")
+      .delete()
+      .eq("institute_id", session.instituteId)
+      .eq("batch_id", batchId)
+      .eq("class_subject_id", classSubjectId)
+      .select("batch_id");
+    if (error) return { ok: false, message: error.message };
+    if (!data?.length) return { ok: false, message: "You can only remove subjects you teach." };
+  }
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+/** Admin: who teaches this subject in this batch (shown on the batch). */
+export async function setBatchSubjectTeacher(batchId: string, classSubjectId: string, teacherId: string | null): Promise<ActionResult> {
+  const session = await getSession();
+  if (!session?.instituteId || session.role !== "institute_admin") return { ok: false, message: "Institute admins only." };
+  const supabase = await createServerSupabaseClient();
+  const { error } = await supabase
+    .from("batch_subjects")
+    .update({ teacher_id: teacherId })
+    .eq("institute_id", session.instituteId)
+    .eq("batch_id", batchId)
+    .eq("class_subject_id", classSubjectId);
+  if (error) return { ok: false, message: error.message };
   revalidatePath("/teacher/batches");
+  return { ok: true };
+}
+
+/** Put students of the institute straight into a batch (no code needed). */
+export async function addStudentsToBatch(batchId: string, studentIds: string[]): Promise<ActionResult & { added?: number }> {
+  const session = await getSession();
+  if (!session?.instituteId || !deskRole(session.role)) return { ok: false, message: "Not allowed." };
+  if (studentIds.length === 0) return { ok: false, message: "Choose at least one student." };
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase.rpc("batch_add_students", { p_batch_id: batchId, p_student_ids: studentIds });
+  if (error) return { ok: false, message: error.message };
+  revalidatePath("/", "layout");
+  return { ok: true, added: data ?? 0 };
+}
+
+export async function removeStudentFromBatch(batchId: string, studentId: string): Promise<ActionResult> {
+  const session = await getSession();
+  if (!session?.instituteId || !deskRole(session.role)) return { ok: false, message: "Not allowed." };
+  const supabase = await createServerSupabaseClient();
+  const { error } = await supabase.rpc("batch_remove_student", { p_batch_id: batchId, p_student_id: studentId });
+  if (error) return { ok: false, message: error.message };
+  revalidatePath("/", "layout");
   return { ok: true };
 }
 
@@ -48,7 +143,7 @@ export async function rotateJoinCode(batchId: string): Promise<ActionResult & { 
   const supabase = await createServerSupabaseClient();
   const { data, error } = await supabase.rpc("rotate_join_code", { p_batch_id: batchId });
   if (error) return { ok: false, message: error.message };
-  revalidatePath("/teacher/batches");
+  revalidatePath("/", "layout");
   return { ok: true, code: data ?? undefined };
 }
 

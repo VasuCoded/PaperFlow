@@ -3,8 +3,21 @@ import Link from "next/link";
 import { AppShell } from "../../_components/AppShell";
 import { getSession } from "@/server/session";
 import { getTeachingSubjects } from "@/server/data/teacher";
+import { getActiveSubjects } from "@/server/data/institute";
 import { createServerSupabaseClient } from "@/lib/db/server";
-import { ActiveToggle, CreateBatchForm, RotateCodeButton } from "./BatchControls";
+import { displayIdentity } from "@/lib/identity";
+import { Icon } from "@/components/ui/Icon";
+import { CopyButton } from "@/components/ui/CopyButton";
+import { TableSearch } from "@/components/ui/TableSearch";
+import {
+  ActiveToggle,
+  AddStudents,
+  CreateBatchForm,
+  EditBatch,
+  RemoveStudentButton,
+  RotateCodeButton,
+  SubjectTeacherSelect,
+} from "./BatchControls";
 
 export const metadata: Metadata = { title: "Batches · PaperFlow" };
 
@@ -13,124 +26,173 @@ const dateFmt = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short
 type BatchRow = {
   id: string;
   name: string;
-  class_subject_id: string;
+  note: string | null;
+  teacher_id: string | null;
   join_code: string;
   active: boolean;
   created_at: string;
+  batch_subjects: { class_subject_id: string; teacher_id: string | null }[];
   enrolments: { student_id: string; joined_at: string }[];
   papers: { count: number }[];
 };
 
+/**
+ * Batches: a batch is a group of students with any number of subjects, as a
+ * coaching batch really is. Students join with the code, or are added here.
+ * A teacher sees the batches they run or teach a subject in; an admin sees all.
+ */
 export default async function BatchesPage() {
   const session = await getSession();
-  const subjects = session ? await getTeachingSubjects(session) : [];
-  const labelById = new Map(subjects.map((s) => [s.classSubjectId, `Class ${s.className} · ${s.subjectName}`]));
-
+  const inst = session?.instituteId ?? null;
+  const admin = session?.role === "institute_admin";
   const supabase = await createServerSupabaseClient();
-  const { data } = session?.instituteId && subjects.length > 0
-    ? await supabase
-        .from("batches")
-        .select("id, name, class_subject_id, join_code, active, created_at, enrolments ( student_id, joined_at ), papers ( count )")
-        .eq("institute_id", session.instituteId)
-        .in("class_subject_id", subjects.map((s) => s.classSubjectId))
-        .order("active", { ascending: false })
-        .order("created_at", { ascending: false })
-        .returns<BatchRow[]>()
-    : { data: [] as BatchRow[] };
-  const batches = data ?? [];
 
-  const studentIds = [...new Set(batches.flatMap((b) => b.enrolments.map((e) => e.student_id)))];
-  const { data: profiles } = studentIds.length
-    ? await supabase.from("profiles").select("id, full_name, email").in("id", studentIds)
-    : { data: [] as { id: string; full_name: string | null; email: string }[] };
-  const nameById = new Map((profiles ?? []).map((p) => [p.id, p.full_name ?? p.email]));
+  const [teaching, active, batchesRes, membersRes] = session && inst
+    ? await Promise.all([
+        getTeachingSubjects(session),
+        getActiveSubjects(session),
+        supabase
+          .from("batches")
+          .select("id, name, note, teacher_id, join_code, active, created_at, batch_subjects ( class_subject_id, teacher_id ), enrolments ( student_id, joined_at ), papers ( count )")
+          .eq("institute_id", inst)
+          .order("active", { ascending: false })
+          .order("created_at", { ascending: false })
+          .returns<BatchRow[]>(),
+        supabase.from("institute_members").select("user_id, role").eq("institute_id", inst),
+      ])
+    : [[], [], { data: [] as BatchRow[] }, { data: [] as { user_id: string; role: string }[] }];
+
+  const taught = new Set(teaching.map((t) => t.classSubjectId));
+  const labelOf = new Map(active.map((s) => [s.classSubjectId, s.label]));
+  const batches = (batchesRes.data ?? []).filter(
+    (b) => admin || b.teacher_id === session?.userId || b.batch_subjects.some((x) => taught.has(x.class_subject_id)),
+  );
+
+  const members = membersRes.data ?? [];
+  const ids = [...new Set(members.map((m) => m.user_id))];
+  const names = new Map<string, string>();
+  for (let i = 0; i < ids.length; i += 100) {
+    const { data } = await supabase.from("profiles").select("id, full_name, email").in("id", ids.slice(i, i + 100));
+    for (const p of data ?? []) names.set(p.id, p.full_name ?? displayIdentity(p.email));
+  }
+  const studentIds = members.filter((m) => m.role === "student").map((m) => m.user_id);
+  const teachers = members
+    .filter((m) => m.role === "teacher" || m.role === "institute_admin")
+    .map((m) => ({ id: m.user_id, label: names.get(m.user_id) ?? "Teacher" }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+  const subjectOptions = active.map((s) => ({ id: s.classSubjectId, label: s.label }));
+  const createOptions = teaching.map((t) => ({ id: t.classSubjectId, label: `Class ${t.className} · ${t.subjectName}` }));
+  const editable = admin ? subjectOptions.map((s) => s.id) : [...taught];
 
   return (
     <AppShell area="teacher">
+      <div className="toolbar">
+        <TableSearch target="batchlist" placeholder="Search batches or students" />
+        <details className="drawer inline" id="new" open={batches.length === 0}>
+          <summary className="btn solid"><Icon name="layers" size={15} /> New batch</summary>
+          <div className="drawerbody wide">
+            <CreateBatchForm subjects={createOptions} />
+          </div>
+        </details>
+      </div>
+
+      <p className="lede">
+        A batch is a group of students with as many subjects as they study together. Students join with the batch
+        code, or you add them below. Papers you set for a batch reach its students once you mark them as conducted.
+      </p>
+
       {batches.length === 0 ? (
-        <p className="lede">No batches yet. Create one below and hand its code to your students.</p>
+        <div className="empty panel"><p>No batches yet. Create the first one with <b>New batch</b>.</p></div>
       ) : (
-        <div className="tablewrap">
-          <table className="lt">
-            <thead>
-              <tr>
-                <th>Batch</th>
-                <th className="num">Students</th>
-                <th className="num">Papers</th>
-                <th>Join code</th>
-                <th>Status</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {batches.map((b) => (
-                <tr key={b.id}>
-                  <td>
-                    <b>{b.name}</b>
-                    <span className="sub">{labelById.get(b.class_subject_id) ?? ""}</span>
-                    {b.enrolments.length > 0 && (
-                      <details style={{ marginTop: 6 }}>
-                        <summary style={{ fontSize: 11.5, color: "var(--graphite)", cursor: "pointer" }}>
-                          {b.enrolments.length} enrolled
-                        </summary>
-                        <ul style={{ margin: "6px 0 0", paddingLeft: 16, fontSize: 12 }}>
-                          {[...b.enrolments]
-                            .sort((x, y) => x.joined_at.localeCompare(y.joined_at))
-                            .map((e) => (
-                              <li key={e.student_id}>
-                                {nameById.get(e.student_id) ?? "Student"}{" "}
-                                <span style={{ color: "var(--graphite)" }}>· joined {dateFmt.format(new Date(e.joined_at))}</span>
-                              </li>
-                            ))}
-                        </ul>
-                      </details>
-                    )}
-                  </td>
-                  <td className="num">{b.enrolments.length}</td>
-                  <td className="num">
-                    {(b.papers[0]?.count ?? 0) > 0 ? (
-                      <Link href={`/teacher/papers?batch=${b.id}`} title="This batch's paper history">{b.papers[0]!.count} →</Link>
+        <div className="batchlist" id="batchlist">
+          {batches.map((b) => {
+            const enrolled = [...b.enrolments].sort((x, y) => (names.get(x.student_id) ?? "").localeCompare(names.get(y.student_id) ?? ""));
+            const inBatch = new Set(b.enrolments.map((e) => e.student_id));
+            const candidates = studentIds.filter((id) => !inBatch.has(id)).map((id) => ({ id, label: names.get(id) ?? "Student" })).sort((x, y) => x.label.localeCompare(y.label));
+            const paperCount = b.papers[0]?.count ?? 0;
+            const search = [b.name, b.note ?? "", ...b.batch_subjects.map((x) => labelOf.get(x.class_subject_id) ?? ""), ...enrolled.map((e) => names.get(e.student_id) ?? "")].join(" ");
+            return (
+              <article key={b.id} className={`batchcard${b.active ? "" : " closed"}`} data-search={search}>
+                <header className="batchhead">
+                  <div className="batchtitle">
+                    <h3>
+                      {b.name} {!b.active && <span className="pill planned">closed</span>}
+                    </h3>
+                    {b.note && <p>{b.note}</p>}
+                  </div>
+                  <div className="batchcode">
+                    <span className="joincode" style={{ opacity: b.active ? 1 : 0.45 }}>{b.join_code}</span>
+                    <CopyButton text={b.join_code} />
+                  </div>
+                </header>
+
+                <div className="batchsubjects">
+                  {b.batch_subjects.length === 0 ? (
+                    <span className="muted">No subjects yet — add some under Edit.</span>
+                  ) : (
+                    b.batch_subjects.map((x) => (
+                      <span key={x.class_subject_id} className="subjtag">
+                        <b>{labelOf.get(x.class_subject_id) ?? "Subject no longer active"}</b>
+                        {admin ? (
+                          <SubjectTeacherSelect batchId={b.id} classSubjectId={x.class_subject_id} current={x.teacher_id} teachers={teachers} />
+                        ) : (
+                          x.teacher_id && <span className="muted"> · {names.get(x.teacher_id) ?? "Teacher"}</span>
+                        )}
+                      </span>
+                    ))
+                  )}
+                </div>
+
+                <div className="batchstats">
+                  <span><b>{b.enrolments.length}</b> student{b.enrolments.length === 1 ? "" : "s"}</span>
+                  <Link href={`/teacher/papers?batch=${b.id}`}><b>{paperCount}</b> paper{paperCount === 1 ? "" : "s"} →</Link>
+                  <Link href={`/teacher/results?batch=${b.id}`}>Results →</Link>
+                  <span className="batchactions">
+                    <RotateCodeButton batchId={b.id} disabled={!b.active} />
+                    <ActiveToggle batchId={b.id} active={b.active} />
+                  </span>
+                </div>
+
+                <details className="batchmore">
+                  <summary>Students ({b.enrolments.length})</summary>
+                  <div className="batchmorebody">
+                    {enrolled.length === 0 ? (
+                      <p className="hint">Nobody yet. Share the code <b className="mono">{b.join_code}</b>, or add students below.</p>
                     ) : (
-                      0
+                      <ul className="studentlist">
+                        {enrolled.map((e) => (
+                          <li key={e.student_id}>
+                            <span>
+                              {names.get(e.student_id) ?? "Student"} <span className="muted">· joined {dateFmt.format(new Date(e.joined_at))}</span>
+                            </span>
+                            <RemoveStudentButton batchId={b.id} studentId={e.student_id} name={names.get(e.student_id) ?? "this student"} />
+                          </li>
+                        ))}
+                      </ul>
                     )}
-                  </td>
-                  <td>
-                    <span style={{ fontFamily: "var(--mono)", fontSize: 14, letterSpacing: "0.18em", fontWeight: 500, opacity: b.active ? 1 : 0.45 }}>
-                      {b.join_code}
-                    </span>
-                  </td>
-                  <td>
-                    <span className={`pill ${b.active ? "active" : "planned"}`}>{b.active ? "Open" : "Closed"}</span>
-                  </td>
-                  <td>
-                    <div className="btnrow">
-                      <RotateCodeButton batchId={b.id} disabled={!b.active} />
-                      <ActiveToggle batchId={b.id} active={b.active} />
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    <h4 className="blk" style={{ marginTop: 14 }}>Add students</h4>
+                    <AddStudents batchId={b.id} candidates={candidates} />
+                  </div>
+                </details>
+
+                <details className="batchmore">
+                  <summary>Edit batch</summary>
+                  <div className="batchmorebody">
+                    <EditBatch
+                      batchId={b.id}
+                      name={b.name}
+                      note={b.note}
+                      subjects={subjectOptions}
+                      selected={b.batch_subjects.map((x) => x.class_subject_id)}
+                      editable={editable}
+                    />
+                  </div>
+                </details>
+              </article>
+            );
+          })}
         </div>
       )}
-
-      <div className="cards c2" style={{ marginTop: 20 }}>
-        <div className="card">
-          <h4>Create a batch</h4>
-          <p style={{ marginBottom: 12 }}>One batch per class and subject. You can only choose subjects you are assigned.</p>
-          <CreateBatchForm subjects={subjects.map((s) => ({ id: s.classSubjectId, label: `Class ${s.className} · ${s.subjectName}` }))} />
-        </div>
-        <div className="card tinted">
-          <h4>One batch per subject, per student</h4>
-          <p>
-            A student holds at most one batch per class and subject in an institute. If they enter a second
-            code for a subject they already have, the app tells them which batch they are in instead of
-            enrolling them twice — and the database enforces that, not just this screen. A closed batch&rsquo;s
-            code stops working.
-          </p>
-        </div>
-      </div>
     </AppShell>
   );
 }

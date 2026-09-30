@@ -234,36 +234,85 @@ export type Database = {
           }
         ]
       }
+      batch_subjects: {
+        Row: {
+          institute_id: string
+          batch_id: string
+          class_subject_id: string
+          teacher_id: string | null
+          created_at: string
+        }
+        Insert: {
+          institute_id: string
+          batch_id: string
+          class_subject_id: string
+          teacher_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          institute_id?: string
+          batch_id?: string
+          class_subject_id?: string
+          teacher_id?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batch_subjects_batch_id_institute_id_fkey"
+            columns: ["batch_id", "institute_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id", "institute_id"]
+          },
+          {
+            foreignKeyName: "batch_subjects_class_subject_id_fkey"
+            columns: ["class_subject_id"]
+            isOneToOne: false
+            referencedRelation: "class_subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_subjects_institute_id_fkey"
+            columns: ["institute_id"]
+            isOneToOne: false
+            referencedRelation: "institutes"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       batches: {
         Row: {
           id: string
           institute_id: string
           name: string
-          class_subject_id: string
+          class_subject_id: string | null
           teacher_id: string | null
           join_code: string
           active: boolean
           created_at: string
+          note: string | null
         }
         Insert: {
           id?: string
           institute_id: string
           name: string
-          class_subject_id: string
+          class_subject_id?: string | null
           teacher_id?: string | null
           join_code: string
           active?: boolean
           created_at?: string
+          note?: string | null
         }
         Update: {
           id?: string
           institute_id?: string
           name?: string
-          class_subject_id?: string
+          class_subject_id?: string | null
           teacher_id?: string | null
           join_code?: string
           active?: boolean
           created_at?: string
+          note?: string | null
         }
         Relationships: [
           {
@@ -448,21 +497,21 @@ export type Database = {
           institute_id: string
           batch_id: string
           student_id: string
-          class_subject_id: string
+          class_subject_id: string | null
           joined_at: string
         }
         Insert: {
           institute_id: string
           batch_id: string
           student_id: string
-          class_subject_id: string
+          class_subject_id?: string | null
           joined_at?: string
         }
         Update: {
           institute_id?: string
           batch_id?: string
           student_id?: string
-          class_subject_id?: string
+          class_subject_id?: string | null
           joined_at?: string
         }
         Relationships: [
@@ -1925,6 +1974,20 @@ export type Database = {
           p_block_id: string
         }
         Returns: number
+      }
+      batch_add_students: {
+        Args: {
+          p_batch_id: string
+          p_student_ids: string[]
+        }
+        Returns: number
+      }
+      batch_remove_student: {
+        Args: {
+          p_batch_id: string
+          p_student_id: string
+        }
+        Returns: undefined
       }
       can_access_paper: {
         Args: {

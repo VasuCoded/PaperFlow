@@ -26,6 +26,7 @@ const TENANT_TABLES = [
   "activation_requests",
   "teacher_subjects",
   "batches",
+  "batch_subjects",
   "enrolments",
   "papers",
   "paper_sections",

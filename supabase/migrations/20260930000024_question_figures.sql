@@ -13,9 +13,16 @@
 -- Only the platform owner attaches figures (question_assets_write_platform).
 -- ============================================================================
 
-insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values ('question-assets', 'question-assets', false, 2097152, array['image/png', 'image/jpeg', 'image/webp'])
-on conflict (id) do nothing;
+-- (guarded: the local schema harness has no storage schema)
+do $$
+begin
+  if to_regclass('storage.buckets') is not null then
+    insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+    values ('question-assets', 'question-assets', false, 2097152, array['image/png', 'image/jpeg', 'image/webp'])
+    on conflict (id) do nothing;
+  end if;
+end;
+$$;
 
 create index if not exists question_assets_question_idx on public.question_assets (question_id);
 

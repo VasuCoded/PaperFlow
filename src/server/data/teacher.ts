@@ -178,18 +178,29 @@ export async function getBatches(
   classSubjectId?: string,
 ): Promise<BatchOption[]> {
   const supabase = await createServerSupabaseClient();
+  // a batch can hold several subjects (batch_subjects); list the open batches
+  // that include this one
   let q = supabase
-    .from("batches")
-    .select("id, name, class_subject_id, enrolments(count)")
+    .from("batch_subjects")
+    .select("class_subject_id, batches!inner ( id, name, active, enrolments(count) )")
     .eq("institute_id", instituteId)
-    .eq("active", true);
+    .eq("batches.active", true);
   if (classSubjectId) q = q.eq("class_subject_id", classSubjectId);
 
-  const { data } = await q;
-  return (data ?? []).map((b) => ({
-    id: b.id,
-    name: b.name,
-    classSubjectId: b.class_subject_id,
-    students: Array.isArray(b.enrolments) ? (b.enrolments[0]?.count ?? 0) : 0,
-  }));
+  const { data } = await q.returns<
+    { class_subject_id: string; batches: { id: string; name: string; active: boolean; enrolments: { count: number }[] } }[]
+  >();
+  const seen = new Set<string>();
+  const out: BatchOption[] = [];
+  for (const r of data ?? []) {
+    if (seen.has(r.batches.id)) continue;
+    seen.add(r.batches.id);
+    out.push({
+      id: r.batches.id,
+      name: r.batches.name,
+      classSubjectId: r.class_subject_id,
+      students: r.batches.enrolments[0]?.count ?? 0,
+    });
+  }
+  return out.sort((a, b) => a.name.localeCompare(b.name));
 }
