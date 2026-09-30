@@ -23,6 +23,8 @@ const nextConfig: NextConfig = {
     // signing in or out reloads the whole page, so nobody sees another
     // account's cached page.
     staleTimes: { dynamic: 30 },
+    // question figures are uploaded through a server action (2 MB images)
+    serverActions: { bodySizeLimit: "3mb" },
   },
 };
 

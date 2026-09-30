@@ -30,7 +30,24 @@ export function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, (c) => ESCAPES[c] ?? c);
 }
 
-/** Split on $$...$$ / $...$ and render the math segments with KaTeX. */
+/**
+ * A figure inside a question body: [[fig:<question_assets id>]]. Rendered as an
+ * image served by /asset/<id>, which checks the viewer may see it.
+ */
+export const FIGURE_TOKEN = /\[\[fig:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\]\]/gi;
+
+export function figureToken(assetId: string): string {
+  return `[[fig:${assetId}]]`;
+}
+
+function renderText(text: string): string {
+  return escapeHtml(text).replace(
+    FIGURE_TOKEN,
+    (_, id: string) => `<figure class="qfig"><img src="/asset/${id.toLowerCase()}" alt="Figure" /></figure>`,
+  );
+}
+
+/** Split on $$...$$ / $...$ and render the math segments with KaTeX; figures become images. */
 export function renderRich(text: string): string {
   const out: string[] = [];
   // $$...$$ first (display), then single-$ inline that does not span lines.
@@ -39,7 +56,7 @@ export function renderRich(text: string): string {
   let m: RegExpExecArray | null;
 
   while ((m = re.exec(text)) !== null) {
-    out.push(escapeHtml(text.slice(last, m.index)));
+    out.push(renderText(text.slice(last, m.index)));
     const display = m[1] != null;
     const tex = (m[1] ?? m[2] ?? "").trim();
     out.push(
@@ -52,7 +69,7 @@ export function renderRich(text: string): string {
     );
     last = m.index + m[0].length;
   }
-  out.push(escapeHtml(text.slice(last)));
+  out.push(renderText(text.slice(last)));
   return out.join("");
 }
 
@@ -68,7 +85,7 @@ export function hasMath(text: string): boolean {
  * student confirms "is this question 1 on your sheet?" (C9 item 3).
  */
 export function firstWordsTex(text: string, n = 12): string {
-  const tokens = text.match(/(?:[^\s$]|\$\$[\s\S]+?\$\$|\$[^$\n]+?\$)+/g) ?? [];
+  const tokens = text.replace(FIGURE_TOKEN, " ").match(/(?:[^\s$]|\$\$[\s\S]+?\$\$|\$[^$\n]+?\$)+/g) ?? [];
   const head = tokens.slice(0, n).join(" ");
   return tokens.length > n && !/[….]$/.test(head) ? `${head}…` : head;
 }

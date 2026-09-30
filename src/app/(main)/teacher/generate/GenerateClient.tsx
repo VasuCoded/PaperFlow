@@ -292,56 +292,166 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
     <>
       {/* --------------------------- paper format (top) --------------------------- */}
       <section className="bld-format" aria-label="Paper format">
-        <div className="bld-grid">
-          <div className="bld-cell">
-        <div className="field">
-          <label htmlFor="cls">Class and subject</label>
-          <select className="sel" id="cls" value={bundle.classSubjectId} onChange={(e) => changeSubject(e.target.value)}>
-            {subjects.map((s) => (
-              <option key={s.classSubjectId} value={s.classSubjectId}>
-                {s.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="field">
-          <label htmlFor="title">Title</label>
-          <input className="inp" id="title" value={title} maxLength={120} placeholder={current?.name ?? "Unit test"} onChange={(e) => setTitle(e.target.value)} />
-        </div>
-
-          </div>
-          <div className="bld-cell">
-        <div className="field">
-          <label htmlFor="pat">Paper layout</label>
-          <select className="sel" id="pat" value={layoutSel} onChange={(e) => chooseLayout(e.target.value)}>
-            {bundle.patterns.some((p) => !p.isInstituteTemplate) && (
-              <optgroup label="CBSE and standard patterns">
-                {bundle.patterns.filter((p) => !p.isInstituteTemplate).map((p) => (
-                  <option key={p.id} value={`p:${p.id}`}>
-                    {p.name} · {p.totalMarks} marks{p.origin === "board" ? " · board" : ""}
-                  </option>
-                ))}
-              </optgroup>
-            )}
-            {bundle.patterns.some((p) => p.isInstituteTemplate) && (
-              <optgroup label="Saved by your institute">
-                {bundle.patterns.filter((p) => p.isInstituteTemplate).map((p) => (
-                  <option key={p.id} value={`p:${p.id}`}>
-                    {p.name} · {p.totalMarks} marks
-                  </option>
-                ))}
-              </optgroup>
-            )}
-            <optgroup label="Quick templates">
-              {QUICK_TEMPLATES.map((t) => (
-                <option key={t.key} value={`t:${t.key}`}>{t.name}</option>
+        <div className="bld-bar">
+          <div className="bld-f">
+            <label htmlFor="cls">Class and subject</label>
+            <select className="sel" id="cls" value={bundle.classSubjectId} onChange={(e) => changeSubject(e.target.value)}>
+              {subjects.map((s) => (
+                <option key={s.classSubjectId} value={s.classSubjectId}>
+                  {s.label}
+                </option>
               ))}
-            </optgroup>
-            <optgroup label="Your own">
-              <option value="custom">{custom ? `Custom: ${custom.name}` : "Custom — build your own"}</option>
-            </optgroup>
-          </select>
+            </select>
+          </div>
+          <div className="bld-f grow">
+            <label htmlFor="title">Title</label>
+            <input className="inp" id="title" value={title} maxLength={120} placeholder={current?.name ?? "Unit test"} onChange={(e) => setTitle(e.target.value)} />
+          </div>
+          <div className="bld-f wide">
+            <label htmlFor="pat">Paper layout</label>
+          <select className="sel" id="pat" value={layoutSel} onChange={(e) => chooseLayout(e.target.value)}>
+              {bundle.patterns.some((p) => !p.isInstituteTemplate) && (
+                <optgroup label="CBSE and standard patterns">
+                  {bundle.patterns.filter((p) => !p.isInstituteTemplate).map((p) => (
+                    <option key={p.id} value={`p:${p.id}`}>
+                      {p.name} · {p.totalMarks} marks{p.origin === "board" ? " · board" : ""}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              {bundle.patterns.some((p) => p.isInstituteTemplate) && (
+                <optgroup label="Saved by your institute">
+                  {bundle.patterns.filter((p) => p.isInstituteTemplate).map((p) => (
+                    <option key={p.id} value={`p:${p.id}`}>
+                      {p.name} · {p.totalMarks} marks
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              <optgroup label="Quick templates">
+                {QUICK_TEMPLATES.map((t) => (
+                  <option key={t.key} value={`t:${t.key}`}>{t.name}</option>
+                ))}
+              </optgroup>
+              <optgroup label="Your own">
+                <option value="custom">{custom ? `Custom: ${custom.name}` : "Custom — build your own"}</option>
+              </optgroup>
+            </select>
+            <p className="bld-sub">
+              {current ? `${totals.marks} marks · ${totals.questions} questions${current.durationMin ? ` · ${current.durationMin} min` : ""}` : " "}
+            </p>
+          </div>
+          <div className="bld-f">
+            <label>Difficulty</label>
+            <div className="seg bld-seg" role="group" aria-label="Difficulty mix">
+              {SPLITS.map((s, i) => (
+                <button key={s.label} type="button" className={i === splitIdx ? "on" : ""} onClick={() => setSplitIdx(i)}>
+                  {s.label}
+                </button>
+              ))}
+              <button type="button" className={splitIdx === -1 ? "on" : ""} onClick={() => setSplitIdx(-1)}>
+                My own
+              </button>
+            </div>
+            <p className="bld-sub">
+              <span className="e">Easy {Math.round(split.easy * 100)}%</span> · <span className="m">Medium {Math.round(split.medium * 100)}%</span> ·{" "}
+              <span className="h">Hard {Math.round(split.hard * 100)}%</span>
+            </p>
+          {splitIdx === -1 && (
+              <div style={{ marginTop: 8 }}>
+                <div className="mixedit">
+                  {(["easy", "medium", "hard"] as const).map((k) => (
+                    <label key={k} className={`mixin ${k[0]}`}>
+                      <span>{k} %</span>
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        min={0}
+                        max={100}
+                        step={5}
+                        className="inp"
+                        value={customPct[k]}
+                        onChange={(e) => {
+                          const v = Math.max(0, Math.min(100, Math.round(Number(e.target.value) || 0)));
+                          const next = { ...customPct, [k]: v };
+                          setCustomPct(next);
+                          if (next.easy + next.medium + next.hard === 100) setLastGoodCustom(next);
+                        }}
+                      />
+                    </label>
+                  ))}
+                </div>
+                <p style={{ fontSize: 11.5, margin: "6px 0 0", color: customSum === 100 ? "var(--graphite)" : "var(--pen)" }}>
+                  {customSum === 100
+                    ? "Adds up to 100%. The paper matches this as closely as the chapters allow."
+                    : `Adds up to ${customSum}% — it must be 100% to apply.`}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="bld-chaps">
+          <div className="bld-chapshead">
+            <span>
+              Chapters <b>{chapterIds.length} of {bundle.chapters.filter((c) => c.approved > 0).length}</b>
+              <span className="muted"> · the number is how many questions each can draw from</span>
+            </span>
+            <span className="btnrow">
+              <button type="button" className="btn sm ghost" onClick={() => setChapterIds(bundle.chapters.filter((c) => c.approved > 0).map((c) => c.chapterId))}>
+                Select all
+              </button>
+              <button type="button" className="btn sm ghost" onClick={() => setChapterIds([])}>
+                Clear
+              </button>
+            </span>
+          </div>
+          {bundle.chapters.length === 0 ? (
+            <p className="muted" style={{ fontSize: 12.5, margin: 0 }}>No chapters are set up for this subject yet.</p>
+          ) : (
+            <div className="chipset">
+              {bundle.chapters.map((c) => {
+                const on = chapterIds.includes(c.chapterId);
+                return (
+                  <button
+                    key={c.chapterId}
+                    type="button"
+                    className={`chapchip${on ? " on" : ""}`}
+                    aria-pressed={on}
+                    disabled={c.approved === 0}
+                    onClick={() => toggleChapter(c.chapterId)}
+                  >
+                    {c.name}
+                    <span className={`cnt${c.approved < THIN ? " thin" : ""}`}>{c.approved}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+          {relaxed.length > 0 && (
+            <div className="bld-relaxed">
+              {relaxed.map((r) => (
+                <div key={r} className="notice warn" style={{ margin: 0, padding: "7px 9px", display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
+                  <span style={{ fontSize: 12 }}>
+                    <b>{RELAX_COPY[r].active}.</b> You chose this.
+                  </span>
+                  <button type="button" className="btn sm ghost" onClick={() => setRelaxed((cur) => cur.filter((x) => x !== r))}>
+                    Undo
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+        <details className="bld-more" open={editorOpen || undefined}>
+          <summary>
+            More options <span className="muted">· layout details, repeat rule{bundle.strands.length >= 2 ? ", strand balance" : ""}</span>
+          </summary>
+          <div className="bld-moregrid">
+            <div>
+              <h3 className="blk">Layout</h3>
           {current && (
             <div className="laysum">
               {current.sections.map((s, i) => (
@@ -356,7 +466,7 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
               </div>
             </div>
           )}
-          <div className="btnrow" style={{ marginTop: 8 }}>
+              <div className="btnrow" style={{ marginTop: 8 }}>
             <button type="button" className="btn sm ghost" onClick={layoutSel === "custom" ? () => setEditorOpen((o) => !o) : customiseCurrent} disabled={!current}>
               {layoutSel === "custom" ? (editorOpen ? "Hide the editor" : "Edit layout") : "Customise this layout"}
             </button>
@@ -378,64 +488,15 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
                 {removing ? "Removing…" : "Remove from our list"}
               </button>
             )}
-          </div>
-        </div>
-
-          </div>
-          <div className="bld-cell">
-        <div className="field">
-          <label>Difficulty mix</label>
-          <div className="mixrow">
-            {(["easy", "medium", "hard"] as const).map((k) => (
-              <div key={k} className={`mix ${k[0]}`}>
-                <b>{Math.round(split[k] * 100)}%</b>
-                <span>{k}</span>
               </div>
-            ))}
-          </div>
-          <div className="btnrow" style={{ marginTop: 8 }}>
-            {SPLITS.map((s, i) => (
-              <button key={s.label} type="button" className={`btn sm${i === splitIdx ? " solid" : " ghost"}`} onClick={() => setSplitIdx(i)}>
-                {s.label}
-              </button>
-            ))}
-            <button type="button" className={`btn sm${splitIdx === -1 ? " solid" : " ghost"}`} onClick={() => setSplitIdx(-1)}>
-              My own
-            </button>
-          </div>
-          {splitIdx === -1 && (
-            <div style={{ marginTop: 8 }}>
-              <div className="mixedit">
-                {(["easy", "medium", "hard"] as const).map((k) => (
-                  <label key={k} className={`mixin ${k[0]}`}>
-                    <span>{k} %</span>
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      min={0}
-                      max={100}
-                      step={5}
-                      className="inp"
-                      value={customPct[k]}
-                      onChange={(e) => {
-                        const v = Math.max(0, Math.min(100, Math.round(Number(e.target.value) || 0)));
-                        const next = { ...customPct, [k]: v };
-                        setCustomPct(next);
-                        if (next.easy + next.medium + next.hard === 100) setLastGoodCustom(next);
-                      }}
-                    />
-                  </label>
-                ))}
-              </div>
-              <p style={{ fontSize: 11.5, margin: "6px 0 0", color: customSum === 100 ? "var(--graphite)" : "var(--pen)" }}>
-                {customSum === 100
-                  ? "Adds up to 100%. The paper matches this as closely as the chapters allow."
-                  : `Adds up to ${customSum}% — it must be 100% to apply.`}
-              </p>
             </div>
-          )}
-        </div>
-
+            <div>
+              <h3 className="blk">Rules</h3>
+              <label className="toggle">
+                <input type="checkbox" checked={repeatGuard} onChange={(e) => setRepeatGuard(e.target.checked)} />
+                Skip anything used in my last 3 papers
+              </label>
+            </div>
         {bundle.strands.length >= 2 && (
           <div className="field">
             <label>Strand balance</label>
@@ -478,71 +539,7 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
         )}
 
           </div>
-          <div className="bld-cell">
-        <div className="field">
-          <label>Rules</label>
-          <label className="toggle">
-            <input type="checkbox" checked={repeatGuard} onChange={(e) => setRepeatGuard(e.target.checked)} />
-            Skip anything used in my last 3 papers
-          </label>
-          {relaxed.length > 0 && (
-            <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
-              {relaxed.map((r) => (
-                <div key={r} className="notice warn" style={{ margin: 0, padding: "7px 9px", display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
-                  <span style={{ fontSize: 12 }}>
-                    <b>{RELAX_COPY[r].active}.</b> You chose this.
-                  </span>
-                  <button type="button" className="btn sm ghost" onClick={() => setRelaxed((cur) => cur.filter((x) => x !== r))}>
-                    Undo
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-          </div>
-        </div>
-        <div className="bld-cell bld-chapters">
-        <div className="field">
-          <div className="bld-labelrow">
-            <label>Chapters to cover · {chapterIds.length} of {bundle.chapters.filter((c) => c.approved > 0).length}</label>
-            <span className="btnrow">
-              <button type="button" className="btn sm ghost" onClick={() => setChapterIds(bundle.chapters.filter((c) => c.approved > 0).map((c) => c.chapterId))}>
-                Select all
-              </button>
-              <button type="button" className="btn sm ghost" onClick={() => setChapterIds([])}>
-                Clear
-              </button>
-            </span>
-          </div>
-          {bundle.chapters.length === 0 ? (
-            <p style={{ fontSize: 12, color: "var(--graphite)", margin: 0 }}>
-              No chapters are set up for this subject yet.
-            </p>
-          ) : (
-            <div className="checks">
-              {bundle.chapters.map((c) => (
-                <label className="check" key={c.chapterId}>
-                  <input
-                    type="checkbox"
-                    checked={chapterIds.includes(c.chapterId)}
-                    disabled={c.approved === 0}
-                    onChange={() => toggleChapter(c.chapterId)}
-                  />
-                  {c.name}
-                  <span className={`cnt${c.approved < THIN ? " thin" : ""}`}>{c.approved}</span>
-                </label>
-              ))}
-            </div>
-          )}
-          <p style={{ fontSize: 11, color: "var(--graphite)", margin: "8px 0 0" }}>
-            Each count is the pool you will actually draw from — the shared bank plus your
-            institute&rsquo;s own questions, minus anything flagged.
-          </p>
-        </div>
-
-        </div>
+        </details>
       </section>
 
       <div className="bld-main">

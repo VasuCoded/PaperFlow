@@ -31,11 +31,11 @@ describe("console menu", () => {
     expect(labels(navFor("teacher", "teacher"))).toContain("My papers");
   });
 
-  it("gives the platform menu the same nine pages, whoever looks", () => {
+  it("gives the platform menu the same ten pages, whoever looks", () => {
     for (const role of ["owner", "institute_admin", null]) {
       const groups = navFor("platform", role);
-      expect(links(groups)).toHaveLength(9);
-      expect(new Set(links(groups)).size).toBe(9);
+      expect(links(groups)).toHaveLength(10);
+      expect(new Set(links(groups)).size).toBe(10);
       expect(links(groups).every((h) => h.startsWith("/platform"))).toBe(true);
     }
   });

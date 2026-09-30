@@ -44,7 +44,10 @@ const PLATFORM: NavGroup[] = [
   },
   {
     title: "Question bank",
-    items: [{ href: "/platform/bank", label: "Review queue", icon: "check", badge: "review" }],
+    items: [
+      { href: "/platform/questions", label: "All questions", icon: "book" },
+      { href: "/platform/bank", label: "Review queue", icon: "check", badge: "review" },
+    ],
   },
   {
     title: "System",

@@ -7,6 +7,7 @@ import type { ActionResult } from "@/server/actions/membership";
 import { confirmsIdentity, loginToEmail, usernameProblem } from "@/lib/identity";
 import { createAdminClient } from "@/lib/db/admin";
 import { resetPassword } from "@/server/passwords";
+import { FIGURE_TOKEN, figureToken } from "@/lib/print/math";
 
 /**
  * Platform console mutations. Each checks the platform owner here for a clear
@@ -354,4 +355,70 @@ export async function platformResetPassword(login: string, typedConfirmation: st
     action: "password_reset_by_platform",
   });
   return res.ok ? { ok: true, password: res.password } : { ok: false, message: res.message };
+}
+
+const FIGURE_TYPES: Record<string, string> = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp" };
+const FIGURE_MAX_BYTES = 2 * 1024 * 1024;
+
+/**
+ * Attach a figure (graph, diagram) to a question. The file goes to the private
+ * question-assets bucket; a question_assets row records it (RLS: platform owner
+ * only); and a [[fig:id]] marker is placed in the body, before or after the
+ * text, which is where every screen and the printed paper show it.
+ */
+export async function attachFigureAction(formData: FormData): Promise<ActionResult> {
+  const supabase = await ownerClient();
+  if (!supabase) return DENIED;
+  const questionId = String(formData.get("questionId") ?? "");
+  const place = formData.get("place") === "before" ? "before" : "after";
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) return { ok: false, message: "Choose an image file." };
+  const ext = FIGURE_TYPES[file.type];
+  if (!ext) return { ok: false, message: "Use a PNG, JPG or WebP image." };
+  if (file.size > FIGURE_MAX_BYTES) return { ok: false, message: "The image must be 2 MB or smaller." };
+
+  const { data: q } = await supabase.from("questions").select("id, owner_institute_id, body").eq("id", questionId).maybeSingle();
+  if (!q) return { ok: false, message: "Question not found." };
+
+  const assetId = crypto.randomUUID();
+  const path = `${q.owner_institute_id}/${q.id}/${assetId}.${ext}`;
+  const admin = createAdminClient();
+  const { error: upErr } = await admin.storage.from("question-assets").upload(path, file, { contentType: file.type, upsert: false });
+  if (upErr) return { ok: false, message: upErr.message };
+
+  const { error: rowErr } = await supabase
+    .from("question_assets")
+    .insert({ id: assetId, owner_institute_id: q.owner_institute_id, question_id: q.id, storage_path: path, kind: "figure" });
+  if (rowErr) {
+    await admin.storage.from("question-assets").remove([path]);
+    return { ok: false, message: rowErr.message };
+  }
+  const token = figureToken(assetId);
+  const body = place === "before" ? `${token}\n${q.body}` : `${q.body}\n${token}`;
+  const { error: qErr } = await supabase.from("questions").update({ body }).eq("id", q.id);
+  if (qErr) return { ok: false, message: qErr.message };
+  revalidatePath("/platform/questions");
+  return { ok: true };
+}
+
+/** Remove a figure: its marker from the body, its row, and its file. */
+export async function removeFigureAction(assetId: string): Promise<ActionResult> {
+  const supabase = await ownerClient();
+  if (!supabase) return DENIED;
+  const { data: asset } = await supabase.from("question_assets").select("id, question_id, storage_path").eq("id", assetId).maybeSingle();
+  if (!asset) return { ok: false, message: "Figure not found." };
+  const { data: q } = await supabase.from("questions").select("id, body").eq("id", asset.question_id).maybeSingle();
+  if (q) {
+    const body = q.body
+      .replace(new RegExp(FIGURE_TOKEN.source, "gi"), (m, id: string) => (id.toLowerCase() === assetId.toLowerCase() ? "" : m))
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+    const { error } = await supabase.from("questions").update({ body }).eq("id", q.id);
+    if (error) return { ok: false, message: error.message };
+  }
+  const { error: delErr } = await supabase.from("question_assets").delete().eq("id", asset.id);
+  if (delErr) return { ok: false, message: delErr.message };
+  await createAdminClient().storage.from("question-assets").remove([asset.storage_path]);
+  revalidatePath("/platform/questions");
+  return { ok: true };
 }

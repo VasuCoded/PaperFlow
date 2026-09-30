@@ -84,3 +84,20 @@ describe("firstWordsTex", () => {
     expect(html).not.toContain("$");
   });
 });
+
+describe("figures in question bodies", () => {
+  const id = "0f8e2c1a-5b6d-4e7f-8a9b-0c1d2e3f4a5b";
+  it("renders a figure marker as an image served by /asset", () => {
+    const html = renderRich(`Look at the graph. [[fig:${id}]] How many zeroes?`);
+    expect(html).toContain(`<img src="/asset/${id}"`);
+    expect(html).toContain('class="qfig"');
+    expect(html).not.toContain("[[fig:");
+  });
+  it("leaves anything that is not a real id as plain, escaped text", () => {
+    expect(renderRich("[[fig:../../etc]]")).toBe("[[fig:../../etc]]");
+    expect(renderRich('[[fig:x"><script>]]')).not.toContain("<script>");
+  });
+  it("keeps figures out of the short preview a student confirms", () => {
+    expect(firstWordsTex(`[[fig:${id}]] The graph of $y = p(x)$ is shown.`, 4)).not.toContain("fig");
+  });
+});
