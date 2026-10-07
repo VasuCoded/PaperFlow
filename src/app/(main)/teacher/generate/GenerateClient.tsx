@@ -22,6 +22,8 @@ import {
   type CustomLayout,
   type LayoutSection,
 } from "@/lib/paper-layout";
+import { Dropdown, type DropdownOption } from "@/components/ui/Dropdown";
+import { Icon } from "@/components/ui/Icon";
 import { LayoutEditor } from "./LayoutEditor";
 
 export interface SubjectBundle {
@@ -45,9 +47,9 @@ export interface SubjectBundle {
 }
 
 const SPLITS = [
-  { label: "30 / 50 / 20", value: { easy: 0.3, medium: 0.5, hard: 0.2 } },
-  { label: "40 / 40 / 20", value: { easy: 0.4, medium: 0.4, hard: 0.2 } },
-  { label: "20 / 50 / 30", value: { easy: 0.2, medium: 0.5, hard: 0.3 } },
+  { label: "Balanced", value: { easy: 0.3, medium: 0.5, hard: 0.2 } },
+  { label: "Easier", value: { easy: 0.4, medium: 0.4, hard: 0.2 } },
+  { label: "Harder", value: { easy: 0.2, medium: 0.5, hard: 0.3 } },
 ];
 
 const THIN = 8;
@@ -286,194 +288,122 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
 
   const lockedSet = new Set(locked);
   const selectedBatch = bundle.batches.find((b) => b.id === batchId);
+  const usable = bundle.chapters.filter((c) => c.approved > 0);
+  const placed = preview?.ok ? preview.sections.reduce((a, s) => a + s.blocks.length, 0) : 0;
   let counter = 0;
 
+  const layoutOptions: DropdownOption[] = [
+    ...bundle.patterns.filter((p) => !p.isInstituteTemplate).map((p) => ({
+      value: `p:${p.id}`,
+      label: p.name,
+      hint: `${p.totalMarks} marks${p.durationMin ? ` · ${p.durationMin} min` : ""}${p.origin === "board" ? " · board pattern" : ""}`,
+      group: "CBSE and standard",
+    })),
+    ...bundle.patterns.filter((p) => p.isInstituteTemplate).map((p) => ({
+      value: `p:${p.id}`,
+      label: p.name,
+      hint: `${p.totalMarks} marks${p.durationMin ? ` · ${p.durationMin} min` : ""}`,
+      group: "Saved by your institute",
+    })),
+    ...QUICK_TEMPLATES.map((t) => {
+      const tt = layoutTotals(t.layout.sections);
+      return { value: `t:${t.key}`, label: t.name, hint: `${tt.marks} marks · ${tt.questions} questions`, group: "Quick tests" };
+    }),
+    { value: "custom", label: custom ? custom.name : "Build your own", hint: custom ? "Your own layout" : "Choose every section yourself", group: "Your own" },
+  ];
+
   return (
-    <>
-      {/* --------------------------- paper format (top) --------------------------- */}
-      <section className="bld-format" aria-label="Paper format">
-        <div className="bld-bar">
-          <div className="bld-f">
-            <label htmlFor="cls">Class and subject</label>
-            <select className="sel" id="cls" value={bundle.classSubjectId} onChange={(e) => changeSubject(e.target.value)}>
-              {subjects.map((s) => (
-                <option key={s.classSubjectId} value={s.classSubjectId}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="bld-f grow">
-            <label htmlFor="title">Title</label>
-            <input className="inp" id="title" value={title} maxLength={120} placeholder={current?.name ?? "Unit test"} onChange={(e) => setTitle(e.target.value)} />
-          </div>
-          <div className="bld-f wide">
-            <label htmlFor="pat">Paper layout</label>
-          <select className="sel" id="pat" value={layoutSel} onChange={(e) => chooseLayout(e.target.value)}>
-              {bundle.patterns.some((p) => !p.isInstituteTemplate) && (
-                <optgroup label="CBSE and standard patterns">
-                  {bundle.patterns.filter((p) => !p.isInstituteTemplate).map((p) => (
-                    <option key={p.id} value={`p:${p.id}`}>
-                      {p.name} · {p.totalMarks} marks{p.origin === "board" ? " · board" : ""}
-                    </option>
-                  ))}
-                </optgroup>
-              )}
-              {bundle.patterns.some((p) => p.isInstituteTemplate) && (
-                <optgroup label="Saved by your institute">
-                  {bundle.patterns.filter((p) => p.isInstituteTemplate).map((p) => (
-                    <option key={p.id} value={`p:${p.id}`}>
-                      {p.name} · {p.totalMarks} marks
-                    </option>
-                  ))}
-                </optgroup>
-              )}
-              <optgroup label="Quick templates">
-                {QUICK_TEMPLATES.map((t) => (
-                  <option key={t.key} value={`t:${t.key}`}>{t.name}</option>
-                ))}
-              </optgroup>
-              <optgroup label="Your own">
-                <option value="custom">{custom ? `Custom: ${custom.name}` : "Custom — build your own"}</option>
-              </optgroup>
-            </select>
-            <p className="bld-sub">
-              {current ? `${totals.marks} marks · ${totals.questions} questions${current.durationMin ? ` · ${current.durationMin} min` : ""}` : " "}
-            </p>
-          </div>
-          <div className="bld-f">
-            <label>Difficulty</label>
-            <div className="seg bld-seg" role="group" aria-label="Difficulty mix">
-              {SPLITS.map((s, i) => (
-                <button key={s.label} type="button" className={i === splitIdx ? "on" : ""} onClick={() => setSplitIdx(i)}>
-                  {s.label}
-                </button>
-              ))}
-              <button type="button" className={splitIdx === -1 ? "on" : ""} onClick={() => setSplitIdx(-1)}>
-                My own
-              </button>
-            </div>
-            <p className="bld-sub">
-              <span className="e">Easy {Math.round(split.easy * 100)}%</span> · <span className="m">Medium {Math.round(split.medium * 100)}%</span> ·{" "}
-              <span className="h">Hard {Math.round(split.hard * 100)}%</span>
-            </p>
-          {splitIdx === -1 && (
-              <div style={{ marginTop: 8 }}>
-                <div className="mixedit">
-                  {(["easy", "medium", "hard"] as const).map((k) => (
-                    <label key={k} className={`mixin ${k[0]}`}>
-                      <span>{k} %</span>
-                      <input
-                        type="number"
-                        inputMode="numeric"
-                        min={0}
-                        max={100}
-                        step={5}
-                        className="inp"
-                        value={customPct[k]}
-                        onChange={(e) => {
-                          const v = Math.max(0, Math.min(100, Math.round(Number(e.target.value) || 0)));
-                          const next = { ...customPct, [k]: v };
-                          setCustomPct(next);
-                          if (next.easy + next.medium + next.hard === 100) setLastGoodCustom(next);
-                        }}
-                      />
-                    </label>
-                  ))}
-                </div>
-                <p style={{ fontSize: 11.5, margin: "6px 0 0", color: customSum === 100 ? "var(--graphite)" : "var(--pen)" }}>
-                  {customSum === 100
-                    ? "Adds up to 100%. The paper matches this as closely as the chapters allow."
-                    : `Adds up to ${customSum}% — it must be 100% to apply.`}
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
+    <div className="pb">
+      {/* ============================ the recipe (left) ============================ */}
+      <div className="pb-panel" aria-label="Paper settings">
+        <section className="pb-step">
+          <h3 className="pb-h"><span className="pb-n">1</span>Who is it for</h3>
+          <label className="pb-l" htmlFor="cls">Class and subject</label>
+          <Dropdown
+            id="cls"
+            value={bundle.classSubjectId}
+            onChange={changeSubject}
+            options={subjects.map((s) => ({ value: s.classSubjectId, label: s.label, hint: `${s.chapters.filter((c) => c.approved > 0).length} chapters with questions` }))}
+          />
+          <label className="pb-l" htmlFor="batch">Batch</label>
+          <Dropdown
+            id="batch"
+            value={batchId ?? ""}
+            onChange={(v) => setBatchId(v || null)}
+            options={[
+              ...bundle.batches.map((b) => ({ value: b.id, label: b.name, hint: `${b.students} student${b.students === 1 ? "" : "s"}` })),
+              { value: "", label: "No batch", hint: "Just print it" },
+            ]}
+          />
+        </section>
 
-        <div className="bld-chaps">
-          <div className="bld-chapshead">
-            <span>
-              Chapters <b>{chapterIds.length} of {bundle.chapters.filter((c) => c.approved > 0).length}</b>
-              <span className="muted"> · the number is how many questions each can draw from</span>
-            </span>
-            <span className="btnrow">
-              <button type="button" className="btn sm ghost" onClick={() => setChapterIds(bundle.chapters.filter((c) => c.approved > 0).map((c) => c.chapterId))}>
-                Select all
-              </button>
-              <button type="button" className="btn sm ghost" onClick={() => setChapterIds([])}>
-                Clear
-              </button>
-            </span>
-          </div>
+        <section className="pb-step">
+          <h3 className="pb-h">
+            <span className="pb-n">2</span>Chapters
+            <span className="pb-count">{chapterIds.length} of {usable.length}</span>
+          </h3>
           {bundle.chapters.length === 0 ? (
-            <p className="muted" style={{ fontSize: 12.5, margin: 0 }}>No chapters are set up for this subject yet.</p>
+            <p className="pb-note">No chapters are set up for this subject yet.</p>
           ) : (
-            <div className="chipset">
-              {bundle.chapters.map((c) => {
-                const on = chapterIds.includes(c.chapterId);
-                return (
-                  <button
-                    key={c.chapterId}
-                    type="button"
-                    className={`chapchip${on ? " on" : ""}`}
-                    aria-pressed={on}
-                    disabled={c.approved === 0}
-                    onClick={() => toggleChapter(c.chapterId)}
-                  >
-                    {c.name}
-                    <span className={`cnt${c.approved < THIN ? " thin" : ""}`}>{c.approved}</span>
-                  </button>
-                );
-              })}
-            </div>
+            <>
+              <div className="chipset">
+                {bundle.chapters.map((c) => {
+                  const on = chapterIds.includes(c.chapterId);
+                  return (
+                    <button
+                      key={c.chapterId}
+                      type="button"
+                      className={`chapchip${on ? " on" : ""}`}
+                      aria-pressed={on}
+                      disabled={c.approved === 0}
+                      title={`${c.approved} question${c.approved === 1 ? "" : "s"} to draw from`}
+                      onClick={() => toggleChapter(c.chapterId)}
+                    >
+                      {on && <Icon name="tick" size={13} className="chapchip-tick" />}
+                      {c.name}
+                      <span className={`cnt${c.approved < THIN ? " thin" : ""}`}>{c.approved}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="pb-links">
+                <button type="button" className="pb-link" onClick={() => setChapterIds(usable.map((c) => c.chapterId))}>Select all</button>
+                <span aria-hidden="true">·</span>
+                <button type="button" className="pb-link" onClick={() => setChapterIds([])}>Clear</button>
+                <span className="pb-note inline">The number is how many questions a chapter has.</span>
+              </div>
+            </>
           )}
-        </div>
+        </section>
 
-          {relaxed.length > 0 && (
-            <div className="bld-relaxed">
-              {relaxed.map((r) => (
-                <div key={r} className="notice warn" style={{ margin: 0, padding: "7px 9px", display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
-                  <span style={{ fontSize: 12 }}>
-                    <b>{RELAX_COPY[r].active}.</b> You chose this.
-                  </span>
-                  <button type="button" className="btn sm ghost" onClick={() => setRelaxed((cur) => cur.filter((x) => x !== r))}>
-                    Undo
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-        <details className="bld-more" open={editorOpen || undefined}>
-          <summary>
-            More options <span className="muted">· layout details, repeat rule{bundle.strands.length >= 2 ? ", strand balance" : ""}</span>
-          </summary>
-          <div className="bld-moregrid">
-            <div>
-              <h3 className="blk">Layout</h3>
+        <section className="pb-step">
+          <h3 className="pb-h"><span className="pb-n">3</span>Paper pattern</h3>
+          <Dropdown id="pat" label="Paper pattern" value={layoutSel} onChange={(v) => chooseLayout(v as LayoutSel)} options={layoutOptions} />
           {current && (
-            <div className="laysum">
+            <div className="pb-sections">
               {current.sections.map((s, i) => (
-                <div key={i}>
-                  <span className="mono">{sectionLabel(i)}</span> {s.questionCount} × {kindLabel(s.questionTypes, s.requiresStimulus)}{" "}
-                  <span className="mk">({s.marksEach})</span>
-                  {s.allowChoice ? " · choice" : ""}
+                <div key={i} className="pb-secrow">
+                  <span className="pb-seclabel">{sectionLabel(i)}</span>
+                  <span className="pb-secwhat">{s.questionCount} × {kindLabel(s.questionTypes, s.requiresStimulus)}{s.allowChoice ? " · choice" : ""}</span>
+                  <span className="pb-secmk">{s.questionCount * s.marksEach}</span>
                 </div>
               ))}
-              <div className="laysum-total">
-                {totals.marks} marks · {totals.questions} questions{current.durationMin ? ` · ${current.durationMin} min` : ""}
+              <div className="pb-secrow total">
+                <span />
+                <span className="pb-secwhat">{totals.questions} questions{current.durationMin ? ` · ${current.durationMin} min` : ""}</span>
+                <span className="pb-secmk">{totals.marks}</span>
               </div>
             </div>
           )}
-              <div className="btnrow" style={{ marginTop: 8 }}>
-            <button type="button" className="btn sm ghost" onClick={layoutSel === "custom" ? () => setEditorOpen((o) => !o) : customiseCurrent} disabled={!current}>
-              {layoutSel === "custom" ? (editorOpen ? "Hide the editor" : "Edit layout") : "Customise this layout"}
+          <div className="pb-links">
+            <button type="button" className="pb-link" onClick={layoutSel === "custom" ? () => setEditorOpen((o) => !o) : customiseCurrent} disabled={!current}>
+              <Icon name="pencil" size={13} />
+              {layoutSel === "custom" ? (editorOpen ? "Hide the section editor" : "Edit sections") : "Change sections"}
             </button>
             {storedPattern?.canRemove && (
               <button
                 type="button"
-                className="btn sm ghost"
+                className="pb-link quiet"
                 disabled={removing}
                 onClick={() =>
                   startRemove(async () => {
@@ -488,172 +418,302 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
                 {removing ? "Removing…" : "Remove from our list"}
               </button>
             )}
-              </div>
-            </div>
-            <div>
-              <h3 className="blk">Rules</h3>
-              <label className="toggle">
-                <input type="checkbox" checked={repeatGuard} onChange={(e) => setRepeatGuard(e.target.checked)} />
-                Skip anything used in my last 3 papers
-              </label>
-            </div>
-        {bundle.strands.length >= 2 && (
-          <div className="field">
-            <label>Strand balance</label>
-            <label className="toggle">
-              <input type="checkbox" checked={strandOn} onChange={(e) => setStrandOn(e.target.checked)} />
-              Hold each strand to a share of the questions
-            </label>
-            {strandOn && (
-              <div style={{ marginTop: 4 }}>
-                {bundle.strands.map((st) => (
-                  <div key={st.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                    <label htmlFor={`strand-${st.id}`} style={{ flex: 1, fontSize: 12.5, fontWeight: 400, margin: 0 }}>{st.name}</label>
+          </div>
+        </section>
+
+        <section className="pb-step">
+          <h3 className="pb-h"><span className="pb-n">4</span>Difficulty</h3>
+          <div className="seg pb-seg" role="group" aria-label="Difficulty mix">
+            {SPLITS.map((s, i) => (
+              <button key={s.label} type="button" className={i === splitIdx ? "on" : ""} aria-pressed={i === splitIdx} onClick={() => setSplitIdx(i)}>
+                {s.label}
+              </button>
+            ))}
+            <button type="button" className={splitIdx === -1 ? "on" : ""} aria-pressed={splitIdx === -1} onClick={() => setSplitIdx(-1)}>
+              My own
+            </button>
+          </div>
+          <div className="pb-mix" aria-hidden="true">
+            <span className="e" style={{ flexGrow: split.easy }} />
+            <span className="m" style={{ flexGrow: split.medium }} />
+            <span className="h" style={{ flexGrow: split.hard }} />
+          </div>
+          <p className="pb-mixkey">
+            <span className="e">Easy {Math.round(split.easy * 100)}%</span>
+            <span className="m">Medium {Math.round(split.medium * 100)}%</span>
+            <span className="h">Hard {Math.round(split.hard * 100)}%</span>
+          </p>
+          {splitIdx === -1 && (
+            <div className="pb-own">
+              <div className="mixedit">
+                {(["easy", "medium", "hard"] as const).map((k) => (
+                  <label key={k} className={`mixin ${k[0]}`}>
+                    <span>{k} %</span>
                     <input
-                      id={`strand-${st.id}`}
                       type="number"
                       inputMode="numeric"
                       min={0}
                       max={100}
                       step={5}
                       className="inp"
-                      style={{ width: 72, padding: "5px 7px" }}
-                      value={strandPct[st.id] ?? 0}
+                      value={customPct[k]}
                       onChange={(e) => {
                         const v = Math.max(0, Math.min(100, Math.round(Number(e.target.value) || 0)));
-                        setStrandPct((cur) => ({ ...cur, [st.id]: v }));
+                        const next = { ...customPct, [k]: v };
+                        setCustomPct(next);
+                        if (next.easy + next.medium + next.hard === 100) setLastGoodCustom(next);
                       }}
                     />
-                    <span style={{ fontSize: 12, color: "var(--graphite)" }}>%</span>
-                  </div>
+                  </label>
                 ))}
-                <p style={{ fontSize: 11.5, margin: "4px 0 6px", color: strandSum === 100 ? "var(--graphite)" : "var(--pen)" }}>
-                  {strandSum === 100 ? "Adds up to 100%." : `Adds up to ${strandSum}% — it must be 100% to apply.`}
-                </p>
-                <button type="button" className="btn sm ghost" onClick={() => setStrandPct(evenSplit(bundle.strands))}>
-                  Split evenly
-                </button>
               </div>
-            )}
-          </div>
-        )}
-
-          </div>
-        </details>
-      </section>
-
-      <div className="bld-main">
-      {/* ------------------------------ preview ------------------------------ */}
-      <section className="preview">
-        <div className="pvhead">
-          <div>
-            <h2>{title || current?.name}</h2>
-            <div className="sub">
-              {bundle.label.toUpperCase()} · {totals.marks} MARKS
-              {current?.durationMin ? ` · ${current.durationMin} MIN` : ""} · {setCount} SET
-              {setCount === 1 ? "" : "S"} · DRAFT
+              <p className={`pb-note${customSum === 100 ? "" : " bad"}`}>
+                {customSum === 100 ? "Adds up to 100%." : `Adds up to ${customSum}% — it must be 100% to apply.`}
+              </p>
             </div>
+          )}
+        </section>
+
+        <section className="pb-step">
+          <h3 className="pb-h"><span className="pb-n">5</span>Copies</h3>
+          <div className="seg pb-seg" role="group" aria-label="Different versions to print">
+            {[1, 2, 3, 4].map((n) => (
+              <button key={n} type="button" className={setCount === n ? "on" : ""} aria-pressed={setCount === n} onClick={() => setSetCount(n)}>
+                {n === 1 ? "One version" : `${n} sets`}
+              </button>
+            ))}
           </div>
-        </div>
-
-
-        {layoutSel === "custom" && custom && editorOpen && (
-          <LayoutEditor
-            layout={custom}
-            onChange={editCustom}
-            availability={availability}
-            saveAsTemplate={saveAsTemplate}
-            onSaveAsTemplate={setSaveAsTemplate}
-            onClose={() => setEditorOpen(false)}
-          />
-        )}
-
-        {!preview && <p className="lede" style={{ marginTop: 16 }}>Building a first paper…</p>}
-
-        {preview && !preview.ok && (
-          <div style={{ paddingTop: 16 }}>
-            <div className="notice warn">
-              <b>Could not build this paper.</b> {preview.reason}
-            </div>
-            {preview.shortfall.length > 0 && (
-              <div className="tablewrap" style={{ marginBottom: 14 }}>
-                <table className="lt">
-                  <thead>
-                    <tr>
-                      <th>Section</th>
-                      <th className="num">Marks each</th>
-                      <th className="num">Needed</th>
-                      <th className="num">Available</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {preview.shortfall.map((s) => (
-                      <tr key={s.section}>
-                        <td>Section {s.section}</td>
-                        <td className="num">{s.marks}</td>
-                        <td className="num">{s.needed}</td>
-                        <td className="num" style={{ color: "var(--pen)" }}>{s.available}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-            {(preview.suggestions.some((s) => s.relax !== "repeat_guard") || repeatGuard) && (
-              <>
-                <h3 className="blk">What would help — you choose</h3>
-                <div className="cards c3">
-                  {preview.suggestions
-                    .filter((s): s is typeof s & { relax: Relax } => s.relax !== "repeat_guard")
-                    .map((s) => (
-                      <div className="card tinted" key={s.relax}>
-                        <h4>{RELAX_COPY[s.relax].action}</h4>
-                        <p>
-                          {RELAX_COPY[s.relax].effect}{" "}
-                          {s.would_yield > 0
-                            ? <>Fills <b>{s.would_yield}</b> more question{s.would_yield === 1 ? "" : "s"}.</>
-                            : <>Lets this paper through with the questions it already has.</>}
-                        </p>
-                        <div className="btnrow" style={{ marginTop: 10 }}>
-                          <button type="button" className="btn sm solid" onClick={() => setRelaxed((cur) => (cur.includes(s.relax) ? cur : [...cur, s.relax]))}>
-                            {RELAX_COPY[s.relax].action}
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  {repeatGuard && (
-                    <div className="card tinted">
-                      <h4>Allow questions from recent papers</h4>
-                      <p>Turns off &ldquo;skip anything used in my last 3 papers&rdquo;, which brings those questions back into the pool.</p>
-                      <div className="btnrow" style={{ marginTop: 10 }}>
-                        <button type="button" className="btn sm solid" onClick={() => setRepeatGuard(false)}>
-                          Turn off the repeat rule
-                        </button>
-                      </div>
-                    </div>
-                  )}
+          <p className="pb-note">
+            {setCount === 1
+              ? "Everyone gets the same paper."
+              : preview?.ok
+                ? `Same questions, shuffled into ${setCount} orders, so neighbours have different papers. For ${selectedBatch?.students ?? 40} students: ${preview.copies.map((c, i) => `${String.fromCharCode(65 + i)} ${c}`).join(", ")}. Hand out A, B, C… along each row.`
+                : `Same questions, shuffled into ${setCount} orders, so neighbours have different papers.`}
+          </p>
+          {setCount > 1 && preview?.ok && preview.warnings.length > 0 && (
+            <div className="notice warn pb-tight">
+              {preview.warnings.map((w) => (
+                <div key={w.section}>
+                  Section {w.section} has {w.blocks} question{w.blocks === 1 ? "" : "s"}, so some sets share its order.
                 </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {relaxed.length > 0 && (
+          <div className="pb-relaxed">
+            {relaxed.map((r) => (
+              <div key={r} className="notice warn pb-tight pb-relaxrow">
+                <span><b>{RELAX_COPY[r].active}.</b> You chose this.</span>
+                <button type="button" className="btn sm ghost" onClick={() => setRelaxed((cur) => cur.filter((x) => x !== r))}>Undo</button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <details className="pb-more" open={(bundle.strands.length >= 2 && strandOn) || undefined}>
+          <summary>
+            <Icon name="chevronRight" size={14} className="pb-more-chev" />
+            More settings
+          </summary>
+          <div className="pb-morebody">
+            <label className="pb-switchrow">
+              <span>
+                <b>Skip recent questions</b>
+                <span>Leave out anything used in your last 3 papers.</span>
+              </span>
+              <span className={`switch${repeatGuard ? " on" : ""}`}>
+                <input type="checkbox" checked={repeatGuard} onChange={(e) => setRepeatGuard(e.target.checked)} />
+                <span className="knob" />
+              </span>
+            </label>
+            {bundle.strands.length >= 2 && (
+              <>
+                <label className="pb-switchrow">
+                  <span>
+                    <b>Strand balance</b>
+                    <span>Hold each strand to a share of the questions.</span>
+                  </span>
+                  <span className={`switch${strandOn ? " on" : ""}`}>
+                    <input type="checkbox" checked={strandOn} onChange={(e) => setStrandOn(e.target.checked)} />
+                    <span className="knob" />
+                  </span>
+                </label>
+                {strandOn && (
+                  <div className="pb-strands">
+                    {bundle.strands.map((st) => (
+                      <div key={st.id} className="pb-strand">
+                        <label htmlFor={`strand-${st.id}`}>{st.name}</label>
+                        <input
+                          id={`strand-${st.id}`}
+                          type="number"
+                          inputMode="numeric"
+                          min={0}
+                          max={100}
+                          step={5}
+                          className="inp"
+                          value={strandPct[st.id] ?? 0}
+                          onChange={(e) => {
+                            const v = Math.max(0, Math.min(100, Math.round(Number(e.target.value) || 0)));
+                            setStrandPct((cur) => ({ ...cur, [st.id]: v }));
+                          }}
+                        />
+                        <span>%</span>
+                      </div>
+                    ))}
+                    <p className={`pb-note${strandSum === 100 ? "" : " bad"}`}>
+                      {strandSum === 100 ? "Adds up to 100%." : `Adds up to ${strandSum}% — it must be 100% to apply.`}{" "}
+                      <button type="button" className="pb-link" onClick={() => setStrandPct(evenSplit(bundle.strands))}>Split evenly</button>
+                    </p>
+                  </div>
+                )}
               </>
             )}
-            <p style={{ fontSize: 12, color: "var(--graphite)", marginTop: 12 }}>
-              Or tick more chapters. The generator never relaxes a rule on your behalf — each of these only
-              applies once you click it, and you can undo it under Rules.
-            </p>
+          </div>
+        </details>
+      </div>
+
+      {/* ============================ the paper (right) ============================ */}
+      <section className="pb-paper" aria-label="Your paper">
+        <div className="pb-bar">
+          <div className="pb-status" aria-live="polite">
+            {loading ? (
+              <span className="pb-busy"><span className="pb-spin" aria-hidden="true" />Building…</span>
+            ) : preview?.ok ? (
+              <>
+                <span className="pb-chip"><b>{placed}</b> questions</span>
+                <span className="pb-chip"><b>{preview.totalMarks}</b> marks</span>
+                <span className="pb-chip" title="Actual easy / medium / hard">
+                  <i className="e" />{Math.round(preview.difficultyActual.easy * 100)}
+                  <i className="m" />{Math.round(preview.difficultyActual.medium * 100)}
+                  <i className="h" />{Math.round(preview.difficultyActual.hard * 100)}
+                </span>
+                {locked.length > 0 && <span className="pb-chip"><Icon name="lock" size={12} />{locked.length} kept</span>}
+              </>
+            ) : preview ? (
+              <span className="pb-chip bad">Needs a change</span>
+            ) : (
+              <span className="pb-busy"><span className="pb-spin" aria-hidden="true" />Building a first paper…</span>
+            )}
+          </div>
+          <div className="pb-actions">
+            <button type="button" className="btn ghost pb-shuffle" onClick={regenerate} disabled={loading || !layoutChoice} title="Pick different questions (kept ones stay)">
+              <Icon name="swap" size={15} className={loading ? "pb-spinning" : undefined} />
+              <span>New questions</span>
+            </button>
+            <button type="button" className="gen pb-save" onClick={save} disabled={saving || !preview?.ok}>
+              <Icon name="printer" size={16} />
+              {saving ? "Saving…" : "Save and print"}
+            </button>
+          </div>
+        </div>
+        {saveError && <div className="notice warn pb-tight pb-err">{saveError}</div>}
+
+        {layoutSel === "custom" && custom && editorOpen && (
+          <div className="pb-editor">
+            <LayoutEditor
+              layout={custom}
+              onChange={editCustom}
+              availability={availability}
+              saveAsTemplate={saveAsTemplate}
+              onSaveAsTemplate={setSaveAsTemplate}
+              onClose={() => setEditorOpen(false)}
+            />
           </div>
         )}
 
-        {preview?.ok && (
-          <div style={{ opacity: loading ? 0.55 : 1, transition: "opacity .15s" }}>
-            {preview.unappliedSwaps > 0 && (
-              <div className="notice plain" style={{ marginTop: 12 }}>
-                {preview.unappliedSwaps} swap{preview.unappliedSwaps === 1 ? "" : "s"} could not be
-                applied — there was no other question with the same marks, chapter and difficulty.
+        <div className={`pb-sheet${loading ? " busy" : ""}`}>
+          <div className="pb-titlewrap">
+            <input
+              className="pb-title"
+              id="title"
+              aria-label="Paper title"
+              value={title}
+              maxLength={120}
+              placeholder={current?.name ?? "Unit test"}
+              onChange={(e) => setTitle(e.target.value)}
+            />
+            <Icon name="pencil" size={14} className="pb-titleicon" />
+          </div>
+          <div className="pb-sub">
+            {bundle.label} · {totals.marks} marks{current?.durationMin ? ` · ${current.durationMin} min` : ""}
+            {setCount > 1 ? ` · ${setCount} sets` : ""}
+          </div>
+
+          {!preview && (
+            <div className="pb-skel" aria-hidden="true">
+              <span /><span /><span className="short" /><span /><span className="short" />
+            </div>
+          )}
+
+          {preview && !preview.ok && (
+            <div className="pb-fail">
+              <div className="notice warn">
+                <b>This paper can&rsquo;t be built yet.</b> {preview.reason}
               </div>
-            )}
-            <div className="paper">
+              {preview.shortfall.length > 0 && (
+                <div className="tablewrap pb-short">
+                  <table className="lt">
+                    <thead>
+                      <tr>
+                        <th>Section</th>
+                        <th className="num">Marks each</th>
+                        <th className="num">Needed</th>
+                        <th className="num">Available</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {preview.shortfall.map((s) => (
+                        <tr key={s.section}>
+                          <td>Section {s.section}</td>
+                          <td className="num">{s.marks}</td>
+                          <td className="num">{s.needed}</td>
+                          <td className="num" style={{ color: "var(--pen)" }}>{s.available}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <h3 className="blk">Pick one to fix it</h3>
+              <div className="pb-fixes">
+                <div className="pb-fix">
+                  <b>Add more chapters</b>
+                  <span>Tick more chapters on the left. Usually the best fix.</span>
+                </div>
+                {preview.suggestions
+                  .filter((s): s is typeof s & { relax: Relax } => s.relax !== "repeat_guard")
+                  .map((s) => (
+                    <button key={s.relax} type="button" className="pb-fix act" onClick={() => setRelaxed((cur) => (cur.includes(s.relax) ? cur : [...cur, s.relax]))}>
+                      <b>{RELAX_COPY[s.relax].action}</b>
+                      <span>
+                        {RELAX_COPY[s.relax].effect}{" "}
+                        {s.would_yield > 0 ? `Fills ${s.would_yield} more question${s.would_yield === 1 ? "" : "s"}.` : "Lets this paper through."}
+                      </span>
+                    </button>
+                  ))}
+                {repeatGuard && (
+                  <button type="button" className="pb-fix act" onClick={() => setRepeatGuard(false)}>
+                    <b>Allow recent questions</b>
+                    <span>Brings back questions used in your last 3 papers.</span>
+                  </button>
+                )}
+              </div>
+              <p className="pb-note">Nothing is relaxed unless you click it, and you can undo it on the left.</p>
+            </div>
+          )}
+
+          {preview?.ok && (
+            <div className="pb-qs">
+              {preview.unappliedSwaps > 0 && (
+                <div className="notice plain pb-tight">
+                  {preview.unappliedSwaps} swap{preview.unappliedSwaps === 1 ? "" : "s"} could not be applied: no other question has the same marks, chapter and difficulty.
+                </div>
+              )}
               {current?.generalInstructions && <p className="pvgeneral">{current.generalInstructions}</p>}
               {preview.sections.map((section, si) => (
-                <div key={section.label}>
+                <div key={section.label} className="pb-section">
                   <p className="qsec">
                     Section {section.label} · {section.marksEach} mark{section.marksEach === 1 ? "" : "s"} each
                     {(current?.sections[si]?.instructions ?? section.instructions) && (
@@ -665,7 +725,7 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
                     const n = counter;
                     const isLocked = lockedSet.has(b.key);
                     return (
-                      <div className={`q${isLocked ? " locked" : ""}`} key={b.key} style={{ flexWrap: "wrap" }}>
+                      <div className={`q pb-q${isLocked ? " locked" : ""}`} key={b.key}>
                         <span className="no">{n}.</span>
                         <div className="body">
                           {b.stimulusHtml && (
@@ -675,18 +735,14 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
                             </div>
                           )}
                           {b.questions.map((q, i) => (
-                            <div key={q.id} style={{ marginBottom: i < b.questions.length - 1 ? 6 : 0 }}>
-                              {b.questions.length > 1 && (
-                                <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--graphite)", marginRight: 6 }}>
-                                  ({String.fromCharCode(97 + i)})
-                                </span>
-                              )}
+                            <div key={q.id} className="pb-part">
+                              {b.questions.length > 1 && <span className="pb-partno">({String.fromCharCode(97 + i)})</span>}
                               <span dangerouslySetInnerHTML={{ __html: q.html }} />
                             </div>
                           ))}
                           {b.choice && (
-                            <div style={{ marginTop: 6, paddingTop: 6, borderTop: "1px dashed var(--hair)" }}>
-                              <span style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--graphite)" }}>OR </span>
+                            <div className="pb-or">
+                              <span>OR </span>
                               {b.choice.map((q) => (
                                 <span key={q.id} dangerouslySetInnerHTML={{ __html: q.html + " " }} />
                               ))}
@@ -697,35 +753,37 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
                             {b.chapterName && <span className="tag">{b.chapterName}</span>}
                             {b.questions[0]?.source && <span className="tag src">{b.questions[0].source}</span>}
                             {b.isPrivate && <span className="tag priv">Our question</span>}
-                            {isLocked && <span className="tag lock">Locked</span>}
+                            {isLocked && <span className="tag lock">Kept</span>}
                           </div>
                         </div>
                         <span className="mk">{b.marks}</span>
-                        <div className="acts">
+                        <div className="pb-qacts">
                           <button
                             type="button"
-                            className="iconbtn lk"
-                            title={isLocked ? "Unlock" : "Lock — keep this question when regenerating"}
+                            className={`pb-qbtn${isLocked ? " on" : ""}`}
+                            data-tip={isLocked ? "Let it change" : "Keep this question"}
+                            aria-label={isLocked ? "Let this question change" : "Keep this question when picking new ones"}
                             aria-pressed={isLocked}
-                            onClick={() =>
-                              setLocked((cur) => (cur.includes(b.key) ? cur.filter((k) => k !== b.key) : [...cur, b.key]))
-                            }
+                            onClick={() => setLocked((cur) => (cur.includes(b.key) ? cur.filter((k) => k !== b.key) : [...cur, b.key]))}
                           >
-                            ●
+                            <Icon name="lock" size={15} />
                           </button>
                           <button
                             type="button"
-                            className="iconbtn"
-                            title="Swap for another with the same marks, chapter and difficulty"
+                            className="pb-qbtn"
+                            data-tip="Swap for a similar one"
+                            aria-label="Swap for another with the same marks, chapter and difficulty"
                             disabled={isLocked || loading}
                             onClick={() => setSwaps((s) => [...s, { blockKey: b.key, sectionLabel: section.label }])}
                           >
-                            ⟳
+                            <Icon name="swap" size={15} />
                           </button>
                           <button
                             type="button"
-                            className="iconbtn"
-                            title="Flag as wrong or badly worded"
+                            className={`pb-qbtn${flagging === b.key ? " on" : ""}`}
+                            data-tip="Report a problem"
+                            aria-label="Flag as wrong or badly worded"
+                            aria-expanded={flagging === b.key}
                             disabled={loading}
                             onClick={() => {
                               setFlagging(flagging === b.key ? null : b.key);
@@ -733,15 +791,14 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
                               setFlagError(null);
                             }}
                           >
-                            ⚑
+                            <Icon name="flag" size={15} />
                           </button>
                         </div>
                         {flagging === b.key && (
-                          <div style={{ flexBasis: "100%", marginTop: 8, paddingLeft: 34 }}>
-                            <div style={{ display: "flex", gap: 6 }}>
+                          <div className="pb-flag">
+                            <div className="pb-flagrow">
                               <input
                                 className="inp"
-                                style={{ fontSize: 12, padding: "6px 8px" }}
                                 placeholder="What is wrong with it?"
                                 value={flagReason}
                                 maxLength={500}
@@ -772,10 +829,8 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
                                 {flagPending ? "Flagging…" : "Flag"}
                               </button>
                             </div>
-                            <p style={{ fontSize: 11, color: "var(--graphite)", margin: "4px 0 0" }}>
-                              It leaves your institute&rsquo;s papers now; the shared bank keeps it until the platform reviews it.
-                            </p>
-                            {flagError && <p style={{ fontSize: 11.5, color: "var(--pen)", margin: "4px 0 0" }}>{flagError}</p>}
+                            <p className="pb-note">It leaves your institute&rsquo;s papers now; the shared bank keeps it until the platform reviews it.</p>
+                            {flagError && <p className="pb-note bad">{flagError}</p>}
                           </div>
                         )}
                       </div>
@@ -783,97 +838,15 @@ export function GenerateClient({ subjects }: { subjects: SubjectBundle[] }) {
                   })}
                 </div>
               ))}
+              <p className="pb-foot">
+                {preview.poolSize} questions were eligible.
+                {preview.forcedTopicRepeats > 0 ? ` ${preview.forcedTopicRepeats} topic${preview.forcedTopicRepeats === 1 ? "" : "s"} had to repeat.` : ""}{" "}
+                Saved papers stay hidden from students until you mark them as conducted.
+              </p>
             </div>
-
-          </div>
-        )}
+          )}
+        </div>
       </section>
-
-      {/* ----------------------------- print (right) ----------------------------- */}
-      <aside className="bld-print" aria-label="Print settings">
-        <h3 className="blk">Print</h3>
-        <div className="field">
-          <label htmlFor="batch">For batch</label>
-          <select className="sel" id="batch" value={batchId ?? ""} onChange={(e) => setBatchId(e.target.value || null)}>
-            {bundle.batches.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.name} · {b.students} students
-              </option>
-            ))}
-            <option value="">No batch</option>
-          </select>
-        </div>
-
-        <div className="field">
-          <label htmlFor="sets">Printed sets</label>
-          <select className="sel" id="sets" value={setCount} onChange={(e) => setSetCount(Number(e.target.value))}>
-            {[1, 2, 3, 4].map((n) => (
-              <option key={n} value={n}>
-                {n} {n === 1 ? "set" : "sets"}
-              </option>
-            ))}
-          </select>
-          {setCount > 1 && preview?.ok && (
-            <div className="notice plain" style={{ marginTop: 8, marginBottom: 0 }}>
-              <b>{selectedBatch?.students ?? 40} students</b> ·{" "}
-              <span className="mono">
-                {preview.copies.map((c, i) => `${String.fromCharCode(65 + i)}=${c}`).join(" / ")}
-              </span>
-              <br />
-              Hand out in a repeating cycle along each row.
-            </div>
-          )}
-          {setCount > 1 && preview?.ok && preview.warnings.length > 0 && (
-            <div className="notice warn" style={{ marginTop: 8, marginBottom: 0 }}>
-              {preview.warnings.map((w) => (
-                <div key={w.section}>
-                  Section {w.section} has {w.blocks} question{w.blocks === 1 ? "" : "s"} — some sets
-                  will share its order.
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <button type="button" className="gen bld-save" onClick={save} disabled={saving || !preview?.ok}>
-          {saving ? "Saving…" : "Save and print"}
-        </button>
-        {saveError && <div className="notice warn" style={{ margin: "8px 0 0" }}>{saveError}</div>}
-        <p className="bld-hint">Saved papers stay hidden from students until you mark them as conducted.</p>
-        <button type="button" className="btn bld-regen" onClick={regenerate} disabled={loading || !layoutChoice}>
-          {loading ? "Building…" : "Generate a different paper"}
-        </button>
-        <p className="genmeta">
-          {preview?.ok ? `${preview.poolSize} QUESTIONS ELIGIBLE` : " "}
-          {locked.length > 0 ? ` · ${locked.length} LOCKED` : ""}
-        </p>
-        {preview?.ok && (
-          <div className="bld-stats">
-            <div className="statstrip">
-              <div className="stat">
-                <b>{preview.sections.reduce((a, s) => a + s.blocks.length, 0)}</b>
-                <span>Questions</span>
-              </div>
-              <div className="stat">
-                <b>{preview.totalMarks}</b>
-                <span>Marks placed</span>
-              </div>
-              <div className="stat good">
-                <b>
-                  {Math.round(preview.difficultyActual.easy * 100)}/{Math.round(preview.difficultyActual.medium * 100)}/
-                  {Math.round(preview.difficultyActual.hard * 100)}
-                </b>
-                <span>Actual E/M/H</span>
-              </div>
-              <div className={preview.forcedTopicRepeats > 0 ? "stat warn" : "stat"}>
-                <b>{preview.forcedTopicRepeats}</b>
-                <span>Forced topic repeats</span>
-              </div>
-            </div>
-          </div>
-        )}
-      </aside>
-      </div>
-    </>
+    </div>
   );
 }
