@@ -89,7 +89,7 @@ const ADMIN: NavGroup[] = [
 
 /** Pages that belong to a module, hidden while it is off. */
 const MODULE_PAGES: Record<string, keyof Modules> = {
-  "/teacher/results": "results",
+  "/teacher/results": "student_app",
   "/institute/teachers": "teachers",
 };
 

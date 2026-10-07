@@ -14,7 +14,7 @@ const dateFmt = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short
 export default async function ResultsPage({ searchParams }: { searchParams: Promise<{ batch?: string }> }) {
   const { batch: batchParam } = await searchParams;
   const session = await getSession();
-  if (session && !session.modules.results) {
+  if (session && !session.modules.student_app) {
     return (
       <AppShell area="teacher">
         <div className="empty panel">

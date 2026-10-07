@@ -61,6 +61,16 @@ describe("modules", () => {
     expect(r.rows[0]).toEqual({ a: true, b: true, c: true, d: false });
   });
 
+  it("results follows the student app", async () => {
+    await actAs(db, OWNER);
+    await db.query(`select platform_set_modules('${INST}', '{"student_app": false, "results": true}')`);
+    await actAsOwner(db);
+    const r = await db.query<{ b: boolean; m: Record<string, boolean> }>(`select module_enabled('${INST}', 'results') b, modules m from institutes where id = '${INST}'`);
+    expect(r.rows[0]).toEqual({ b: false, m: { student_app: false } });
+    await actAs(db, OWNER);
+    await db.query(`select platform_set_modules('${INST}', '{}')`);
+  });
+
   it("only the platform owner sets them, and unknown keys are dropped", async () => {
     await actAs(db, ADMIN);
     await expect(db.query(`select platform_set_modules('${INST}', '{"teachers": false}')`)).rejects.toThrow();

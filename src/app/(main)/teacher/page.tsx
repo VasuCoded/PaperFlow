@@ -58,7 +58,7 @@ export default async function TeacherHome() {
           <b>{mods.student_app ? "Batches and join codes" : "Batches"}</b>
           <span>{mods.student_app ? "Create a batch, or find the code for your students." : "Group papers by the classes you teach."}</span>
         </Link>
-        {mods.results && (
+        {mods.student_app && (
           <Link href="/teacher/results" className="quickcard">
             <Icon name="chart" size={24} />
             <b>Results</b>
@@ -71,7 +71,7 @@ export default async function TeacherHome() {
         <Stat icon="layers" value={open.length} label="Open batches" />
         {mods.student_app && <Stat icon="users" value={students} label="Students" />}
         <Stat icon="file" value={mine.length} label={session?.role === "institute_admin" ? "Papers in the institute" : "Papers set"} />
-        {mods.results && (
+        {mods.student_app && (
           <Stat
             icon="pencil"
             value={rate === null ? "—" : `${rate}%`}

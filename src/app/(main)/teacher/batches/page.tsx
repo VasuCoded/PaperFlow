@@ -148,7 +148,7 @@ export default async function BatchesPage() {
                 <div className="batchstats">
                   {studentApp && <span><b>{b.enrolments.length}</b> student{b.enrolments.length === 1 ? "" : "s"}</span>}
                   <Link href={`/teacher/papers?batch=${b.id}`}><b>{paperCount}</b> paper{paperCount === 1 ? "" : "s"} →</Link>
-                  {session?.modules.results && <Link href={`/teacher/results?batch=${b.id}`}>Results →</Link>}
+                  {session?.modules.student_app && <Link href={`/teacher/results?batch=${b.id}`}>Results →</Link>}
                   <span className="batchactions">
                     {studentApp && <RotateCodeButton batchId={b.id} disabled={!b.active} />}
                     <ActiveToggle batchId={b.id} active={b.active} />

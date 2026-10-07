@@ -9,7 +9,7 @@
  * what enforces the security-relevant ones (joining, papers reaching students,
  * inviting, self-practice). Keep the two in step.
  */
-export type ModuleKey = "student_app" | "results" | "teachers" | "self_practice";
+export type ModuleKey = "student_app" | "teachers" | "self_practice";
 
 export interface ModuleDef {
   key: ModuleKey;
@@ -27,17 +27,9 @@ export const MODULES: ModuleDef[] = [
   {
     key: "student_app",
     name: "Student app",
-    blurb: "Students join batches with a code, log what they got wrong, practise their weak topics.",
-    whenOff: "No student accounts or join codes. Teachers set and print papers; batches are just class groups.",
+    blurb: "Students join batches with a code, log what they got wrong and practise their weak topics; teachers see results and analytics.",
+    whenOff: "No student accounts, join codes or results pages. Teachers set and print papers; batches are just class groups.",
     defaultOn: true,
-  },
-  {
-    key: "results",
-    name: "Results and analytics",
-    blurb: "Who has logged each paper, and which topics each batch keeps getting wrong.",
-    whenOff: "The Results pages and logging numbers are hidden.",
-    defaultOn: true,
-    requires: "student_app",
   },
   {
     key: "teachers",
@@ -67,7 +59,7 @@ export function effectiveModules(stored: unknown): Modules {
   return out;
 }
 
-export const ALL_ON: Modules = { student_app: true, results: true, teachers: true, self_practice: true };
+export const ALL_ON: Modules = { student_app: true, teachers: true, self_practice: true };
 
 /** Ready-made combinations, offered as one-click starting points. */
 export const MODULE_PRESETS: { key: string; name: string; blurb: string; modules: Modules }[] = [
@@ -75,18 +67,18 @@ export const MODULE_PRESETS: { key: string; name: string; blurb: string; modules
     key: "full",
     name: "Full institute",
     blurb: "Admin, teachers and the student app.",
-    modules: { student_app: true, results: true, teachers: true, self_practice: false },
+    modules: { student_app: true, teachers: true, self_practice: false },
   },
   {
     key: "solo",
     name: "Solo tutor",
     blurb: "One person sets papers; students use the app.",
-    modules: { student_app: true, results: true, teachers: false, self_practice: false },
+    modules: { student_app: true, teachers: false, self_practice: false },
   },
   {
     key: "papers",
     name: "Papers only",
     blurb: "Set and print papers. No student app.",
-    modules: { student_app: false, results: false, teachers: true, self_practice: false },
+    modules: { student_app: false, teachers: true, self_practice: false },
   },
 ];

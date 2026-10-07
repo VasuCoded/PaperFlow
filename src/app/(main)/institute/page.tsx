@@ -65,7 +65,7 @@ export default async function InstituteHome() {
           <b>{mods.student_app ? "Batches and join codes" : "Batches"}</b>
           <span>Group students by class and subject.</span>
         </Link>
-        {mods.results && (
+        {mods.student_app && (
           <Link href="/teacher/results" className="quickcard">
             <Icon name="chart" size={24} />
             <b>Results</b>
