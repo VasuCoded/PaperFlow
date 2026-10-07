@@ -36,6 +36,7 @@ export default async function TeacherHome() {
     ? Math.round((withBatch.reduce((n, p) => n + p.loggedCount / p.batchStudents, 0) / withBatch.length) * 100)
     : null;
   const firstName = (session?.fullName ?? "").split(" ")[0];
+  const mods = session?.modules ?? { student_app: true, results: true, teachers: true, self_practice: false };
 
   return (
     <AppShell area="teacher">
@@ -54,27 +55,31 @@ export default async function TeacherHome() {
         </Link>
         <Link href="/teacher/batches" className="quickcard">
           <Icon name="layers" size={24} />
-          <b>Batches and join codes</b>
-          <span>Create a batch, or find the code for your students.</span>
+          <b>{mods.student_app ? "Batches and join codes" : "Batches"}</b>
+          <span>{mods.student_app ? "Create a batch, or find the code for your students." : "Group papers by the classes you teach."}</span>
         </Link>
-        <Link href="/teacher/results" className="quickcard">
-          <Icon name="chart" size={24} />
-          <b>Results</b>
-          <span>Who has logged, and what the class gets wrong.</span>
-        </Link>
+        {mods.results && (
+          <Link href="/teacher/results" className="quickcard">
+            <Icon name="chart" size={24} />
+            <b>Results</b>
+            <span>Who has logged, and what the class gets wrong.</span>
+          </Link>
+        )}
       </div>
 
       <div className="stats">
         <Stat icon="layers" value={open.length} label="Open batches" />
-        <Stat icon="users" value={students} label="Students" />
+        {mods.student_app && <Stat icon="users" value={students} label="Students" />}
         <Stat icon="file" value={mine.length} label={session?.role === "institute_admin" ? "Papers in the institute" : "Papers set"} />
-        <Stat
-          icon="pencil"
-          value={rate === null ? "—" : `${rate}%`}
-          label="Logged, recent papers"
-          tone={rate === null ? undefined : rate >= 60 ? "good" : "warn"}
-          href="/teacher/results"
-        />
+        {mods.results && (
+          <Stat
+            icon="pencil"
+            value={rate === null ? "—" : `${rate}%`}
+            label="Logged, recent papers"
+            tone={rate === null ? undefined : rate >= 60 ? "good" : "warn"}
+            href="/teacher/results"
+          />
+        )}
       </div>
 
       <div className="dash2">
@@ -127,10 +132,10 @@ export default async function TeacherHome() {
                       <Link href={`/teacher/papers/${p.id}`} className="rowtitle">{p.title}</Link>
                       <span>
                         {dateFmt.format(new Date(p.createdAt))} · {p.batchName ?? "no batch"}
-                        {!p.releasedAt ? " · not given yet" : pct !== null ? ` · logged by ${p.loggedCount} of ${p.batchStudents}` : ""}
+                        {!p.releasedAt && mods.student_app ? " · not given yet" : pct !== null ? ` · logged by ${p.loggedCount} of ${p.batchStudents}` : ""}
                       </span>
                     </span>
-                    {!p.releasedAt ? (
+                    {!p.releasedAt && mods.student_app ? (
                       <ActionButton action={setPaperReleased.bind(null, p.id, true)} label="Mark as conducted" className="btn sm solid" />
                     ) : (
                       pct !== null && <span className={`pill ${pct >= 60 ? "active" : "suspended"}`}>{pct}%</span>

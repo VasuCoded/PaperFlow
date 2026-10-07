@@ -29,19 +29,28 @@ function who(r: PendingAccessRequest): string {
  * the requester never chose one (CLAUDE.md). Institute admins can grant
  * teacher or student; the platform can also make institute admins.
  */
-export function AccessRequestList({ requests, mode }: { requests: PendingAccessRequest[]; mode: "institute" | "platform" }) {
+export function AccessRequestList({
+  requests,
+  mode,
+  roles,
+}: {
+  requests: PendingAccessRequest[];
+  mode: "institute" | "platform";
+  /** the roles this institute can grant (its modules decide) */
+  roles?: Role[];
+}) {
   if (requests.length === 0) return <p className="lede">Nobody is waiting.</p>;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       {requests.map((r) => (
-        <RequestRow key={r.id} r={r} mode={mode} />
+        <RequestRow key={r.id} r={r} mode={mode} allowed={roles} />
       ))}
     </div>
   );
 }
 
-function RequestRow({ r, mode }: { r: PendingAccessRequest; mode: "institute" | "platform" }) {
-  const roles: Role[] = mode === "platform" ? ["teacher", "student", "institute_admin"] : ["teacher", "student"];
+function RequestRow({ r, mode, allowed }: { r: PendingAccessRequest; mode: "institute" | "platform"; allowed?: Role[] }) {
+  const roles: Role[] = allowed ?? (mode === "platform" ? ["teacher", "student", "institute_admin"] : ["teacher", "student"]);
   const [role, setRole] = useState<Role | "">("");
   const [declining, setDeclining] = useState(false);
   const [reason, setReason] = useState("");

@@ -9,6 +9,8 @@ import { CreateInstituteForm } from "./CreateInstituteForm";
 import { Icon } from "@/components/ui/Icon";
 import { TableSearch } from "@/components/ui/TableSearch";
 import { ago } from "@/components/ui/Stat";
+import { createAdminClient } from "@/lib/db/admin";
+import { effectiveModules, MODULE_PRESETS, MODULES } from "@/lib/modules";
 
 export const metadata: Metadata = { title: "Institutes · PaperFlow" };
 
@@ -29,6 +31,17 @@ export default async function InstitutesPage({
   const supabase = await createServerSupabaseClient();
   const { data } = session?.isPlatformOwner ? await supabase.rpc("platform_list_institutes") : { data: [] };
   const institutes = data ?? [];
+  // each institute's setup (modules); the owner is not a member, so read them pinned to these ids
+  const { data: modRows } = institutes.length
+    ? await createAdminClient().from("institutes").select("id, modules").in("id", institutes.map((i) => i.id))
+    : { data: [] as { id: string; modules: unknown }[] };
+  const setupOf = new Map(
+    (modRows ?? []).map((r) => {
+      const m = effectiveModules(r.modules);
+      const preset = MODULE_PRESETS.find((p) => MODULES.every((x) => p.modules[x.key] === m[x.key]));
+      return [r.id, preset ? preset.name : "Custom"];
+    }),
+  );
 
   const shown = institutes
     .filter((i) => !status || i.status === status)
@@ -106,6 +119,7 @@ export default async function InstitutesPage({
                 <th className="num">Staff</th>
                 <th className="num">Subjects</th>
                 <th className="num">Papers</th>
+                <th>Setup</th>
                 <th>Last active</th>
                 <th>Status</th>
                 <th />
@@ -122,6 +136,7 @@ export default async function InstitutesPage({
                   <td className="num" data-label="Staff:" title={`${i.admins} admin(s), ${i.teachers} teacher(s)`}>{i.admins + i.teachers}</td>
                   <td className="num" data-label="Subjects:">{i.active_subjects}</td>
                   <td className="num" data-label="Papers:">{i.papers}</td>
+                  <td data-label="Setup:"><Link className="rowtitle" style={{ fontWeight: 500 }} href={`/platform/institutes/${i.id}#modules`}>{setupOf.get(i.id) ?? "Full institute"}</Link></td>
                   <td style={{ whiteSpace: "nowrap" }} data-label="Last active:">{ago(i.last_activity ?? null)}</td>
                   <td>
                     <span className={`pill ${i.status === "active" ? "active" : "suspended"}`}>{i.status}</span>

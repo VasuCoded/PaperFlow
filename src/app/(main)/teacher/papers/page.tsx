@@ -20,6 +20,7 @@ export default async function PapersPage({
   const codeQuery = (code ?? "").toUpperCase().replace(/[^A-Z0-9-]/g, "");
   const session = await getSession();
   const all = session ? await listPapers(session) : [];
+  const studentApp = session?.modules.student_app !== false;
 
   const subjects = Array.from(new Map(all.map((p) => [p.classSubjectId, p.classSubjectLabel])).entries());
   const papers = all.filter(
@@ -110,7 +111,7 @@ export default async function PapersPage({
                     <td className="num">{p.totalMarks}</td>
                     <td className="num">{p.setCount}</td>
                     <td className="num">
-                      {!p.releasedAt ? (
+                      {!p.releasedAt && studentApp ? (
                         <span className="pill seeding" title="Students cannot see it until you mark it as conducted">Not given yet</span>
                       ) : (
                       <>
@@ -126,7 +127,7 @@ export default async function PapersPage({
                     </td>
                     <td>
                       <div className="btnrow">
-                        {!p.releasedAt && (
+                        {!p.releasedAt && studentApp && (
                           <ActionButton action={setPaperReleased.bind(null, p.id, true)} label="Mark as conducted" className="btn sm solid" />
                         )}
                         <Link className="btn sm" href={`/print/paper/${p.id}`} target="_blank">Print</Link>

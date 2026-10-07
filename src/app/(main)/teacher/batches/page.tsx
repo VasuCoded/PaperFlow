@@ -83,6 +83,7 @@ export default async function BatchesPage() {
   const subjectOptions = active.map((s) => ({ id: s.classSubjectId, label: s.label }));
   const createOptions = teaching.map((t) => ({ id: t.classSubjectId, label: `Class ${t.className} · ${t.subjectName}` }));
   const editable = admin ? subjectOptions.map((s) => s.id) : [...taught];
+  const studentApp = session?.modules.student_app !== false;
 
   return (
     <AppShell area="teacher">
@@ -97,8 +98,9 @@ export default async function BatchesPage() {
       </div>
 
       <p className="lede">
-        A batch is a group of students with as many subjects as they study together. Students join with the batch
-        code, or you add them below. Papers you set for a batch reach its students once you mark them as conducted.
+        {studentApp
+          ? "A batch is a group of students with as many subjects as they study together. Students join with the batch code, or you add them below. Papers you set for a batch reach its students once you mark them as conducted."
+          : "A batch is a class you teach, with as many subjects as it studies. Set papers for it to keep each class's papers together."}
       </p>
 
       {batches.length === 0 ? (
@@ -120,10 +122,10 @@ export default async function BatchesPage() {
                     </h3>
                     {b.note && <p>{b.note}</p>}
                   </div>
-                  <div className="batchcode">
+                  {studentApp && <div className="batchcode">
                     <span className="joincode" style={{ opacity: b.active ? 1 : 0.45 }}>{b.join_code}</span>
                     <CopyButton text={b.join_code} />
-                  </div>
+                  </div>}
                 </header>
 
                 <div className="batchsubjects">
@@ -144,16 +146,16 @@ export default async function BatchesPage() {
                 </div>
 
                 <div className="batchstats">
-                  <span><b>{b.enrolments.length}</b> student{b.enrolments.length === 1 ? "" : "s"}</span>
+                  {studentApp && <span><b>{b.enrolments.length}</b> student{b.enrolments.length === 1 ? "" : "s"}</span>}
                   <Link href={`/teacher/papers?batch=${b.id}`}><b>{paperCount}</b> paper{paperCount === 1 ? "" : "s"} →</Link>
-                  <Link href={`/teacher/results?batch=${b.id}`}>Results →</Link>
+                  {session?.modules.results && <Link href={`/teacher/results?batch=${b.id}`}>Results →</Link>}
                   <span className="batchactions">
-                    <RotateCodeButton batchId={b.id} disabled={!b.active} />
+                    {studentApp && <RotateCodeButton batchId={b.id} disabled={!b.active} />}
                     <ActiveToggle batchId={b.id} active={b.active} />
                   </span>
                 </div>
 
-                <details className="batchmore">
+                {studentApp && <details className="batchmore">
                   <summary>Students ({b.enrolments.length})</summary>
                   <div className="batchmorebody">
                     {enrolled.length === 0 ? (
@@ -173,7 +175,7 @@ export default async function BatchesPage() {
                     <h4 className="blk" style={{ marginTop: 14 }}>Add students</h4>
                     <AddStudents batchId={b.id} candidates={candidates} />
                   </div>
-                </details>
+                </details>}
 
                 <details className="batchmore">
                   <summary>Edit batch</summary>

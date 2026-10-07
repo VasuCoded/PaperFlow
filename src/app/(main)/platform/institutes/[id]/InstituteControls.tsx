@@ -2,8 +2,10 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { MODULE_PRESETS, MODULES, effectiveModules, type ModuleKey, type Modules } from "@/lib/modules";
 import {
   deleteInstituteAction,
+  setModulesAction,
   listInvitesAction,
   platformInviteAction,
   platformRevokeInviteAction,
@@ -212,5 +214,103 @@ export function DeleteInstitute({ instituteId, name, slug, suspended }: { instit
         </div>
       )}
     </section>
+  );
+}
+
+/**
+ * The institute's modules: one-click presets, or each switch on its own. A
+ * module that needs another is greyed out while that one is off.
+ */
+export function ModulesPanel({ instituteId, current, teachers, students }: { instituteId: string; current: Modules; teachers: number; students: number }) {
+  const router = useRouter();
+  const [draft, setDraft] = useState<Modules>(current);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [pending, start] = useTransition();
+  const effective = effectiveModules(draft);
+  const changed = MODULES.some((m) => draft[m.key] !== current[m.key]);
+  const preset = MODULE_PRESETS.find((p) => MODULES.every((m) => p.modules[m.key] === effective[m.key]));
+
+  const set = (key: ModuleKey, on: boolean) => setDraft((d) => ({ ...d, [key]: on }));
+  const warnings: string[] = [];
+  if (current.teachers && !effective.teachers && teachers > 0)
+    warnings.push(`${teachers} teacher account${teachers === 1 ? "" : "s"} keep working until removed; no new teachers can join.`);
+  if (current.student_app && !effective.student_app && students > 0)
+    warnings.push(`${students} student${students === 1 ? "" : "s"} will no longer see papers in the app. Their data is kept.`);
+
+  return (
+    <div className="modules">
+      <div className="presetrow">
+        {MODULE_PRESETS.map((p) => (
+          <button
+            key={p.key}
+            type="button"
+            className={`presetcard${preset?.key === p.key ? " on" : ""}`}
+            onClick={() => setDraft(p.modules)}
+          >
+            <b>{p.name}</b>
+            <span>{p.blurb}</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="modlist">
+        {MODULES.map((m) => {
+          const blocked = !!m.requires && !effective[m.requires];
+          const on = effective[m.key];
+          return (
+            <label key={m.key} className={`modrow${blocked ? " blocked" : ""}`}>
+              <span className="modtext">
+                <b>{m.name}</b>
+                <span>{on ? m.blurb : m.whenOff}</span>
+                {blocked && <span className="hint" style={{ margin: 0 }}>Needs {MODULES.find((x) => x.key === m.requires)!.name}.</span>}
+              </span>
+              <span className={`switch${on ? " on" : ""}`}>
+                <input
+                  type="checkbox"
+                  role="switch"
+                  checked={on}
+                  disabled={blocked || pending}
+                  onChange={(e) => set(m.key, e.target.checked)}
+                  aria-label={m.name}
+                />
+                <span className="knob" aria-hidden="true" />
+              </span>
+            </label>
+          );
+        })}
+      </div>
+
+      {warnings.length > 0 && (
+        <div className="notice warn" style={{ marginTop: 12 }}>
+          {warnings.map((w) => <div key={w}>{w}</div>)}
+        </div>
+      )}
+
+      <div className="btnrow" style={{ marginTop: 12, alignItems: "center" }}>
+        <button
+          type="button"
+          className="btn solid"
+          disabled={pending || !changed}
+          onClick={() =>
+            start(async () => {
+              setMsg(null);
+              const res = await setModulesAction(instituteId, effective);
+              if (res.ok) {
+                setMsg({ ok: true, text: "Saved. The institute sees the change on its next page load." });
+                router.refresh();
+              } else setMsg({ ok: false, text: res.message ?? "Could not save." });
+            })
+          }
+        >
+          {pending ? "Saving…" : "Save modules"}
+        </button>
+        {changed && (
+          <button type="button" className="btn ghost" disabled={pending} onClick={() => setDraft(current)}>
+            Undo changes
+          </button>
+        )}
+        {msg && <span className="hint" style={{ margin: 0, color: msg.ok ? "var(--ledger)" : "var(--pen)" }}>{msg.text}</span>}
+      </div>
+    </div>
   );
 }

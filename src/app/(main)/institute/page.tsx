@@ -40,6 +40,7 @@ export default async function InstituteHome() {
   const teaching = new Set(assigned.map((a) => a.teacher_id));
   const idleTeachers = teachers.filter((t) => !teaching.has(t.user_id)).length;
   const emptyBatches = open.filter((b) => (b.enrolments[0]?.count ?? 0) === 0).length;
+  const mods = session?.modules ?? { student_app: true, results: true, teachers: true, self_practice: false };
   const instituteName = session?.memberships.find((m) => m.instituteId === inst)?.instituteName ?? "your institute";
 
   return (
@@ -51,7 +52,7 @@ export default async function InstituteHome() {
       <div className="quick">
         <Link href="/institute/members#invite" className="quickcard primary">
           <Icon name="userPlus" size={26} />
-          <b>Invite a teacher or student</b>
+          <b>{mods.teachers && mods.student_app ? "Invite a teacher or student" : mods.teachers ? "Invite a teacher" : "Invite a student"}</b>
           <span>By their PaperFlow username. They see it when they sign in.</span>
         </Link>
         <Link href="/teacher/generate" className="quickcard">
@@ -61,22 +62,24 @@ export default async function InstituteHome() {
         </Link>
         <Link href="/teacher/batches" className="quickcard">
           <Icon name="layers" size={24} />
-          <b>Batches and join codes</b>
+          <b>{mods.student_app ? "Batches and join codes" : "Batches"}</b>
           <span>Group students by class and subject.</span>
         </Link>
-        <Link href="/teacher/results" className="quickcard">
-          <Icon name="chart" size={24} />
-          <b>Results</b>
-          <span>Who is logging, and which topics need going over.</span>
-        </Link>
+        {mods.results && (
+          <Link href="/teacher/results" className="quickcard">
+            <Icon name="chart" size={24} />
+            <b>Results</b>
+            <span>Who is logging, and which topics need going over.</span>
+          </Link>
+        )}
       </div>
 
       <div className="stats">
-        <Stat icon="idcard" value={teachers.length} label="Teachers" href="/institute/members?role=teacher" />
-        <Stat icon="users" value={members.filter((m) => m.role === "student").length} label="Students" href="/institute/members?role=student" />
+        {mods.teachers && <Stat icon="idcard" value={teachers.length} label="Teachers" href="/institute/members?role=teacher" />}
+        {mods.student_app && <Stat icon="users" value={members.filter((m) => m.role === "student").length} label="Students" href="/institute/members?role=student" />}
         <Stat icon="layers" value={open.length} label="Open batches" href="/teacher/batches" />
         <Stat icon="file" value={papersRes.count ?? 0} label="Papers set" href="/teacher/papers" />
-        <Stat icon="pencil" value={attemptsRes.count ?? 0} label="Papers logged by students" />
+        {mods.student_app && <Stat icon="pencil" value={attemptsRes.count ?? 0} label="Papers logged by students" />}
       </div>
 
       <div className="dash2">
@@ -87,8 +90,8 @@ export default async function InstituteHome() {
           <div className="todolist">
             <TodoRow icon="userPlus" title="Asking to join" text="People waiting for you to let them in" count={joinRes.count ?? 0} href="/institute/members#requests" />
             <TodoRow icon="mail" title="Invitations not yet accepted" text="They have not signed in since" count={invites.length} href="/institute/members#invites" />
-            <TodoRow icon="idcard" title="Teachers without a subject" text="They cannot set papers until you assign one" count={idleTeachers} href="/institute/teachers" />
-            <TodoRow icon="layers" title="Batches with no students" text="Share the join code with the class" count={emptyBatches} href="/teacher/batches" />
+            {mods.teachers && <TodoRow icon="idcard" title="Teachers without a subject" text="They cannot set papers until you assign one" count={idleTeachers} href="/institute/teachers" />}
+            {mods.student_app && <TodoRow icon="layers" title="Batches with no students" text="Share the join code with the class" count={emptyBatches} href="/teacher/batches" />}
           </div>
         </section>
 

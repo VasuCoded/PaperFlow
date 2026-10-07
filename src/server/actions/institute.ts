@@ -32,6 +32,8 @@ export async function inviteMember(loginRaw: string, role: "teacher" | "student"
   }
   const email = loginToEmail(raw);
   if (role !== "teacher" && role !== "student") return { ok: false, message: "Choose teacher or student." };
+  if (role === "teacher" && !ctx.session.modules.teachers) return { ok: false, message: "Teacher accounts are not switched on for this institute." };
+  if (role === "student" && !ctx.session.modules.student_app) return { ok: false, message: "The student app is not switched on for this institute." };
 
   const { error } = await ctx.supabase.from("institute_invites").insert({
     institute_id: ctx.instituteId,
@@ -171,6 +173,11 @@ export async function decideAccessRequest(
   const ctx = await adminContext();
   if (!ctx) return DENIED;
   if (approve && role !== "teacher" && role !== "student") return { ok: false, message: "Choose teacher or student." };
+  if (approve) {
+    const modules = (await getSession())?.modules;
+    if (role === "teacher" && modules && !modules.teachers) return { ok: false, message: "Teacher accounts are not switched on for this institute." };
+    if (role === "student" && modules && !modules.student_app) return { ok: false, message: "The student app is not switched on for this institute." };
+  }
   if (!approve && reason.trim().length < 3) return { ok: false, message: "Give a reason they will see." };
   const { error } = await ctx.supabase.rpc("decide_access_request", {
     p_request_id: requestId,

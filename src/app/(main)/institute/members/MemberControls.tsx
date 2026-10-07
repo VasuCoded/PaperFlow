@@ -4,9 +4,9 @@ import { useState, useTransition } from "react";
 import { changeMemberRole, inviteMember, removeMember, resetMemberPassword, revokeInvite } from "@/server/actions/institute";
 import { confirmsIdentity, displayIdentity, isUsernameEmail } from "@/lib/identity";
 
-export function InviteForm() {
+export function InviteForm({ roles = ["teacher", "student"] }: { roles?: ("teacher" | "student")[] }) {
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<"teacher" | "student">("teacher");
+  const [role, setRole] = useState<"teacher" | "student">(roles[0] ?? "student");
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -33,11 +33,13 @@ export function InviteForm() {
       <div className="field">
         <label htmlFor="invite-role">Role</label>
         <select id="invite-role" className="sel" value={role} onChange={(e) => setRole(e.target.value as "teacher" | "student")}>
-          <option value="teacher">Teacher</option>
-          <option value="student">Student</option>
+          {roles.includes("teacher") && <option value="teacher">Teacher</option>}
+          {roles.includes("student") && <option value="student">Student</option>}
         </select>
         <p style={{ fontSize: 11, color: "var(--graphite)", margin: "6px 0 0" }}>
-          This dropdown offers two roles only. Institute admin and owner are deliberately absent, not hidden.
+          {roles.length === 2
+            ? "This dropdown offers two roles only. Institute admin and owner are deliberately absent, not hidden."
+            : "Only the roles your institute's modules allow are offered."}
         </p>
       </div>
       {error && <p style={{ color: "var(--pen)", fontSize: 12.5, margin: "0 0 10px" }}>{error}</p>}

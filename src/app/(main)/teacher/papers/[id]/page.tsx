@@ -57,7 +57,7 @@ export default async function PaperDetailPage({ params }: { params: Promise<{ id
           {when.format(new Date(paper.createdAt))}
         </span>
       </div>
-      {releasedAt ? (
+      {!session!.modules.student_app ? null : releasedAt ? (
         <div className="notice releasebar">
           <span>
             <b>Students can see this paper</b> and log it, since {when.format(new Date(releasedAt))}.

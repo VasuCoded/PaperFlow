@@ -14,6 +14,15 @@ const dateFmt = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short
 export default async function ResultsPage({ searchParams }: { searchParams: Promise<{ batch?: string }> }) {
   const { batch: batchParam } = await searchParams;
   const session = await getSession();
+  if (session && !session.modules.results) {
+    return (
+      <AppShell area="teacher">
+        <div className="empty panel">
+          <p>Results are not switched on for your institute. The platform can turn them on.</p>
+        </div>
+      </AppShell>
+    );
+  }
   const batches = session ? await getResultBatches(session) : [];
   // unless one is asked for: the batch with the newest paper
   const latest = [...batches].sort((x, y) => (y.lastPaperAt ?? "").localeCompare(x.lastPaperAt ?? ""))[0];

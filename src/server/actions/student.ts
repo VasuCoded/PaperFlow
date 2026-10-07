@@ -211,3 +211,31 @@ export async function revealSolution(questionId: string): Promise<SolutionResult
       : null,
   };
 }
+
+/**
+ * Build a practice set of the student's own choosing (the self-practice module):
+ * chapters, how many, how hard, weak topics first. create_self_practice checks
+ * the module, that they take the subject, and a daily limit.
+ */
+export async function createSelfPractice(input: {
+  classSubjectId: string;
+  chapterIds: string[];
+  count: number;
+  difficulty: "mixed" | "easy" | "medium" | "hard";
+  weakFirst: boolean;
+}): Promise<{ ok: true; setId: string } | { ok: false; message: string }> {
+  const session = await getSession();
+  if (!session?.instituteId) return { ok: false, message: "Sign in first." };
+  if (!session.modules.self_practice) return { ok: false, message: "Self-practice is not switched on for your institute." };
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase.rpc("create_self_practice", {
+    p_class_subject_id: input.classSubjectId,
+    p_chapter_ids: input.chapterIds.length ? input.chapterIds : null,
+    p_count: input.count,
+    p_difficulty: input.difficulty,
+    p_weak_first: input.weakFirst,
+  });
+  if (error || !data) return { ok: false, message: error?.message ?? "Could not build the set." };
+  revalidatePath("/app/practice");
+  return { ok: true, setId: data };
+}

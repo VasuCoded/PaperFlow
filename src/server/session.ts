@@ -3,6 +3,7 @@ import { cache } from "react";
 import { cookies } from "next/headers";
 import { createServerSupabaseClient } from "@/lib/db/server";
 import { ownMemberships, type Membership, type MembershipRow, type Role } from "@/lib/memberships";
+import { ALL_ON, type Modules } from "@/lib/modules";
 
 export type { Membership, Role };
 
@@ -32,6 +33,8 @@ export interface Session {
   instituteId: string | null;
   role: Role | null;
   isPlatformOwner: boolean;
+  /** the current institute's modules; everything on when there is none */
+  modules: Modules;
 }
 
 /**
@@ -69,7 +72,7 @@ async function resolveSession(): Promise<Session | null> {
     // src/lib/memberships.ts).
     supabase
       .from("institute_members")
-      .select("user_id, institute_id, role, institutes(id, name, slug, kind, status)")
+      .select("user_id, institute_id, role, institutes(id, name, slug, kind, status, modules)")
       .eq("user_id", user.id)
       .returns<MembershipRow[]>(),
   ]);
@@ -91,6 +94,7 @@ async function resolveSession(): Promise<Session | null> {
     isPlatformOwner: memberships.some(
       (m) => m.instituteId === PLATFORM_INSTITUTE_ID && m.role === "owner",
     ),
+    modules: chosen && chosen.kind === "institute" ? chosen.modules : ALL_ON,
   };
 }
 

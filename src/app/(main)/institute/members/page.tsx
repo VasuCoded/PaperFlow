@@ -38,6 +38,10 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
     : [[], [], { data: [] }, { data: [] }];
   const accessRequests = requestsRes.data ?? [];
 
+  // roles this institute can take on, by its modules
+  const inviteRoles = (["teacher", "student"] as const).filter((r) =>
+    r === "teacher" ? session?.modules.teachers !== false : session?.modules.student_app !== false,
+  );
   const emailById = new Map(members.map((m) => [m.userId, m.fullName ?? displayIdentity(m.email)]));
   const shown = roleFilter ? members.filter((m) => m.role === roleFilter) : members;
   const count = (r: string) => members.filter((m) => m.role === r).length;
@@ -49,7 +53,7 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
         <details className="drawer inline" id="invite">
           <summary className="btn solid"><Icon name="userPlus" size={15} /> Invite someone</summary>
           <div className="drawerbody">
-            <InviteForm />
+            <InviteForm roles={inviteRoles} />
             <p className="hint">
               Students can also join by themselves with a batch code, which is usually quicker.
             </p>
@@ -124,7 +128,7 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
         {/* asking to join */}
         <div>
           <p className="lede">People who created an account and asked to join this institute. You choose their role.</p>
-          <AccessRequestList mode="institute" requests={accessRequests} />
+          <AccessRequestList mode="institute" requests={accessRequests} roles={inviteRoles} />
         </div>
 
         {/* invitations */}

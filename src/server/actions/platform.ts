@@ -441,3 +441,13 @@ export async function deleteInstituteAction(instituteId: string, typedSlug: stri
   revalidatePath("/", "layout");
   return { ok: true };
 }
+
+/** Switch an institute's modules (platform_set_modules keeps only known keys and logs it). */
+export async function setModulesAction(instituteId: string, modules: Record<string, boolean>): Promise<ActionResult> {
+  const supabase = await ownerClient();
+  if (!supabase) return DENIED;
+  const { error } = await supabase.rpc("platform_set_modules", { p_institute_id: instituteId, p_modules: modules });
+  if (error) return { ok: false, message: error.message };
+  revalidatePath("/", "layout");
+  return { ok: true };
+}

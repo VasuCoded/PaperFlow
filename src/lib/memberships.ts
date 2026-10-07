@@ -8,6 +8,8 @@
  * teacher's session took the first row it saw and could come out as
  * institute_admin (found on dev, 21 Sep 2026).
  */
+import { effectiveModules, type Modules } from "./modules";
+
 export type Role = "owner" | "institute_admin" | "teacher" | "student";
 
 export interface Membership {
@@ -16,13 +18,15 @@ export interface Membership {
   instituteSlug: string;
   role: Role;
   kind: "platform" | "institute";
+  /** this institute's modules (see src/lib/modules.ts) */
+  modules: Modules;
 }
 
 export interface MembershipRow {
   user_id: string;
   institute_id: string;
   role: string;
-  institutes: { id: string; name: string; slug: string; kind: string; status: string } | null;
+  institutes: { id: string; name: string; slug: string; kind: string; status: string; modules?: unknown } | null;
 }
 
 export function ownMemberships(rows: readonly MembershipRow[], userId: string): Membership[] {
@@ -35,6 +39,7 @@ export function ownMemberships(rows: readonly MembershipRow[], userId: string): 
       instituteSlug: r.institutes!.slug,
       role: r.role as Role,
       kind: r.institutes!.kind === "platform" ? "platform" : "institute",
+      modules: effectiveModules(r.institutes!.modules),
     }))
     // platform membership last so a tenant is the natural default
     .sort((a, b) => (a.kind === "platform" ? 1 : 0) - (b.kind === "platform" ? 1 : 0));

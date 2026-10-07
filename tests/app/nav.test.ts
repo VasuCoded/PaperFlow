@@ -82,4 +82,12 @@ describe("console menu", () => {
     const badges = navFor("platform", "owner").flatMap((g) => g.items).flatMap((i) => (i.badge ? [i.badge] : []));
     expect(badges.sort()).toEqual(["access", "review", "subjects"]);
   });
+
+  it("hides a module's pages while it is off", () => {
+    const solo = { student_app: true, results: true, teachers: false, self_practice: false };
+    expect(links(navFor("institute", "institute_admin", solo))).not.toContain("/institute/teachers");
+    const papersOnly = { student_app: false, results: false, teachers: true, self_practice: false };
+    expect(links(navFor("teacher", "teacher", papersOnly))).not.toContain("/teacher/results");
+    expect(links(navFor("teacher", "teacher", papersOnly))).toContain("/teacher/generate");
+  });
 });

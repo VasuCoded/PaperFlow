@@ -7,7 +7,9 @@ import { getSession } from "@/server/session";
 import { platformRemoveMemberAction, setActivationAction, setInstituteStatusAction } from "@/server/actions/platform";
 import { ActionButton } from "../../../_components/ActionButton";
 import { RoleControl } from "./RoleControl";
-import { DeleteInstitute, EditInstituteForm, InvitesPanel, PlatformInviteForm } from "./InstituteControls";
+import { DeleteInstitute, EditInstituteForm, InvitesPanel, ModulesPanel, PlatformInviteForm } from "./InstituteControls";
+import { createAdminClient } from "@/lib/db/admin";
+import { effectiveModules, MODULES, type Modules } from "@/lib/modules";
 import { PlatformReset } from "../../support/PersonLookup";
 import { displayIdentity } from "@/lib/identity";
 import { Icon } from "@/components/ui/Icon";
@@ -41,6 +43,7 @@ export default async function ManageInstitutePage({ params }: { params: Promise<
   // rendering, but the page must not call (and log) on their behalf either.
   let inspection: Inspection | null = null;
   let coverage: { class_subject_id: string; label: string; bank_status: string; approved: number }[] = [];
+  let modules: Modules = effectiveModules({});
   if (session?.isPlatformOwner) {
     const supabase = await createServerSupabaseClient();
     const [{ data, error }, { data: cov }] = await Promise.all([
@@ -55,6 +58,9 @@ export default async function ManageInstitutePage({ params }: { params: Promise<
     inspection = data as unknown as Inspection;
     coverage = (cov ?? []).sort((a, b) => a.label.localeCompare(b.label, "en", { numeric: true }));
     if (!inspection?.institute) notFound();
+    // modules: the owner is not a member, so RLS hides the row; read it pinned to this id
+    const { data: m } = await createAdminClient().from("institutes").select("modules").eq("id", id).maybeSingle();
+    modules = effectiveModules(m?.modules);
   }
 
   const inst = inspection?.institute;
@@ -115,6 +121,7 @@ export default async function ManageInstitutePage({ params }: { params: Promise<
           { id: "people", label: "People", count: members.length },
           { id: "subjects", label: "Subjects", count: activeIds.size },
           { id: "teaching", label: "Batches & papers" },
+          { id: "modules", label: "Modules", count: MODULES.filter((x) => modules[x.key]).length },
           { id: "invites", label: "Invitations" },
           { id: "settings", label: "Settings" },
         ]}
@@ -255,6 +262,14 @@ export default async function ManageInstitutePage({ params }: { params: Promise<
             )}
             <p className="hint">Paper content is not shown here. Reading a paper is a separate audited call, only when a support case needs it.</p>
           </div>
+        </div>
+
+        {/* modules */}
+        <div>
+          <p className="lede">
+            Switch parts of PaperFlow on or off for {inst?.name ?? "this institute"}. Start from a preset, or set each one.
+          </p>
+          {inst && <ModulesPanel instituteId={inst.id} current={modules} teachers={count("teacher")} students={count("student")} />}
         </div>
 
         {/* invitations */}

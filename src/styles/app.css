@@ -763,3 +763,42 @@ a:has(> .logo) { text-decoration: none; }
 .danger-btn:hover { background: var(--pen); color: #fff; }
 .dangerconfirm { display: flex; flex-direction: column; gap: 8px; min-width: 240px; }
 .dangerconfirm .inp { min-width: 240px; }
+
+/* ---- modules (platform > institute > Modules) ---- */
+.presetrow { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.presetcard {
+  display: flex; flex-direction: column; gap: 3px; text-align: left; padding: 12px 14px; border-radius: 10px;
+  border: 1px solid var(--hair); background: var(--white); cursor: pointer; font-family: var(--ui); color: var(--ink);
+}
+.presetcard b { font-size: 13.5px; }
+.presetcard span { font-size: 12px; color: var(--graphite); }
+.presetcard:hover { border-color: #c9c4bb; }
+.presetcard.on { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.modlist { background: var(--white); border: 1px solid var(--hair); border-radius: 12px; }
+.modrow { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 16px; border-bottom: 1px solid #f0eeea; cursor: pointer; }
+.modrow:last-child { border-bottom: 0; }
+.modrow.blocked { cursor: not-allowed; opacity: 0.6; }
+.modtext { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.modtext b { font-size: 14px; }
+.modtext > span { font-size: 12.5px; color: var(--graphite); }
+.switch { position: relative; flex: 0 0 auto; width: 42px; height: 24px; border-radius: 100px; background: #d5d1ca; transition: background 0.15s; }
+.switch.on { background: var(--ledger); }
+.switch input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: inherit; }
+.switch .knob { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.25); transition: transform 0.15s; pointer-events: none; }
+.switch.on .knob { transform: translateX(18px); }
+.switch input:focus-visible + .knob { outline: 2px solid var(--pen); outline-offset: 2px; }
+
+/* ---- student: self-practice ---- */
+.selfpractice { border: 1px solid var(--hair); border-radius: 12px; padding: 14px 15px 16px; background: #fbfaf9; }
+.selfpractice h4 { margin: 0 0 6px; font-size: 15px; }
+.sp-label { font-size: 12px; font-weight: 600; margin: 12px 0 6px; }
+.sp-label span { font-weight: 400; color: var(--graphite); }
+.sp-seg { width: 100%; }
+.sp-seg button { flex: 1; }
+.sp-toggle { margin: 14px 0 4px; font-size: 13px; }
+.setnav { display: flex; gap: 6px; overflow-x: auto; margin: 0 0 6px; padding-bottom: 4px; scrollbar-width: none; }
+.setnav a {
+  flex: 0 0 auto; font-size: 12px; padding: 5px 11px; border-radius: 100px; border: 1px solid var(--hair);
+  color: var(--graphite); text-decoration: none; background: var(--white); white-space: nowrap;
+}
+.setnav a.on { background: var(--ink); border-color: var(--ink); color: #fff; }

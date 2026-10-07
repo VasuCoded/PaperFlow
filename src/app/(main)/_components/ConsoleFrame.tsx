@@ -54,7 +54,7 @@ export async function ConsoleFrame({ area, children }: { area: Area; children: R
   if (session.memberships.length === 0) redirect("/welcome");
   if (!canAccess(area, session)) notFound();
 
-  const groups = navFor(area, session.role);
+  const groups = navFor(area, session.role, session.modules);
   const badges = getNavBadges(session, area);
   const brand = brandFor(area, session.role);
 

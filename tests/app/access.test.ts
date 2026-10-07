@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { ALL_ON } from "@/lib/modules";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
@@ -30,6 +31,7 @@ function session(role: "owner" | "institute_admin" | "teacher" | "student"): Ses
     instituteSlug: onPlatform ? "platform" : "sunrise",
     role,
     kind: onPlatform ? ("platform" as const) : ("institute" as const),
+    modules: ALL_ON,
   };
   return {
     userId: "u",
@@ -39,6 +41,7 @@ function session(role: "owner" | "institute_admin" | "teacher" | "student"): Ses
     instituteId: membership.instituteId,
     role,
     isPlatformOwner: onPlatform,
+    modules: ALL_ON,
   };
 }
 

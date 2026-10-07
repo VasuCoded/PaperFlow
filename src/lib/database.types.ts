@@ -722,6 +722,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           code: string
+          modules: Json
         }
         Insert: {
           id?: string
@@ -733,6 +734,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           code?: string
+          modules?: Json
         }
         Update: {
           id?: string
@@ -744,6 +746,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           code?: string
+          modules?: Json
         }
         Relationships: [
           {
@@ -1332,6 +1335,8 @@ export type Database = {
           class_subject_id: string
           built_at: string
           status: string
+          source: string
+          title: string | null
         }
         Insert: {
           id?: string
@@ -1341,6 +1346,8 @@ export type Database = {
           class_subject_id: string
           built_at?: string
           status?: string
+          source?: string
+          title?: string | null
         }
         Update: {
           id?: string
@@ -1350,6 +1357,8 @@ export type Database = {
           class_subject_id?: string
           built_at?: string
           status?: string
+          source?: string
+          title?: string | null
         }
         Relationships: [
           {
@@ -1989,6 +1998,16 @@ export type Database = {
         }
         Returns: undefined
       }
+      create_self_practice: {
+        Args: {
+          p_class_subject_id: string
+          p_chapter_ids: string[] | null
+          p_count: number
+          p_difficulty: string
+          p_weak_first: boolean
+        }
+        Returns: string
+      }
       delete_batch: {
         Args: {
           p_batch_id: string
@@ -2350,6 +2369,13 @@ export type Database = {
         }
         Returns: undefined
       }
+      module_enabled: {
+        Args: {
+          p_institute_id: string
+          p_module: string
+        }
+        Returns: boolean
+      }
       platform_delete_institute: {
         Args: {
           p_institute_id: string
@@ -2520,6 +2546,13 @@ export type Database = {
         Args: {
           p_institute_id: string
           p_status: string
+        }
+        Returns: undefined
+      }
+      platform_set_modules: {
+        Args: {
+          p_institute_id: string
+          p_modules: Json
         }
         Returns: undefined
       }

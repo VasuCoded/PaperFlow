@@ -298,12 +298,17 @@ export interface PracticeItemView {
 export interface PracticeView {
   id: string;
   builtAt: string;
+  /** "mistakes": built from a logged paper; "self": the student made it */
+  source: "mistakes" | "self";
+  title: string | null;
   items: PracticeItemView[];
 }
 
 type PracticeRow = {
   id: string;
   built_at: string;
+  source: string;
+  title: string | null;
   practice_set_items: {
     id: string;
     question_id: string;
@@ -318,19 +323,21 @@ export async function getPracticeSets(session: Session, classSubjectId: string):
   const supabase = await createServerSupabaseClient();
   const { data } = await supabase
     .from("practice_sets")
-    .select("id, built_at, practice_set_items ( id, question_id, position, is_done, questions ( body, difficulty, options, topics ( name ) ) )")
+    .select("id, built_at, source, title, practice_set_items ( id, question_id, position, is_done, questions ( body, difficulty, options, topics ( name ) ) )")
     .eq("institute_id", session.instituteId)
     .eq("student_id", session.userId)
     .eq("class_subject_id", classSubjectId)
     .eq("status", "active")
     .order("built_at", { ascending: false })
-    .limit(5)
+    .limit(8)
     .returns<PracticeRow[]>();
 
   const { parseOptions } = await import("@/lib/options");
   return (data ?? []).map((s) => ({
     id: s.id,
     builtAt: s.built_at,
+    source: s.source === "self" ? "self" : "mistakes",
+    title: s.title,
     items: [...s.practice_set_items]
       .sort((a, b) => a.position - b.position)
       .map((it) => {

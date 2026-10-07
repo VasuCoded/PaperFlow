@@ -140,7 +140,20 @@ export function StudentShell({
             This is the student app. <Link href={consoleHref} style={{ color: "var(--pen)" }}>Go to your console →</Link>
           </div>
         )}
-        {children}
+        {session.modules.student_app ? (
+          children
+        ) : (
+          <>
+            <p className="sec-label">Student app</p>
+            <div className="practice idle">
+              <h4>Your institute does not use the student app</h4>
+              <p>
+                {institute?.instituteName ?? "Your institute"} sets and prints papers without it, so there is nothing
+                to log here. Ask your teacher if you think this is a mistake.
+              </p>
+            </div>
+          </>
+        )}
       </main>
 
       <nav className="tabbar" aria-label="Student">

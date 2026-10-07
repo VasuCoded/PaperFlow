@@ -1,4 +1,5 @@
 import type { IconName } from "@/components/ui/Icon";
+import { ALL_ON, type Modules } from "@/lib/modules";
 
 /**
  * The side menu of the desk consoles.
@@ -86,12 +87,24 @@ const ADMIN: NavGroup[] = [
   },
 ];
 
-export function navFor(area: Area, role: string | null): NavGroup[] {
+/** Pages that belong to a module, hidden while it is off. */
+const MODULE_PAGES: Record<string, keyof Modules> = {
+  "/teacher/results": "results",
+  "/institute/teachers": "teachers",
+};
+
+function withModules(groups: NavGroup[], modules: Modules): NavGroup[] {
+  return groups
+    .map((g) => ({ ...g, items: g.items.filter((i) => !MODULE_PAGES[i.href] || modules[MODULE_PAGES[i.href]!]) }))
+    .filter((g) => g.items.length > 0);
+}
+
+export function navFor(area: Area, role: string | null, modules: Modules = ALL_ON): NavGroup[] {
   if (area === "platform") return PLATFORM;
   // only an institute admin can be in the institute area; and an admin in the
   // teacher area still gets their institute's pages
-  if (area === "institute" || role === "institute_admin") return ADMIN;
-  return [{ items: [{ href: "/teacher", label: "Home", icon: "home", exact: true }, ...teaching(false)] }];
+  if (area === "institute" || role === "institute_admin") return withModules(ADMIN, modules);
+  return withModules([{ items: [{ href: "/teacher", label: "Home", icon: "home", exact: true }, ...teaching(false)] }], modules);
 }
 
 export function brandFor(area: Area, role: string | null): string {
