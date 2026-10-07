@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { toastSuccess } from "@/components/motion/toast";
 import {
   addStudentsToBatch,
   createBatch,
@@ -170,8 +171,11 @@ export function EditBatch({
         onClick={() =>
           start(async () => {
             const res = await updateBatch(batchId, n, nt);
-            setMsg(res.ok ? { ok: true, text: "Saved." } : { ok: false, text: res.message ?? "Could not save." });
-            if (res.ok) router.refresh();
+            setMsg(res.ok ? null : { ok: false, text: res.message ?? "Could not save." });
+            if (res.ok) {
+              toastSuccess("Saved.");
+              router.refresh();
+            }
           })
         }
       >
@@ -301,7 +305,8 @@ export function AddStudents({ batchId, candidates }: { batchId: string; candidat
             start(async () => {
               const res = await addStudentsToBatch(batchId, picked);
               if (res.ok) {
-                setMsg({ ok: true, text: `Added ${res.added ?? 0}.` });
+                setMsg(null);
+                toastSuccess(`Added ${res.added ?? 0} to the batch.`);
                 setPicked([]);
                 router.refresh();
               } else setMsg({ ok: false, text: res.message ?? "Could not add them." });

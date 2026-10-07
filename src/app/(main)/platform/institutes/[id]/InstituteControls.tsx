@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { toastSuccess } from "@/components/motion/toast";
 import { MODULE_PRESETS, MODULES, effectiveModules, type ModuleKey, type Modules } from "@/lib/modules";
 import {
   deleteInstituteAction,
@@ -31,8 +32,11 @@ export function EditInstituteForm({ instituteId, name, contactEmail }: { institu
         e.preventDefault();
         start(async () => {
           const res = await updateInstituteAction(instituteId, n, c);
-          setMsg(res.ok ? { ok: true, text: "Saved." } : { ok: false, text: res.message ?? "That did not work." });
-          if (res.ok) router.refresh();
+          setMsg(res.ok ? null : { ok: false, text: res.message ?? "That did not work." });
+          if (res.ok) {
+            toastSuccess("Saved.");
+            router.refresh();
+          }
         });
       }}
     >
@@ -296,7 +300,7 @@ export function ModulesPanel({ instituteId, current, teachers, students }: { ins
               setMsg(null);
               const res = await setModulesAction(instituteId, effective);
               if (res.ok) {
-                setMsg({ ok: true, text: "Saved. The institute sees the change on its next page load." });
+                toastSuccess("Modules saved", "The institute sees the change on its next page load.");
                 router.refresh();
               } else setMsg({ ok: false, text: res.message ?? "Could not save." });
             })

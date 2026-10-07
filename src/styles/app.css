@@ -40,15 +40,20 @@ a:has(> .logo) { text-decoration: none; }
 .navlist { display: flex; flex-direction: column; gap: 2px; }
 .navshell .navitem {
   justify-content: flex-start; gap: 11px; padding: 8px 10px; border-radius: 8px;
-  font-size: 13.5px; font-weight: 500; color: #40464d; transition: background 0.1s, color 0.1s;
+  font-size: 13.5px; font-weight: 500; color: #40464d;
+  position: relative; isolation: isolate;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
 }
-.navshell .navitem .icon { color: #8b9197; transition: color 0.1s; }
+.navshell .navitem .icon { color: #8b9197; transition: color var(--dur-fast) var(--ease); }
+.navshell .navitem:active { background: #ebe8e3; }
+.navhl {
+  position: absolute; inset: 0; z-index: -1; border-radius: inherit;
+  background: var(--pen-soft); box-shadow: inset 3px 0 0 var(--pen);
+}
 .navshell .navitem:hover { background: #f3f1ee; color: var(--ink); }
 .navshell .navitem:hover .icon { color: var(--ink); }
-.navshell .navitem.on {
-  background: var(--pen-soft); color: var(--ink); font-weight: 600;
-  box-shadow: inset 3px 0 0 var(--pen);
-}
+/* the chosen item's tint is .navhl (RailNav), one element that slides between items */
+.navshell .navitem.on, .navshell .navitem.on:hover { background: transparent; color: var(--ink); font-weight: 600; }
 .navshell .navitem.on .icon { color: var(--pen); }
 .navshell .navitem:focus-visible { outline: 2px solid var(--pen); outline-offset: -2px; }
 .navlabel { flex: 1; min-width: 0; }
@@ -145,14 +150,18 @@ a:has(> .logo) { text-decoration: none; }
   .tabbtn { padding: 9px 10px; }
   .navshell .rail {
     position: fixed; top: 0; left: 0; bottom: 0; width: min(300px, 86vw); z-index: 50;
-    transform: translateX(-104%); transition: transform 0.22s ease; border-bottom: 0;
+    /* parked far enough left that its shadow does not show at the screen's edge */
+    transform: translateX(calc(-100% - 48px)); transition: transform var(--dur-slow) var(--ease); border-bottom: 0;
     box-shadow: 0 0 40px rgba(21, 24, 27, 0.25);
   }
   .navshell[data-nav-open] .rail { transform: none; }
-  .navshell[data-nav-open] .navscrim {
+  /* the scrim is always there, faded out, so it can fade in and out with the drawer */
+  .navshell .navscrim {
     display: block; position: fixed; inset: 0; z-index: 40; border: 0; padding: 0;
-    background: rgba(21, 24, 27, 0.42);
+    background: rgba(21, 24, 27, 0.42); opacity: 0; visibility: hidden;
+    transition: opacity var(--dur-slow) var(--ease), visibility 0s linear var(--dur-slow);
   }
+  .navshell[data-nav-open] .navscrim { opacity: 1; visibility: visible; transition: opacity var(--dur-slow) var(--ease); }
   .navshell .navclose { display: grid; }
   .navshell .navitem { padding: 11px 10px; font-size: 15px; }
   .navshell .content { padding: 18px 16px 48px; }
@@ -388,8 +397,7 @@ a:has(> .logo) { text-decoration: none; }
   display: flex; flex-direction: column; gap: 2px; color: var(--ink); text-decoration: none;
   box-shadow: 0 1px 2px rgba(21, 24, 27, 0.03); min-width: 0;
 }
-.statx.link { transition: border-color 0.12s, box-shadow 0.12s; }
-.statx.link:hover { border-color: #c9c4bb; box-shadow: 0 4px 14px -6px rgba(21, 24, 27, 0.18); }
+@media (hover: hover) { .statx.link:hover { border-color: #c9c4bb; box-shadow: 0 4px 14px -6px rgba(21, 24, 27, 0.18); } }
 .staticon {
   width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; margin-bottom: 8px;
   background: #f1efec; color: var(--graphite);
@@ -571,16 +579,16 @@ a:has(> .logo) { text-decoration: none; }
 .quickcard {
   display: flex; flex-direction: column; gap: 4px; padding: 18px 18px 17px; border-radius: 14px;
   background: var(--white); border: 1px solid var(--hair); color: var(--ink); text-decoration: none;
-  transition: border-color 0.12s, box-shadow 0.12s, transform 0.12s; min-width: 0;
+  min-width: 0;
 }
 .quickcard .icon { color: var(--pen); margin-bottom: 8px; }
 .quickcard b { font-size: 15px; font-weight: 650; }
 .quickcard span { font-size: 12.5px; color: var(--graphite); line-height: 1.45; }
-.quickcard:hover { border-color: #c9c4bb; box-shadow: 0 8px 22px -14px rgba(21, 24, 27, 0.35); transform: translateY(-1px); }
+@media (hover: hover) { .quickcard:hover { border-color: #c9c4bb; box-shadow: 0 8px 22px -14px rgba(21, 24, 27, 0.35); } }
 .quickcard.primary { background: var(--ink); border-color: var(--ink); color: #fff; }
 .quickcard.primary .icon { color: #ff8f94; }
 .quickcard.primary span { color: #c9c6c0; }
-.quickcard.primary:hover { background: #22262a; }
+@media (hover: hover) { .quickcard.primary:hover { background: #22262a; } }
 .quickcard:focus-visible { outline: 2px solid var(--pen); outline-offset: 2px; }
 .rowlink.static:hover { background: none; }
 .joincode {
@@ -637,7 +645,6 @@ a:has(> .logo) { text-decoration: none; }
 .chapchip {
   display: inline-flex; align-items: center; gap: 7px; font: 500 12.5px var(--ui); color: #40464d;
   background: var(--white); border: 1px solid #d5d1ca; border-radius: 100px; padding: 5px 6px 5px 12px; cursor: pointer;
-  transition: background 0.1s, border-color 0.1s, color 0.1s;
 }
 .chapchip:hover { border-color: var(--ink); color: var(--ink); }
 .chapchip.on { background: var(--ink); border-color: var(--ink); color: #fff; }
@@ -655,7 +662,7 @@ a:has(> .logo) { text-decoration: none; }
   cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--ink); list-style: none; display: inline-flex; gap: 6px; align-items: center;
 }
 .bld-more > summary::-webkit-details-marker { display: none; }
-.bld-more > summary::before { content: "▸"; color: var(--graphite); transition: transform 0.12s; }
+.bld-more > summary::before { content: "▸"; color: var(--graphite); transition: transform var(--dur) var(--ease); }
 .bld-more[open] > summary::before { transform: rotate(90deg); }
 .bld-more > summary .muted { font-weight: 400; }
 .bld-moregrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px 28px; margin-top: 12px; }
@@ -735,7 +742,7 @@ a:has(> .logo) { text-decoration: none; }
 .batchmore { margin-top: 8px; }
 .batchmore > summary { cursor: pointer; font-size: 12.5px; font-weight: 600; list-style: none; display: inline-flex; gap: 6px; align-items: center; padding: 4px 0; }
 .batchmore > summary::-webkit-details-marker { display: none; }
-.batchmore > summary::before { content: "▸"; color: var(--graphite); transition: transform 0.12s; }
+.batchmore > summary::before { content: "▸"; color: var(--graphite); transition: transform var(--dur) var(--ease); }
 .batchmore[open] > summary::before { transform: rotate(90deg); }
 .batchmorebody { padding: 8px 0 4px 14px; }
 .studentlist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
@@ -781,10 +788,10 @@ a:has(> .logo) { text-decoration: none; }
 .modtext { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .modtext b { font-size: 14px; }
 .modtext > span { font-size: 12.5px; color: var(--graphite); }
-.switch { position: relative; flex: 0 0 auto; width: 42px; height: 24px; border-radius: 100px; background: #d5d1ca; transition: background 0.15s; }
+.switch { position: relative; flex: 0 0 auto; width: 42px; height: 24px; border-radius: 100px; background: #d5d1ca; transition: background-color var(--dur) var(--ease); }
 .switch.on { background: var(--ledger); }
 .switch input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: inherit; }
-.switch .knob { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.25); transition: transform 0.15s; pointer-events: none; }
+.switch .knob { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.25); transition: transform var(--dur) var(--ease), width var(--dur) var(--ease); pointer-events: none; }
 .switch.on .knob { transform: translateX(18px); }
 .switch input:focus-visible + .knob { outline: 2px solid var(--pen); outline-offset: 2px; }
 
@@ -802,3 +809,116 @@ a:has(> .logo) { text-decoration: none; }
   color: var(--graphite); text-decoration: none; background: var(--white); white-space: nowrap;
 }
 .setnav a.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+
+/* ==========================================================================
+   Motion. Every transition here uses the one curve and three durations on
+   .pf-ui (paperflow.css), which also switches all of it off for anyone whose
+   device asks for reduced motion. Hover effects only where there is a mouse,
+   so a tap on a phone never leaves something stuck in its hover state.
+   ========================================================================== */
+@keyframes pf-enter { from { opacity: 0; transform: translateY(6px); } }
+@keyframes pf-fade { from { opacity: 0; } }
+@keyframes pf-pop { from { opacity: 0; transform: scale(0.6); } }
+@keyframes pf-grow-x { from { opacity: 0; transform: scaleX(0.55); } }
+@keyframes pf-tint { from { background-color: transparent; box-shadow: inset 0 0 0 var(--pen); } }
+
+/* ---- navigation --------------------------------------------------------- */
+/* each page (and its title) eases in as it arrives; the frame around it stays put.
+   "backwards" leaves no transform behind once done, so sticky and fixed
+   children of the page behave normally. */
+.navshell .content > *, .m-app .screen > * { animation: pf-enter var(--dur) var(--ease) backwards; }
+.navbadge { animation: pf-pop var(--dur) var(--ease) backwards; }
+/* the student app redraws its menu with each page, so the chosen tab's tint grows in */
+.m-app .tab .ic { transition: background var(--dur-fast) var(--ease); }
+.m-app .tab.on .ic { animation: pf-grow-x var(--dur-slow) var(--ease) backwards; }
+.m-app .tab { transition: color var(--dur-fast) var(--ease); }
+.m-app .tab:active .ic { background: #f1eee9; }
+.m-app .tab.on:active .ic { background: var(--pen-soft); }
+.m-sideitem { transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease); }
+.m-sideitem.on { animation: pf-tint var(--dur-slow) var(--ease) backwards; }
+@media (hover: hover) {
+  .m-app .tab:hover { color: var(--ink); }
+  .m-app .tab.on:hover { color: var(--pen); }
+}
+
+/* ---- buttons, tiles and chips ------------------------------------------- */
+/* colours change on the shared curve; a press sinks the control slightly */
+.btn, .gen, .cta, .iconbtn, .setbtn, .googlebtn, .chapchip, a.chip, .qbox, .mtopbtn, .navclose, .tabbtn, .seg a, .seg button, .footlinks a, .presetcard {
+  transition: background-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease), box-shadow var(--dur) var(--ease), transform var(--dur-fast) var(--ease);
+  -webkit-tap-highlight-color: transparent;
+}
+.btn:active:not(:disabled), .gen:active:not(:disabled), .cta:active:not(:disabled), .setbtn:active,
+.googlebtn:active, .chapchip:active:not(:disabled), a.chip:active, .iconbtn:active, .mtopbtn:active, .navclose:active {
+  transform: scale(0.97);
+}
+.qbox:active { transform: scale(0.92); }
+.quickcard, .statx.link, a.testcard, .acct {
+  transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease), transform var(--dur) var(--ease), background-color var(--dur-fast) var(--ease);
+  -webkit-tap-highlight-color: transparent;
+}
+.quickcard:active, .statx.link:active, a.testcard:active, .acct:active { transform: scale(0.985); }
+@media (hover: hover) {
+  .btn.solid:hover:not(:disabled), .gen:hover:not(:disabled), .cta:not(.quiet):hover:not(:disabled) {
+    box-shadow: 0 4px 12px -4px rgba(179, 20, 28, 0.45);
+  }
+  .quickcard:hover { transform: translateY(-2px); }
+  .statx.link:hover, a.testcard:hover { transform: translateY(-1px); box-shadow: 0 6px 16px -10px rgba(21, 24, 27, 0.3); }
+  .quickcard:hover .icon { transform: translateX(2px); }
+  .quickcard .icon { transition: transform var(--dur) var(--ease); }
+  .quickcard:active, .statx.link:active, a.testcard:active { transform: scale(0.985); }
+}
+/* a copied code: the button confirms in place as well as in the toast */
+.btn.copybtn.done, .btn.copybtn.done:hover { border-color: var(--ledger); color: var(--ledger); background: var(--white); }
+.copybtn .icon { transition: transform var(--dur) var(--ease); }
+.copybtn.done .icon { animation: pf-pop var(--dur) var(--ease) backwards; }
+
+/* ---- toasts (sonner, unstyled, so they look like the rest of the app) ---- */
+.pf-toast {
+  display: flex; align-items: center; gap: 10px; width: var(--width); max-width: calc(100vw - 32px);
+  padding: 11px 14px; border-radius: 10px; background: var(--ink); color: var(--paper);
+  font: 500 13px/1.4 var(--ui); box-shadow: 0 10px 30px -10px rgba(21, 24, 27, 0.45);
+}
+.pf-toast [data-description] { color: #c9c6c0; font-weight: 400; font-size: 12px; margin-top: 1px; }
+.pf-toast-ic { display: grid; place-items: center; flex: 0 0 auto; width: 18px; height: 18px; }
+.pf-toast.ok .pf-toast-ic { color: #7fd1c6; }
+.pf-toast.bad { background: var(--pen); }
+.pf-toast.bad .pf-toast-ic { color: #fff; }
+.pf-toast-ic svg { width: 18px; height: 18px; }
+/* sonner animates its own entry; give it the app's curve and timing */
+.pf-ui [data-sonner-toaster] [data-sonner-toast] {
+  transition: transform var(--dur-slow) var(--ease), opacity var(--dur-slow) var(--ease), height var(--dur-slow) var(--ease), box-shadow var(--dur) var(--ease);
+}
+
+/* ---- toggles, tabs and panels that open ---------------------------------- */
+/* a switch's knob stretches while held, then slides */
+.switch:active .knob { width: 22px; }
+.switch.on:active .knob { transform: translateX(14px); }
+.modrow:active .switch .knob { width: 22px; }
+.modrow:active .switch.on .knob { transform: translateX(14px); }
+.modrow.blocked:active .switch .knob { width: 18px; }
+.modrow.blocked:active .switch.on .knob { transform: translateX(18px); }
+/* segmented choices and chips sink a touch when pressed */
+.seg a:active, .seg button:active, .presetcard:active { transform: scale(0.96); }
+/* the chosen tab's underline grows from its centre; a panel fades in when shown */
+.tabbtn { position: relative; }
+.tabbtn.on { border-bottom-color: transparent; }
+.tabbtn.on::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: var(--pen);
+  animation: pf-grow-x var(--dur) var(--ease) backwards;
+}
+.tabpanel { animation: pf-fade var(--dur) var(--ease) backwards; }
+/* anything that opens (details panels, the invite drawer, "More options") eases open */
+.pf-ui details[open] > :not(summary) { animation: pf-enter var(--dur) var(--ease) backwards; }
+.drawer > summary { transition: background-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease); }
+.selfpractice { animation: pf-enter var(--dur) var(--ease) backwards; }
+
+/* ---- the rest ------------------------------------------------------------ */
+/* home tiles and figures arrive one after another, quickly */
+.quick > *, .stats > * { animation: pf-enter var(--dur) var(--ease) backwards; }
+.quick > :nth-child(2), .stats > :nth-child(2) { animation-delay: 30ms; }
+.quick > :nth-child(3), .stats > :nth-child(3) { animation-delay: 60ms; }
+.quick > :nth-child(4), .stats > :nth-child(4) { animation-delay: 90ms; }
+.quick > :nth-child(n + 5), .stats > :nth-child(n + 5) { animation-delay: 120ms; }
+/* a banner (pending invite, offline) slides in rather than shoving the page */
+.m-banner, .notice { animation: pf-enter var(--dur) var(--ease) backwards; }

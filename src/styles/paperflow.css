@@ -26,6 +26,12 @@
   --serif: var(--font-newsreader), Georgia, serif;
   --ui: var(--font-inter), "Segoe UI", system-ui, sans-serif;
   --mono: var(--font-jetbrains), "DejaVu Sans Mono", monospace;
+  /* motion: one curve, three durations, used by every transition and animation
+     (src/lib/motion.ts holds the same values for the motion library) */
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-fast: 120ms;
+  --dur: 200ms;
+  --dur-slow: 280ms;
 
   background: var(--paper);
   color: var(--ink);
@@ -170,7 +176,7 @@ h2.sect:first-child { margin-top: 0; }
 .sel, .inp {
   width: 100%; border: 1px solid #d5d1ca; background: var(--white);
   border-radius: 7px; padding: 9px 11px; font-family: var(--ui);
-  font-size: 13.5px; color: var(--ink); transition: border-color 0.12s, box-shadow 0.12s;
+  font-size: 13.5px; color: var(--ink); transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
 }
 .sel:hover, .inp:hover { border-color: #b9b4ab; }
 .sel:focus, .inp:focus { border-color: var(--ink); box-shadow: 0 0 0 3px rgba(21, 24, 27, 0.08); outline: none; }
@@ -192,7 +198,7 @@ h2.sect:first-child { margin-top: 0; }
 .gen {
   width: 100%; background: var(--ink); color: var(--paper); border: 0;
   padding: 13px; border-radius: 8px; font-size: 14px; font-weight: 600;
-  cursor: pointer; margin-top: 4px; font-family: var(--ui); transition: background 0.12s;
+  cursor: pointer; margin-top: 4px; font-family: var(--ui); transition: background-color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
 }
 .gen:hover { background: var(--pen); }
 .gen:disabled { background: var(--hair); color: var(--graphite); cursor: not-allowed; }
@@ -203,7 +209,7 @@ h2.sect:first-child { margin-top: 0; }
   border: 1px solid var(--ink); background: var(--white); color: var(--ink);
   font-size: 12.5px; font-weight: 500; padding: 8px 14px; border-radius: 7px; cursor: pointer;
   font-family: var(--ui); text-decoration: none; display: inline-flex; align-items: center;
-  justify-content: center; gap: 6px; line-height: 1.3; transition: background 0.12s, color 0.12s, border-color 0.12s;
+  justify-content: center; gap: 6px; line-height: 1.3; transition: background-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
 }
 .btn:disabled { opacity: 0.55; cursor: not-allowed; }
 .btn:hover { background: var(--ink); color: var(--paper); }
@@ -489,7 +495,7 @@ table.lt td b { font-weight: 600; }
   flex: 0 0 auto; width: 26px; height: 26px; border: 1.5px solid var(--graphite);
   border-radius: 3px; background: var(--white); cursor: pointer;
   font-family: var(--mono); font-size: 11px; color: var(--graphite);
-  display: grid; place-items: center; transition: 0.13s; padding: 0;
+  display: grid; place-items: center; transition: all var(--dur-fast) var(--ease); padding: 0;
 }
 .qbox:hover { border-color: var(--pen); color: var(--pen); }
 .qbox:focus-visible { outline: 2px solid var(--pen); outline-offset: 2px; }

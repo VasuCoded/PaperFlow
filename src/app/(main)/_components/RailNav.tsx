@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Fragment, Suspense, use, useEffect, useState } from "react";
+import * as m from "motion/react-m";
 import { currentItem, isActive, type NavGroup } from "@/lib/nav";
 import { Icon } from "@/components/ui/Icon";
 import type { NavBadges } from "@/server/data/badges";
@@ -19,6 +20,10 @@ function setNavOpen(open: boolean) {
  * clicked (the address bar only changes once the page arrives), and follows the
  * address bar otherwise, including the browser's back and forward buttons.
  *
+ * The highlight is one element that slides to the chosen item. The list is its
+ * layout root: the sidebar is pinned, so the page scrolling (or Next.js
+ * scrolling to the top of the next page) must not count as the item moving.
+ *
  * `badges` is a promise the server has not waited for: each count appears when
  * it arrives, and the menu itself never waits.
  */
@@ -34,7 +39,7 @@ export function RailNav({ groups, badges }: { groups: NavGroup[]; badges?: Promi
 
   const current = pending ?? pathname;
   return (
-    <div className="navlist">
+    <m.div className="navlist" layoutRoot layoutScroll>
       {groups.map((group, gi) => (
         <Fragment key={group.title ?? gi}>
           {group.title && <div className="navgroup">{group.title}</div>}
@@ -53,6 +58,7 @@ export function RailNav({ groups, badges }: { groups: NavGroup[]; badges?: Promi
                   else setNavOpen(false);
                 }}
               >
+                {on && <m.span layoutId="navhl" className="navhl" aria-hidden="true" />}
                 <Icon name={n.icon} />
                 <span className="navlabel">{n.label}</span>
                 {n.badge && badges && (
@@ -65,7 +71,7 @@ export function RailNav({ groups, badges }: { groups: NavGroup[]; badges?: Promi
           })}
         </Fragment>
       ))}
-    </div>
+    </m.div>
   );
 }
 
@@ -100,7 +106,8 @@ export function PageTitle({ groups }: { groups: NavGroup[] }) {
   const item = currentItem(groups, pathname);
   if (!item) return null;
   return (
-    <div className="ctitle">
+    // keyed, so the title fades in with each page rather than swapping in place
+    <div className="ctitle" key={item.href}>
       <Icon name={item.icon} size={20} />
       <h1>{item.label}</h1>
     </div>
