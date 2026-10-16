@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Source_Serif_4, Noto_Sans_Devanagari } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 // Fonts are downloaded at build time and served from our own origin.
@@ -45,6 +46,7 @@ export default function RootLayout({
         className={`${latinSans.variable} ${latinSerif.variable} ${deva.variable} font-sans antialiased`}
       >
         {children}
+        <Analytics />
       </body>
     </html>
   );
