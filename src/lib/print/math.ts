@@ -65,6 +65,11 @@ export function renderRich(text: string): string {
         throwOnError: false, // a bad expression prints as red source, never crashes a paper
         strict: false,
         output: "html", // no MathML duplicate — it doubles text in some print engines
+        // Question text is data: no \href, \url, \htmlClass or \includegraphics,
+        // and bounded macro expansion so one body cannot stall a page render.
+        trust: false,
+        maxExpand: 500,
+        maxSize: 50,
       }),
     );
     last = m.index + m[0].length;

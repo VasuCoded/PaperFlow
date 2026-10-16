@@ -23,8 +23,7 @@ export function OfflineBanner() {
   if (!offline) return null;
   return (
     <div className="m-banner offline" role="status">
-      <b>You&rsquo;re offline.</b> You can read your tests and practice, but logging a paper needs a
-      connection — nothing will be saved until you are back online.
+      <b>You&rsquo;re offline.</b> Tests and practice still open; logging a paper waits until you&rsquo;re back online.
     </div>
   );
 }

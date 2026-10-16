@@ -154,9 +154,6 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
               </table>
             </div>
           )}
-          <p className="footnote-plain">
-            Revoking an invitation for someone who has already joined changes nothing; remove them from Members instead.
-          </p>
         </div>
 
         {/* role history */}
@@ -184,9 +181,6 @@ export default async function MembersPage({ searchParams }: { searchParams: Prom
               </table>
             </div>
           )}
-          <p className="footnote-plain">
-            Every role change is recorded with who made it and when. The platform owner can read this log too.
-          </p>
         </div>
       </Tabs>
     </AppShell>

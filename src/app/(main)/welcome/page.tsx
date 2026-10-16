@@ -78,11 +78,7 @@ export default async function WelcomePage({
               <>You&rsquo;re signed in. <em>Now your institute lets you in.</em></>
             )}
           </h1>
-          <p>
-            An account proves who you are. It does not give you a role or put you in an institute:
-            students join with their teacher&rsquo;s batch code; teachers and staff ask their institute,
-            and the institute decides.
-          </p>
+          <p>Students: enter your batch code. Teachers and staff: ask your institute for access.</p>
         </div>
       </header>
 
@@ -120,9 +116,6 @@ export default async function WelcomePage({
           <h4>Students: join with your batch code</h4>
           <p style={{ marginBottom: 12 }}>Six characters from your teacher. You are in straight away.</p>
           <JoinForm />
-          <p style={{ fontSize: 11.5, color: "var(--graphite)", marginTop: 14 }}>
-            Codes never contain O, 0, I or 1, and are unique across every institute.
-          </p>
         </div>
 
         <div className="card">

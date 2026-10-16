@@ -112,10 +112,6 @@ export function account(id: string): DemoAccount | undefined {
   return ACCOUNTS.find((a) => a.id === id);
 }
 
-export function roleAt(acc: DemoAccount, instituteId: string) {
-  return acc.memberships.find((m) => m.instituteId === instituteId)?.role;
-}
-
 export const ROLE_LABEL: Record<string, string> = {
   owner: "Platform owner",
   institute_admin: "Institute admin",

@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/db/admin";
 import { createServerSupabaseClient } from "@/lib/db/server";
 import { getSession } from "@/server/session";
+import { isSameOrigin } from "@/lib/same-origin";
 
 /**
  * Institute data export (BUILD-PLAN C12 item 8).
@@ -79,8 +80,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Route handlers do not get the Origin check server actions do.
-  const origin = request.headers.get("origin");
-  if (origin && new URL(origin).host !== request.headers.get("host")) {
+  if (!isSameOrigin(request.headers.get("origin"), request.headers.get("host"))) {
     return NextResponse.json({ message: "Cross-site request refused." }, { status: 403 });
   }
 
@@ -142,6 +142,8 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (e) {
-    return NextResponse.json({ message: e instanceof Error ? e.message : "Export failed." }, { status: 500 });
+    // The detail names tables and columns; it goes to the server log, not the browser.
+    console.error("institute export failed", e);
+    return NextResponse.json({ message: "The export could not be assembled. Please try again." }, { status: 500 });
   }
 }

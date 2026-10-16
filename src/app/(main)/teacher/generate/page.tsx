@@ -77,9 +77,7 @@ export default async function GeneratePage() {
             been activated yet.
           </p>
           <div className="notice plain">
-            Your institute admin assigns subjects under <b>Teacher subjects</b>. A subject only
-            appears once the platform has activated it for your institute — that is deliberate, so
-            you never get a dropdown full of subjects with too few questions to build a paper from.
+            Ask your institute admin to assign you a subject under <b>Teacher subjects</b>.
           </div>
         </div>
       ) : (

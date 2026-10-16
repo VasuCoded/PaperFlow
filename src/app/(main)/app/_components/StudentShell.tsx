@@ -17,6 +17,7 @@ import { hashUserId } from "@/lib/pwa/policy";
 import { Logo, LogoMark } from "@/components/brand/Logo";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { SignOutButton } from "../../_components/SignOutButton";
+import { ThemeSwitch } from "@/components/ui/ThemeSwitch";
 
 export interface StudentContext {
   session: Session;
@@ -107,6 +108,7 @@ export function StudentShell({
               <Icon name="arrowRight" size={15} /> Go to your console
             </Link>
           )}
+          <ThemeSwitch />
           <SignOutButton className="btn sm ghost signout" block />
         </div>
       </aside>

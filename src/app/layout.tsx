@@ -1,27 +1,7 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Source_Serif_4, Noto_Sans_Devanagari } from "next/font/google";
+import { rootFontClass } from "@/lib/fonts";
+import { THEME_SCRIPT } from "@/lib/theme";
 import "./globals.css";
-
-// Fonts are downloaded at build time and served from our own origin.
-// Print must never depend on a runtime CDN fetch (BUILD-PLAN C0 item 11).
-const latinSans = Inter({
-  subsets: ["latin"],
-  variable: "--font-latin-sans",
-  display: "swap",
-});
-
-const latinSerif = Source_Serif_4({
-  subsets: ["latin"],
-  variable: "--font-latin-serif",
-  display: "swap",
-});
-
-const deva = Noto_Sans_Devanagari({
-  subsets: ["devanagari", "latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-deva",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "PaperFlow",
@@ -40,12 +20,14 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
-      <body
-        className={`${latinSans.variable} ${latinSerif.variable} ${deva.variable} font-sans antialiased`}
-      >
-        {children}
-      </body>
+    // suppressHydrationWarning: THEME_SCRIPT sets data-theme on <html> before
+    // React hydrates, so the attribute legitimately differs from the server's.
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Runs before first paint so a dark-mode user never sees a white flash. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
+      <body className={`${rootFontClass} font-sans antialiased`}>{children}</body>
     </html>
   );
 }

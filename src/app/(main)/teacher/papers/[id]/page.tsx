@@ -121,9 +121,7 @@ export default async function PaperDetailPage({ params }: { params: Promise<{ id
       <h2 className="sect">Who logged, and which set they wrote</h2>
       {paper.sets.length > 1 && (
         <div className="notice warn">
-          <b>Check the set column.</b> A student who logged against the wrong set has every tap mapped to
-          the wrong question, so their weak spots are quietly wrong. Correcting it remaps their attempt
-          and rebuilds their practice set in one step.
+          <b>Check the set column.</b> If a student logged the wrong set, correct it here; their practice set is rebuilt.
         </div>
       )}
 

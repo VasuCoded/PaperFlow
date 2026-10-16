@@ -70,7 +70,7 @@ export default async function PracticePage({ searchParams }: { searchParams: Pro
             <p>
               {current.source === "self"
                 ? "Questions you chose, the ones you have not seen first. Solutions unlock as you go."
-                : "Same topics as your mistakes, none of them seen before. Solutions unlock as you go."}
+                : "New questions on the topics you got wrong. Each solution unlocks once you try it."}
             </p>
             <div className="track" style={{ marginTop: 10 }}>
               <div
@@ -96,14 +96,6 @@ export default async function PracticePage({ searchParams }: { searchParams: Pro
         </>
       )}
 
-      <p className="sec-label">Where practice does not apply</p>
-      <div className="practice idle">
-        <h4>No practice set for writing or map sections</h4>
-        <p>
-          &ldquo;You lost marks on a letter&rdquo; cannot become a useful next letter, so the app does not pretend.
-          What you mark there still reaches your teacher.
-        </p>
-      </div>
     </StudentShell>
   );
 }

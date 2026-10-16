@@ -14,7 +14,7 @@ export function LogoMark({ size = 28, title }: { size?: number; title?: string }
       aria-label={title}
       className="logomark"
     >
-      <rect width="32" height="32" rx="8" fill="#15181b" />
+      <rect className="logotile" width="32" height="32" rx="8" fill="#15181b" />
       {/* the second set, peeking out behind the first */}
       <path d="M8.5 9.5h9l4.5 4.5v12.5h-13.5z" fill="#5a6169" transform="translate(-1.6 1.6)" />
       <path d="M9.5 6.5h9.2l5.3 5.3v14.7h-14.5z" fill="#f7f6f4" />

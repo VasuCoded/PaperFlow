@@ -71,22 +71,10 @@ export default async function InstitutesPage({
           <Icon name="building" size={15} /> New institute
         </summary>
         <div className="drawerbody">
-          <div className="cards c2">
-            <div>
-              <h3 className="drawertitle">Create an institute</h3>
-              <p className="lede">
-                Creates the institute and invites its first admin, in one step. The admin then invites their own
-                teachers and students.
-              </p>
-              <CreateInstituteForm />
-            </div>
-            <div className="card tinted">
-              <h4>After you create it</h4>
-              <p>
-                Switch on its subjects from the institute&rsquo;s page (Subjects tab), so its teachers can set papers.
-                The admin sees the invitation the next time they sign in.
-              </p>
-            </div>
+          <div style={{ maxWidth: 560 }}>
+            <h3 className="drawertitle">Create an institute</h3>
+            <p className="lede">Creates the institute and invites its first admin.</p>
+            <CreateInstituteForm />
           </div>
         </div>
       </details>
@@ -164,8 +152,7 @@ export default async function InstitutesPage({
       )}
 
       <p className="footnote-plain">
-        Suspending keeps every row; its members simply stop resolving as members until you reactivate. There is no
-        &ldquo;log in as&rdquo;: Manage reads an institute through an audited function, and the visit is logged.
+        Suspending keeps all data until you reactivate. Opening an institute is logged.
       </p>
     </AppShell>
   );

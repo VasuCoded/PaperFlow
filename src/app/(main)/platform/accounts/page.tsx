@@ -17,17 +17,13 @@ export default async function AccountsPage() {
   return (
     <AppShell area="platform">
       <div className="notice warn">
-        <b>Check who it is before approving.</b> An account is just a username and a name the person typed.
-        The role you choose is what they get: an institute admin can invite and approve people, change roles
-        and export that institute&rsquo;s data.
+        <b>Check who it is before approving.</b> The name on a request is whatever the person typed.
       </div>
 
       <AccessRequestList mode="platform" requests={requests} />
 
       <div className="notice plain" style={{ marginTop: 16 }}>
-        Setting up a new institute: create it under <b>Institutes</b> with its first admin&rsquo;s username, or
-        have them sign up, ask for access to it here, and approve them as <b>Institute admin</b>. Opening this
-        page was logged.
+        New institute? Create it under <b>Institutes</b> with its first admin&rsquo;s username.
       </div>
     </AppShell>
   );

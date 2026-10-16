@@ -2,21 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
+/* The page behind everything (seen on overscroll and around a print preview).
+   White unless the person chose dark (src/lib/theme.ts sets data-theme). */
 :root {
   --background: #ffffff;
   --foreground: #0a0a0a;
 }
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+:root[data-theme="dark"] {
+  --background: #121416;
+  --foreground: #ebe9e5;
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
+}
+
+/* Paper is paper: whatever the screen theme, a printout is black on white. */
+@media print {
+  :root, body { background: #fff !important; color: #000 !important; }
 }
 
 /* ==========================================================================
@@ -220,6 +224,9 @@ body {
 /* A question's figure (graph, diagram), from a [[fig:id]] marker in its body. */
 figure.qfig { display: block; margin: 8px 0 6px; }
 figure.qfig img { display: block; max-width: min(100%, 520px); max-height: 300px; height: auto; object-fit: contain; }
+/* Figures are drawn on white. On a dark screen they keep their white card
+   rather than being inverted, which would falsify a graph's colours. */
+.pf-ui figure.qfig img { background: #fff; border-radius: 6px; padding: 4px; }
 @media print {
   figure.qfig { break-inside: avoid; }
   figure.qfig img { max-height: 70mm; }

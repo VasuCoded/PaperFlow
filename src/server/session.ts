@@ -98,11 +98,6 @@ async function resolveSession(): Promise<Session | null> {
   };
 }
 
-/** A session guaranteed to have an authenticated user, or null. */
-export async function requireSession(): Promise<Session | null> {
-  return getSession();
-}
-
 export const INSTITUTE_COOKIE_NAME = INSTITUTE_COOKIE;
 
 /** Roles permitted in each area, mirroring middleware. */

@@ -265,8 +265,7 @@ export function PersonLookup() {
                 </table>
               </div>
               <p style={{ fontSize: 11.5, color: "var(--graphite)" }}>
-                There is no &ldquo;resend&rdquo;: PaperFlow sends no email. An invitation is matched when the person signs in
-                with Google using this address — tell them that.
+                PaperFlow sends no email. An invitation is accepted when the person next signs in with this username or Google address.
               </p>
             </>
           )}

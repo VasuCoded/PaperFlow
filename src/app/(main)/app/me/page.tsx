@@ -5,6 +5,7 @@ import { SignOutButton } from "../../_components/SignOutButton";
 import { InstituteSwitcher } from "../../_components/InstituteSwitcher";
 import { displayIdentity, isUsernameEmail } from "@/lib/identity";
 import { ChangePassword } from "../../_components/ChangePassword";
+import { ThemeSwitch } from "@/components/ui/ThemeSwitch";
 
 export const metadata: Metadata = { title: "Me · PaperFlow" };
 
@@ -19,11 +20,10 @@ export default async function MePage() {
       <div className="testcard">
         <h3 style={{ fontSize: 17 }}>{session.fullName ?? "Your account"}</h3>
         <div className="meta">{displayIdentity(session.email).toUpperCase()}</div>
-        <p style={{ fontSize: 12.5, color: "var(--graphite)", margin: "10px 0 0" }}>
-          {isUsernameEmail(session.email) ? "Signed in with your username." : "Signed in with Google."} Your institute decides what you can see;
-          nothing here changes that.
-        </p>
       </div>
+
+      <p className="sec-label">Appearance</p>
+      <ThemeSwitch withLabels />
 
       {isUsernameEmail(session.email) && (
         <>
@@ -54,15 +54,8 @@ export default async function MePage() {
         ))
       )}
       <p style={{ fontSize: 12, color: "var(--graphite)", marginTop: 8 }}>
-        One batch per subject. To join another subject, enter its code.{" "}
         <Link href="/welcome?join=1" style={{ color: "var(--pen)" }}>Enter a join code</Link>
       </p>
-
-      <p className="sec-label">Offline</p>
-      <div className="practice idle">
-        <h4>Reading works offline; logging does not</h4>
-        <p>If you lose connection while logging, the app tells you and saves nothing — so nothing is lost silently.</p>
-      </div>
 
       <div style={{ marginTop: 18 }}>
         <SignOutButton className="cta quiet" />

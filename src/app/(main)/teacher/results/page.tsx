@@ -109,7 +109,7 @@ export default async function ResultsPage({ searchParams }: { searchParams: Prom
                       })}
                     </div>
                   )}
-                  <p className="panelfoot">How many students got at least one question on the topic wrong. Worth going over in class.</p>
+                  <p className="panelfoot">Students with at least one wrong answer on the topic.</p>
                 </section>
 
                 <section className="panel">
@@ -174,10 +174,6 @@ export default async function ResultsPage({ searchParams }: { searchParams: Prom
                   </tbody>
                 </table>
               </div>
-              <p className="footnote-plain">
-                Logging only works as a habit. If a student is behind, the fix is a quick word in class, not a change
-                to the paper.
-              </p>
             </>
           )}
         </>

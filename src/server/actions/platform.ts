@@ -8,6 +8,7 @@ import { confirmsIdentity, loginToEmail, usernameProblem } from "@/lib/identity"
 import { createAdminClient } from "@/lib/db/admin";
 import { resetPassword } from "@/server/passwords";
 import { FIGURE_TOKEN, figureToken } from "@/lib/print/math";
+import { sniffImage } from "@/lib/image-sniff";
 
 /**
  * Platform console mutations. Each checks the platform owner here for a clear
@@ -376,6 +377,10 @@ export async function attachFigureAction(formData: FormData): Promise<ActionResu
   const ext = FIGURE_TYPES[file.type];
   if (!ext) return { ok: false, message: "Use a PNG, JPG or WebP image." };
   if (file.size > FIGURE_MAX_BYTES) return { ok: false, message: "The image must be 2 MB or smaller." };
+  // The declared type is the browser's word; the file's own signature must agree.
+  if (sniffImage(new Uint8Array(await file.slice(0, 16).arrayBuffer())) !== ext) {
+    return { ok: false, message: "That file is not a valid PNG, JPG or WebP image." };
+  }
 
   const { data: q } = await supabase.from("questions").select("id, owner_institute_id, body").eq("id", questionId).maybeSingle();
   if (!q) return { ok: false, message: "Question not found." };

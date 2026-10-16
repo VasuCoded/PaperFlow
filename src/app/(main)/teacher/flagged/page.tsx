@@ -43,10 +43,7 @@ export default async function FlaggedPage() {
   return (
     <AppShell area="teacher">
       <div className="notice warn">
-        <b>What a flag does, exactly.</b> The question stops appearing in your institute&rsquo;s papers straight
-        away. It stays in the shared bank for other institutes until the platform reviews it — one institute
-        cannot pull a question out of everyone else&rsquo;s papers. So you may still see it in the bank; that is
-        deliberate, not a bug.
+        A flagged question leaves your institute&rsquo;s papers at once. The platform then reviews it for everyone else.
       </div>
 
       {flags.length === 0 ? (

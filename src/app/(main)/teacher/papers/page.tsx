@@ -142,11 +142,6 @@ export default async function PapersPage({
         </div>
       )}
 
-      <div className="notice" style={{ marginTop: 16 }}>
-        <b>The logging rate is the number to watch.</b> The practice loop only works if students log.
-        Under 60% within two days of handing papers back means the habit has not taken yet — the fix
-        is asking the class to open the app, not a change to the app.
-      </div>
     </AppShell>
   );
 }

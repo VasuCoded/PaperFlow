@@ -5,12 +5,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { loadBrowserClient } from "@/lib/db/client-lazy";
 import { loginToEmail, passwordProblem, usernameProblem } from "@/lib/identity";
+import { safeNextPath } from "@/lib/safe-redirect";
 import { createAccount } from "@/server/actions/auth";
-
-/** Only same-site paths, so ?next= cannot send someone elsewhere. */
-function safeNext(next?: string): string {
-  return next && next.startsWith("/") && !next.startsWith("//") ? next : "/";
-}
 
 /**
  * Signs in from the browser (the person's own connection), so Supabase's
@@ -40,7 +36,7 @@ export function SignInForm({ next }: { next?: string }) {
           }
           // A full load, not a client-side navigation: nothing the previous
           // person loaded in this tab may survive into the new session.
-          window.location.replace(safeNext(next));
+          window.location.replace(safeNextPath(next));
         } catch {
           setError("Could not reach the server. Check your connection and try again.");
           setBusy(false);

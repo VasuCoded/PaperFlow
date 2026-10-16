@@ -25,8 +25,7 @@ export function CreateInstituteForm() {
     return (
       <div>
         <p style={{ fontSize: 13, marginBottom: 10 }}>
-          <b>{created.name}</b> exists. An institute-admin invite is waiting for <b>{created.admin}</b> — it is
-          accepted when they sign in with Google using that address. Nothing is activated yet.
+          <b>{created.name}</b> exists. An institute-admin invite is waiting for <b>{created.admin}</b>; they accept it when they next sign in. Switch on its subjects next.
         </p>
         <div className="btnrow">
           <Link className="btn sm solid" href={`/platform/activation`}>Activate a subject</Link>

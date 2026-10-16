@@ -11,6 +11,7 @@ import { PendingInvitesNotice } from "./PendingInvites";
 import { AccessRequestsNotice } from "./AccessRequestsNotice";
 import { MobileBar, NavClose, NavScrim, PageTitle, RailNav } from "./RailNav";
 import { SignOutButton } from "./SignOutButton";
+import { ThemeSwitch } from "@/components/ui/ThemeSwitch";
 
 const ROLE_LABEL: Record<string, string> = {
   owner: "Platform owner",
@@ -122,6 +123,7 @@ function RailFoot({ session, area }: { session: Session; area: Area }) {
         </div>
       )}
 
+      <ThemeSwitch />
       <div className="footrow">
         <Link href="/app/me#password" className="btn sm ghost">
           <Icon name="lock" size={14} /> Password

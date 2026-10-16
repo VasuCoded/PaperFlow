@@ -106,24 +106,9 @@ export default async function ActivationPage() {
         <p className="lede" style={{ marginTop: 14 }}>No active institutes to activate for. Create one under Institutes.</p>
       )}
 
-      <div className="cards c2" style={{ marginTop: 20 }}>
-        <div className="card tinted">
-          <h4>What the second institute costs</h4>
-          <p>
-            The fifteen hours of review is paid once per class-subject, for the whole platform. Turning a
-            ready subject on for another institute is about an hour: check the gate against their private
-            layer, have one of their teachers read three generated papers, activate.
-          </p>
-        </div>
-        <div className="card">
-          <h4>Every change is logged</h4>
-          <p>
-            Activating or deactivating writes a row to the platform access log naming the institute and the
-            class-subject. Deactivating hides the subject from that institute&rsquo;s teachers and students;
-            papers already made are kept.
-          </p>
-        </div>
-      </div>
+      <p className="footnote-plain">
+        Every activation change is logged. Deactivating hides a subject from new papers; papers already made are kept.
+      </p>
     </AppShell>
   );
 }

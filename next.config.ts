@@ -15,6 +15,22 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: false,
   },
+  // Baseline browser hardening on every response. No page is meant to be framed
+  // by another site (clickjacking a "Delete paper" button), sniffed into another
+  // type, or to leak its path (which can carry ids) to other origins.
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=()" },
+        ],
+      },
+    ];
+  },
   experimental: {
     // Signed-in pages are dynamic, and by default (0) the browser throws them
     // away the moment you leave, so going back to a page you saw five seconds

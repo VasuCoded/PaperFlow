@@ -1,30 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Newsreader, Inter, JetBrains_Mono } from "next/font/google";
+import { uiFontClass } from "@/lib/fonts";
 import "./demo.css";
 import { DemoSessionProvider } from "@/demo/session";
 import { DemoBar } from "./_components/DemoBar";
-
-// Self-hosted at build time, matching the reference mockups' type pairing.
-const newsreader = Newsreader({
-  subsets: ["latin"],
-  style: ["normal", "italic"],
-  weight: ["400", "500", "600"],
-  variable: "--font-newsreader",
-  display: "swap",
-});
-const inter = Inter({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-inter",
-  display: "swap",
-});
-const jetbrains = JetBrains_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500", "700"],
-  variable: "--font-jetbrains",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "PaperFlow — design demo",
@@ -42,7 +21,7 @@ export default function DemoLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <div
-      className={`pf-ui ${newsreader.variable} ${inter.variable} ${jetbrains.variable}`}
+      className={`pf-ui ${uiFontClass}`}
     >
       <DemoSessionProvider>
         <DemoBar />

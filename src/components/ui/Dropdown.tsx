@@ -107,6 +107,8 @@ export function Dropdown({
         type="button"
         id={btnId}
         className="dd-btn"
+        // the ARIA 1.2 "select-only combobox": a button that owns a listbox
+        role="combobox"
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={listId}

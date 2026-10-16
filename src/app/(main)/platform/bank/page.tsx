@@ -39,9 +39,7 @@ export default async function ReviewQueuePage() {
       </div>
 
       <div className="notice warn">
-        <b>What you are actually checking.</b> Does the answer match the question — that is the one that
-        would embarrass you in front of somebody else&rsquo;s parent. Then: is the owner right, are diagrams
-        present, are the marks sane. Check anything the session flagged as unsure and skim the rest lighter.
+        <b>Check the answer against the question first.</b> Then the owner, diagrams and marks.
       </div>
 
       {queue.length === 0 && <p className="lede">The queue is empty. Nothing is waiting for review.</p>}
@@ -100,9 +98,7 @@ export default async function ReviewQueuePage() {
       ))}
 
       <div className="notice plain">
-        Approving an institute-private question into the shared bank is a separate, explicit action with a
-        confirmation naming the owner — a private question sitting in the shared bank is both a licensing
-        problem and a competitive one. Opening this page was logged, because it shows private questions.
+        Opening this page was logged, because it shows institutes&rsquo; private questions.
       </div>
     </AppShell>
   );

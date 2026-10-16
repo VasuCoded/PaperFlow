@@ -37,7 +37,6 @@ export default async function StudentTestsPage() {
               <p className="sec-label">Needs logging</p>
               <div className="needstrip">
                 <h4>● {unlogged.length} paper{unlogged.length === 1 ? "" : "s"} waiting</h4>
-                <p>Logging takes under a minute, and it is what makes your practice set worth doing.</p>
               </div>
               {unlogged.slice(0, 4).map((p) => (
                 <Link
@@ -69,7 +68,7 @@ export default async function StudentTestsPage() {
                   <>You logged this paper. You can change what you marked.</>
                 ) : (
                   <>
-                    Tap the questions you got <span className="hl">wrong</span>. That is all you need to do.
+                    Tap the questions you got <span className="hl">wrong</span>.
                   </>
                 )}
               </p>

@@ -8,7 +8,7 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["var(--font-latin-sans)", "system-ui", "sans-serif"],
+        sans: ["var(--font-inter)", "system-ui", "sans-serif"],
         serif: ["var(--font-latin-serif)", "Georgia", "serif"],
         deva: ["var(--font-deva)", "sans-serif"],
       },

@@ -5,7 +5,7 @@ import { createServerSupabaseClient } from "@/lib/db/server";
 import { getSession } from "@/server/session";
 import type { ActionResult } from "@/server/actions/membership";
 import { confirmsIdentity, displayIdentity, loginToEmail, usernameProblem } from "@/lib/identity";
-import { resetPassword } from "@/server/passwords";
+import { belongsOnlyTo, resetPassword } from "@/server/passwords";
 
 /**
  * Institute console mutations. The institute is always the session's — never a
@@ -210,6 +210,9 @@ export async function resetMemberPassword(
     .maybeSingle();
   if (member?.role !== "teacher" && member?.role !== "student") {
     return { ok: false, message: "You can reset passwords for teachers and students of your institute." };
+  }
+  if (!(await belongsOnlyTo(userId, ctx.instituteId))) {
+    return { ok: false, message: "This person also belongs to another institute, so only the platform can reset their password." };
   }
   const { data: profile } = await ctx.supabase.from("profiles").select("email").eq("id", userId).maybeSingle();
   if (!profile || !confirmsIdentity(typedConfirmation, profile.email)) {

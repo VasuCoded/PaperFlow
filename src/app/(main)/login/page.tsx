@@ -6,6 +6,7 @@ import { getSession } from "@/server/session";
 import { SignedInAs } from "../_components/SignedInAs";
 import { Logo } from "@/components/brand/Logo";
 import { Icon, type IconName } from "@/components/ui/Icon";
+import { ThemeSwitch } from "@/components/ui/ThemeSwitch";
 
 export const metadata: Metadata = {
   title: "PaperFlow · Question papers and mistake practice for classes 9 to 12",
@@ -72,6 +73,7 @@ export default async function LoginPage({
           <a href="#features">Features</a>
           <a href="#roles">Who it&rsquo;s for</a>
         </nav>
+        <ThemeSwitch />
         <a className="btn sm lp-navcta" href="#signin">
           Sign in
         </a>
@@ -162,7 +164,7 @@ export default async function LoginPage({
       </section>
 
       <section className="lp-sec lp-show">
-        <div className="lp-sheet" aria-hidden="true">
+        <div className="lp-sheet stay-light" aria-hidden="true">
           <div className="lp-sheethead">
             <b>Class 10 · Science</b>
             <span>Life Processes · 40 marks · Set B</span>

@@ -98,24 +98,9 @@ export default async function SubjectsPage() {
         ))
       )}
 
-      <div className="cards c2" style={{ marginTop: 8 }}>
-        <div className="card tinted">
-          <h4>Why not everything is available</h4>
-          <p>
-            A subject is switched on only once its question bank is deep enough to set papers that don&rsquo;t repeat
-            within a couple of tests: at least 60 reviewed questions in every chapter. A thin bank loses a teacher&rsquo;s
-            trust in two tests, so the platform will say &ldquo;not yet&rdquo; rather than switch it on early.
-          </p>
-        </div>
-        <div className="card">
-          <h4>What a request does</h4>
-          <p>
-            It puts the subject in the platform&rsquo;s queue with your institute&rsquo;s name. You&rsquo;ll see the outcome
-            here: Active, or a reason. Before activating, the platform may ask one of your teachers to read three
-            generated papers.
-          </p>
-        </div>
-      </div>
+      <p className="footnote-plain">
+        A subject is switched on once its question bank has at least 60 reviewed questions per chapter. You&rsquo;ll see the platform&rsquo;s answer here.
+      </p>
     </AppShell>
   );
 }

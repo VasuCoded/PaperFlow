@@ -9,6 +9,10 @@ export default defineConfig({
   test: {
     include: ["src/**/*.test.ts", "tests/**/*.test.ts"],
     environment: "node",
+    // Each DB suite boots its own PGlite and replays every migration. Alone that
+    // takes ~2s; with every suite booting at once it can pass the default 10s
+    // hook timeout, which failed whole suites for no real reason.
+    hookTimeout: 120_000,
   },
   resolve: {
     alias: {

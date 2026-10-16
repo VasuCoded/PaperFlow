@@ -99,8 +99,8 @@ export default async function BatchesPage() {
 
       <p className="lede">
         {studentApp
-          ? "A batch is a group of students with as many subjects as they study together. Students join with the batch code, or you add them below. Papers you set for a batch reach its students once you mark them as conducted."
-          : "A batch is a class you teach, with as many subjects as it studies. Set papers for it to keep each class's papers together."}
+          ? "Students join with the batch code, or add them yourself below."
+          : "A batch keeps each class’s papers together."}
       </p>
 
       {batches.length === 0 ? (

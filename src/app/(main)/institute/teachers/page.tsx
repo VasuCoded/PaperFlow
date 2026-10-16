@@ -80,9 +80,7 @@ export default async function TeacherSubjectsPage() {
       )}
 
       <div className="notice" style={{ marginTop: 16 }}>
-        Only class-subjects <b>active for this institute</b> can be assigned. If a subject you want is missing, it has
-        not been activated for you yet — request it from the Subjects screen. Removing an assignment does not delete
-        papers the teacher already made.
+        Missing a subject? Request it under <b>Subjects</b>. Removing an assignment keeps the teacher&rsquo;s papers.
       </div>
     </AppShell>
   );

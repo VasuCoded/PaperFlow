@@ -62,15 +62,10 @@ export default async function ExportPage() {
         </div>
 
         <div className="card tinted">
-          <h4>What&rsquo;s not included, and why</h4>
-          <p style={{ marginBottom: 10 }}>
-            The <b>shared question bank</b> is not in your export. It is licensed to you for use inside the platform,
-            not distributed — the same is true for every other institute, which is what makes the shared bank possible
-            at all. Papers in the export reference shared questions by id.
-          </p>
+          <h4>Not included</h4>
           <p>
-            Your own private questions <b>are</b> included, with their answers, and they stay yours. They are never
-            promoted into the shared bank without your written agreement.
+            The <b>shared question bank</b> is licensed for use inside PaperFlow, so papers reference its questions by id.
+            Your own private questions <b>are</b> included, with their answers.
           </p>
         </div>
       </div>
@@ -102,7 +97,7 @@ export default async function ExportPage() {
         </div>
       )}
       <p style={{ fontSize: 12, color: "var(--graphite)", marginTop: 8 }}>
-        Each opens the print view; use the browser&rsquo;s Print → Save as PDF. The twelve most recent papers are listed.
+        Your twelve most recent papers. Open one and use Print → Save as PDF.
       </p>
     </AppShell>
   );

@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerSupabaseClient } from "@/lib/db/server";
+import { safeNextPath } from "@/lib/safe-redirect";
 
 /**
  * OAuth callback. Exchanges the authorization code for a session, then sends the
@@ -26,8 +27,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/login?error=exchange`);
   }
 
-  // Only allow same-origin relative paths through, so `next` cannot be used as
-  // an open redirect.
-  const safeNext = next && next.startsWith("/") && !next.startsWith("//") ? next : "/welcome";
-  return NextResponse.redirect(`${origin}${safeNext}`);
+  // Only a same-site path, so `next` cannot be used as an open redirect.
+  return NextResponse.redirect(`${origin}${safeNextPath(next, "/welcome")}`);
 }

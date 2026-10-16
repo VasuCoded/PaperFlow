@@ -79,7 +79,7 @@ export function LogFlow({
           {chosen ? `Continue with Set ${chosen.label}` : "Pick your set to continue"}
         </button>
         <p style={{ fontSize: 12, color: "var(--graphite)", marginTop: 12 }}>
-          Nothing is picked for you on purpose. The wrong set would match every tap to the wrong question.
+          The set letter is printed at the top of your paper.
         </p>
       </div>
     );
@@ -134,7 +134,7 @@ export function LogFlow({
           )}
         </div>
         <p className="prompt">
-          Tap the questions you got <span className="hl">wrong</span>. That is all you need to do.
+          Tap the questions you got <span className="hl">wrong</span>.
         </p>
 
         <ul className="qlist">
@@ -240,14 +240,14 @@ export function LogFlow({
       {result?.ok && result.practice.built ? (
         <div className="practice">
           <h4>{result.practice.count} questions picked for you</h4>
-          <p>Same topics, difficulty within one band, none of them seen before.</p>
+          <p>New questions on the topics you got wrong.</p>
           <div className="chips">
             {result.practice.topics.map((t) => <span className="chip" key={t}>{t}</span>)}
             <span className="chip dim">ADDED TO WEAK SPOTS</span>
           </div>
           {result.practice.gaps > 0 && (
             <p style={{ marginTop: 10, fontSize: 11.5 }}>
-              Some topics had nothing new at your level, so we widened to the chapter.
+              Some topics had nothing new at your level, so it includes questions from the wider chapter.
             </p>
           )}
           <Link className="cta" href="/app/practice" style={{ textAlign: "center", textDecoration: "none", marginTop: 10 }}>

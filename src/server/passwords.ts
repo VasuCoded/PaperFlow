@@ -16,6 +16,27 @@ export function temporaryPassword(): string {
 }
 
 /**
+ * May an institute admin reset this person's password? Only when every
+ * membership they hold is in that one institute. A password opens the whole
+ * account, so resetting someone who is also a member elsewhere (a student
+ * enrolled at two coaching centres, a teacher who runs another institute, the
+ * platform owner) would hand one tenant's admin the keys to another tenant.
+ *
+ * Reads with the service role because RLS hides the target's other
+ * memberships from this admin; the predicate is pinned to "not this institute".
+ */
+export async function belongsOnlyTo(userId: string, instituteId: string): Promise<boolean> {
+  const { data, error } = await createAdminClient()
+    .from("institute_members")
+    .select("institute_id")
+    .eq("user_id", userId)
+    .neq("institute_id", instituteId)
+    .limit(1);
+  // On a failed read, refuse rather than guess.
+  return !error && (data ?? []).length === 0;
+}
+
+/**
  * Set a new password for a username account and log who did it. Callers must
  * have authorised the reset (institute admin of a member, or the platform
  * owner). Google accounts have no PaperFlow password and are refused.

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { AppShell } from "../../_components/AppShell";
 import { createServerSupabaseClient } from "@/lib/db/server";
 import { createAdminClient } from "@/lib/db/admin";
-import { getSession } from "@/server/session";
+import { getSession, PLATFORM_INSTITUTE_ID } from "@/server/session";
 import { renderRich } from "@/lib/print/math";
 import { FigureControls } from "./FigureControls";
 import { SubjectSelect } from "./SubjectSelect";
@@ -64,6 +64,7 @@ export default async function QuestionsPage({
         { count: "exact" },
       )
       .eq("class_subject_id", cs)
+      .eq("owner_institute_id", PLATFORM_INSTITUTE_ID) // the shared bank only
       .neq("status", "retired");
     // a chapter from another subject (the subject was just changed) is ignored
     if (sp.ch && (chapters ?? []).some((c) => c.id === sp.ch)) query = query.eq("chapter_id", sp.ch);
@@ -85,6 +86,7 @@ export default async function QuestionsPage({
       const { data: ans } = await createAdminClient()
         .from("questions")
         .select("id, answer")
+        .eq("owner_institute_id", PLATFORM_INSTITUTE_ID)
         .in("id", rows.map((r) => r.id));
       answers = new Map((ans ?? []).map((a) => [a.id, a.answer]));
     }

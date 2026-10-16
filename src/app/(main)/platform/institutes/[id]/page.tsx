@@ -192,8 +192,7 @@ export default async function ManageInstitutePage({ params }: { params: Promise<
         {/* subjects */}
         <div>
           <p className="lede">
-            A subject must be switched on here before this institute&rsquo;s teachers can set papers in it. Switching
-            one off hides it from new papers; nothing already made is lost.
+            Teachers can set papers only in subjects switched on here. Switching one off keeps existing papers.
           </p>
           <div className="tablewrap">
             <table className="lt stack">
@@ -260,7 +259,7 @@ export default async function ManageInstitutePage({ params }: { params: Promise<
                 ))}
               </ul>
             )}
-            <p className="hint">Paper content is not shown here. Reading a paper is a separate audited call, only when a support case needs it.</p>
+            <p className="hint">Paper content is not shown here.</p>
           </div>
         </div>
 
@@ -290,8 +289,7 @@ export default async function ManageInstitutePage({ params }: { params: Promise<
                 : "Suspended: its members cannot use it until you reactivate. All data is kept."}
             </p>
             <p style={{ marginTop: 10 }}>
-              Opening this page wrote one row to the platform access log (your account, this institute, the time).
-              The institute&rsquo;s admins can see that you looked.
+              This visit was logged, and the institute&rsquo;s admins can see it.
             </p>
           </div>
         </div>

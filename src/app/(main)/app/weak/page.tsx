@@ -13,12 +13,12 @@ export default async function WeakSpotsPage() {
 
   return (
     <StudentShell ctx={ctx} tab="weak">
-      <p className="sec-label">Where you are weak · {subjectName}</p>
+      <p className="sec-label">{subjectName}: questions right, weakest first</p>
 
       {topics.length === 0 ? (
         <div className="practice idle">
           <h4>Nothing to show yet</h4>
-          <p>Log a couple of papers and this fills in. After about three tests the picture is real.</p>
+          <p>Log a paper and your topics appear here.</p>
         </div>
       ) : (
         <div className="bars">
@@ -59,21 +59,11 @@ export default async function WeakSpotsPage() {
           <p className="sec-label">Not tracked here</p>
           <div className="practice idle">
             <h4>Writing and map questions</h4>
-            <p>
-              They are left out of this map on purpose — a per-topic score on writing would not mean anything.
-              Your teacher still sees what you marked.
-            </p>
+            <p>Not shown here. Your teacher still sees what you marked.</p>
           </div>
         </>
       )}
 
-      <p className="sec-label">What this is not</p>
-      <div className="testcard quiet">
-        <h3 style={{ fontSize: 15 }}>No score, no percentage, no rank</h3>
-        <p style={{ fontSize: 12.5, color: "var(--graphite)", margin: "8px 0 0" }}>
-          The app only ever records right or wrong per question. Marking stays with your teacher, on paper.
-        </p>
-      </div>
     </StudentShell>
   );
 }
